@@ -1,0 +1,187 @@
+---
+title: "Venetoclax resistance figures"
+output: html_notebook
+---
+
+
+
+```{r packages, echo=FALSE,message=FALSE}
+library(synapser)
+library(dplyr)
+library(ggplot2)
+library(bubbleHeatmap)
+library(stringr)
+at='eyJ0eXAiOiJKV1QiLCJraWQiOiJXN05OOldMSlQ6SjVSSzpMN1RMOlQ3TDc6M1ZYNjpKRU9VOjY0NFI6VTNJWDo1S1oyOjdaQ0s6RlBUSCIsImFsZyI6IlJTMjU2In0.eyJhY2Nlc3MiOnsic2NvcGUiOlsidmlldyIsImRvd25sb2FkIl0sIm9pZGNfY2xhaW1zIjp7fX0sInRva2VuX3R5cGUiOiJQRVJTT05BTF9BQ0NFU1NfVE9LRU4iLCJpc3MiOiJodHRwczovL3JlcG8tcHJvZC5wcm9kLnNhZ2ViYXNlLm9yZy9hdXRoL3YxIiwiYXVkIjoiMCIsIm5iZiI6MTcwNzUyNTA5NCwiaWF0IjoxNzA3NTI1MDk0LCJqdGkiOiI1MzIxIiwic3ViIjoiMTQxODA5NiJ9.HEDKH2VHbcTuy_-UAWHU6XFRyBqUqUAz9a5TuL1wdVcjPRvMumhGKY2qrvbE-Z_TZCDsSnk5lk7VWz_Aa6VE8fGvFuyJsbqXzgzntnDI2G-i1aiXt3qHG5gkbPjkZ4x_X1huILB5yqOWBdz5XXWjN3GkVpURMHuHA8PFld-n0F4eLLY3NP8u1jI5fMAGNSEDqFqIJMFencBKIb791yQ_fnDu7b-FPVNltMygkTHpItgu7M59KoHJhhYoCNbghIwpTEOTjq4odgf8bqQcrlycSP14peo8qPp57dRnddfCz4UbjrLgFO6v-DKxd4wjj0cwTXzBVYDTp2oVW822fi3FhQ'
+synLogin(authToken=at)
+
+
+##come up with a common color scheme for all cells
+#https://coolors.co/palette/edae49-d1495b-00798c
+colors=c(`Early resistant`='#EDAE49',Parental='#D1495B',`Late resistant`='#00798C')
+
+```
+
+This workbook will generate the figures for the papers
+
+
+## Figure 1
+This figure shows the data as it was collected 
+
+```{r fig 1}
+
+##genomics waterfall plot
+
+##PCA of parental, g and GV samples, removed GVD and GD
+
+
+```
+
+## Figure 2
+
+This figure shows the enrichment analysis
+
+```{r fig 2 plotting functions}
+
+##from camilo
+## Plotting function
+plot_function <- function(enrichment_df, database, treatments, p_cutoff, n_pathways, str_width = 40){
+  plot_title <- paste(treatments, collapse = ", ")
+  enrichment_df <- enrichment_df %>%
+    # filter(DB == database) %>%
+    mutate(Pathway = gsub("_", " ", Pathway),
+           Pathway = str_wrap(Pathway, width = str_width))
+  
+  enrichment_df_s <- enrichment_df %>%
+    filter(p.adjust < p_cutoff,
+           contrast %in% treatments) %>%
+    mutate(sign = case_when(sign == "positive" ~ "o",
+                            TRUE ~ "u")) %>%
+    mutate(CS_ = paste(contrast, sign)) %>%
+    mutate(CS_ = factor(CS_, levels = c(paste(treatments, "u"), paste(treatments, "o")))) %>%
+    group_by(CS_) %>%
+    top_n(n_pathways, -p.adjust) %>% ungroup()
+  enrichment_df_s = rbind(enrichment_df_s %>% filter(sign == "o"), enrichment_df_s %>% filter(sign == "u"))
+  pathways <- enrichment_df_s$Pathway %>% unique() 
+  enrichment_df_s <- enrichment_df_s %>%
+    mutate(Pathway = factor(Pathway, levels = pathways))
+
+  if (length(unique(enrichment_df_s$Pathway)) >= 1){
+    p <- ggplot(enrichment_df_s, aes(x = CS_, y = Pathway, size = Count, color = p.adjust)) + geom_point() + 
+      scale_color_gradient(trans = 'log10', limits = c(min(enrichment_df_s$p.adjust),p_cutoff), low = "red", high = "blue") + 
+      ggtitle(treatments) + theme(text = element_text(size = 15))
+  } else {
+    p <- ggplot() + ggtitle("Less than 1 pathways")
+  }
+  return(p)
+}
+
+
+new_plot_function <- function(enrichment_df, database, treatments, p_cutoff, n_pathways, str_width = 40){
+  library(ggplotify)
+
+  plot_title <- paste(treatments, collapse = ", ")
+  enrichment_df <- enrichment_df %>%
+    # filter(DB == database) %>%
+    mutate(Pathway = gsub("_", " ", Pathway))#,
+    #       Pathway = str_wrap(Pathway, width = str_width))
+  
+  enrichment_df_s <- enrichment_df %>%
+    filter(p.adjust < p_cutoff,
+           contrast %in% treatments) %>%
+    mutate(sign = case_when(sign == "positive" ~ 1,
+                            TRUE ~ -1)) %>%
+    mutate(Count=Count*sign)|>
+  #  mutate(CS_ = paste(contrast, sign)) %>%
+  #  mutate(CS_ = factor(CS_, levels = c(paste(treatments, "u"), paste(treatments, "o")))) %>%
+    group_by(contrast) %>%
+    top_n(n_pathways/2, -p.adjust) %>% ungroup()
+#  enrichment_df_s = rbind(enrichment_df_s %>% filter(sign == "o"), enrichment_df_s %>% filter(sign == "u"))
+#  pathways <- enrichment_df_s$Pathway %>% unique() 
+#  enrichment_df_s <- enrichment_df_s %>%
+#    mutate(Pathway = factor(Pathway, levels = pathways))
+  
+
+  sizeMat=enrichment_df_s|>
+    mutate(Significance=-log10(p.adjust))|>
+    dplyr::select(Pathway,Significance,contrast)|>
+    tidyr::pivot_wider(names_from=contrast,values_from=Significance,values_fill=0)|>
+    tibble::column_to_rownames('Pathway')|>
+    as.matrix()
+
+  colorMat=enrichment_df_s|>
+    dplyr::select(Pathway,Count,contrast)|>
+    tidyr::pivot_wider(names_from=contrast,values_from=Count,values_fill=0)|>
+    tibble::column_to_rownames('Pathway')|>
+    as.matrix()
+  
+  res=bubbleHeatmap::bubbleHeatmap(t(colorMat),t(sizeMat),legendTitle=c('-log10 adj p-value','Count'))
+  #grid.newpage()
+  return(res)
+  }
+
+
+```
+
+
+```{r fig2 plost}
+
+ORA_global <- read.table(synGet('syn54958485')$path, sep = "\t", header = T)
+ORA_RNA <- read.table(synGet("syn54958490")$path, sep = "\t", header = T)
+
+
+
+
+ORA_df <- ORA_global %>% filter(DB == "GOBP") %>%
+  mutate(contrast = sub("-none_Parental", "", contrast),
+         Pathway = sub("GOBP ", "", ID))
+
+p1 = new_plot_function(ORA_df, "gobp", c("GV_Early", "GV_Late"), 0.05, 40,50)
+
+
+ORA_df <- ORA_global %>% filter(DB == "Hallmark") %>%
+  mutate(contrast = sub("-none_Parental", "", contrast),
+         Pathway = sub("HALLMARK_", "", ID),
+         Pathway = gsub("_", " ", Pathway))
+p2 = new_plot_function(ORA_df, "Hallmark", c("GV_Early", "GV_Late"), 0.2, 40,50)
+
+ORA_df <- ORA_global %>% filter(DB == "KEGG") %>%
+  mutate(contrast = sub("-none_Parental", "", contrast),
+         Pathway = sub("KEGG ", "", ID))
+p3 = new_plot_function(ORA_df, "KEGG", c("GV_Early", "GV_Late"), 0.05, 40,50)
+
+
+ORA_df <- ORA_global %>% filter(DB == "Reactome") %>%
+  mutate(contrast = sub("-none_Parental", "", contrast),
+         Pathway = sub("REACTOME ", "", ID))
+p4 = new_plot_function(ORA_df, "KEGG", c("GV_Early", "GV_Late"), 0.05, 40,50)
+
+
+```
+
+## Figure 3 
+
+Cell type deconvolution
+
+```{r fig 3}
+tab<-readr::read_tsv(synGet('syn54488257')$path)
+
+tab<-tab|>
+  mutate(MOLM14=ifelse(is.na(State),'Parental',ifelse(State=='Early','Early resistant','Late resistant')))
+
+p<-ggplot(tab,aes(x=`Cell type`,fill=MOLM14,y=value))+
+  geom_boxplot()+
+  scale_fill_manual(values=colors)+
+  theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5))
+
+p
+
+ggsave('fig3_deconv.pdf',p,width=7,height=4)
+ggsave('fig3_deconv.jpg',p,width=7,height=4)
+
+```
+
+
+## Figure 4
+
+What    
+
