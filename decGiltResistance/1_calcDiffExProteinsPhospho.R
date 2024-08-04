@@ -42,7 +42,7 @@ limma::write.fit(fit, file = "diff_exp_d_only.csv",  adjust = "BH", sep = ",")
 for (i in c('D_only', 'G_Early', 'G_Late','GD_Early', 'GD_Late')){#'GV_Early', 'GV_Late', , 'GVD_Early', 'GVD_Late')){
   constrast <- paste(i, ' - none_Parental', sep='')
   res <- limma::topTable(fit, coef=constrast, number=Inf, sort.by="none")
-  write.table(res, gsub(' ', '', paste('diff_ex', constrast, '.csv')), sep=',')
+  write.table(res, gsub(' ', '', paste('diff_ex', constrast, '.csv')), sep=',',row.names=F)
   print(constrast)
 }
 
@@ -86,6 +86,6 @@ for (i in c('D_only', 'G_Early', 'G_Late','GD_Early', 'GD_Late')){ #'GV_Late','G
   #  print(i)
   constrast <- paste(i, ' - none_Parental', sep='')
   res <- limma::topTable(phospho_fit, coef=constrast, number=Inf, sort.by="none")
-  write.table(res, gsub(' ', '', paste('diff_ex_phospho_', constrast, '.csv')), , sep=',')
+  write.table(res, gsub(' ', '', paste('diff_ex_phospho_', constrast, '.csv')), , sep=',',row.names = F)
   print(constrast)
 }
