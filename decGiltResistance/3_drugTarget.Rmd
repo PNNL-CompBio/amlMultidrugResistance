@@ -1,0 +1,194 @@
+---
+title: "Fig2 Drug Target Pathways"
+author: "Sara Gosline"
+date: "2024-08-07"
+output: html_document
+---
+
+# Figure 2 figure generation
+
+Here we dive into the pathway specific data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(dplyr)
+library(pheatmap)
+```
+
+## Load data and differential expression results
+
+Here we want to load the proteomics and phospho data again
+
+```{r data, message=FALSE, warning=FALSE}
+prot_mat<-readr::read_csv('global_proteomics_matrix.csv')|>
+  tibble::column_to_rownames('...1')|>
+  as.matrix()
+
+phos_mat<-readr::read_csv('phospho_proteomics_matrix.csv')|>
+  tibble::column_to_rownames('...1')|>
+  as.matrix()
+
+
+##all metdata here
+conds<-c("Decitabine Resistant","Early Gilteritinib Resistant","Late Gilteritinib Resistant","Early Gilteritinib/Decitabine Resistant","Late Gilteritinib/Decitabine Resistant",'Parental')
+names(conds)=c('D_only','G_Early','G_Late','GD_Early','GD_Late','Parental')
+
+colc<-c('#B75E5C','#E66100','#FFC20A','#0C7BDC','#44AA99','#AAAAAA')
+names(colc)<-conds
+
+dcolc<-colc[c(1,3,5,6)]
+names(dcolc)=c('Decitabine','Gilteritinib','Gilteritinib/Decitabine','Parental')
+
+##first get metadata for proteomics samples
+samps<-colnames(prot_mat)
+
+dvals<-lapply(samps,function(x) {
+  if(length(grep('GD',x))>0)
+    return('Gilteritinib/Decitabine')
+  else if(length(grep('D_only',x))>0)
+    return('Decitabine')
+  else if(length(grep('G_',x))>0)
+    return('Gilteritinib')
+  else{
+    return('Parental')
+  }})|>
+  unlist()
+
+stage=lapply(samps,function(x) {
+  if(length(grep('early',x,ignore.case = T))>0)
+    return('Early')
+  else if(length(grep('late',x,ignore.case=T))>0)
+    return('Late')
+  else{
+    return('')
+  }})|>
+  unlist()
+
+#now get metadata for phospho samples
+phsamps <-colnames(phos_mat)
+
+phdvals<-lapply(phsamps,function(x) {
+  if(length(grep('GD',x))>0)
+    return('Gilteritinib/Decitabine')
+  else if(length(grep('D_only',x))>0)
+    return('Decitabine')
+  else if(length(grep('G_',x))>0)
+    return('Gilteritinib')
+  else{
+    return('Parental')
+  }})|>
+  unlist()
+
+phstage=lapply(phsamps,function(x) {
+  if(length(grep('early',x,ignore.case = T))>0)
+    return('Early')
+  else if(length(grep('late',x,ignore.case=T))>0)
+    return('Late')
+  else{
+    return('')
+  }})|>
+  unlist()
+
+ddf<-data.frame(Sample=c(samps,phsamps),drug=c(dvals,phdvals),stage=c(stage,phstage))|>
+  mutate(condition=stringr::str_trim(paste(stage,drug,ifelse(drug=='Parental','','Resistant'))))|>
+  tibble::column_to_rownames("Sample")
+
+
+phospho<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
+  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
+    mutate(condition=conds[x])
+}))
+
+
+prot<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
+  readr::read_csv(paste0('diff_ex',x,'-none_Parental.csv'))|>
+    mutate(condition=conds[x])
+}))
+
+targ_exp=rbind(phos_mat[c(grep("FLT3",rownames(phos_mat)),
+        grep("DNMT1",rownames(phos_mat))),])
+
+ddf$stage<-sapply(ddf$stage,function(x) ifelse(x=='','None',x))
+ddf<-arrange(ddf,condition)
+colors=list(drug=dcolc,stage=c(Early='#DDDDDD',Late='#000000',None='#FFFFFF'))
+
+pheatmap(prot_mat[c('FLT3','DNMT1'),intersect(rownames(ddf),colnames(prot_mat))],annotation_col=ddf[,c('drug','stage')],annotation_colors = colors,cellwidth = 10,cellheight=10,cluster_rows = FALSE,cluster_cols = FALSE,show_colnames=FALSE,filename='targetProtheatmap.pdf')
+
+pheatmap(targ_exp[,intersect(rownames(ddf),colnames(targ_exp))],annotation_col=ddf[,c('drug','stage')],annotation_colors = colors,cellwidth = 10,cellheight=10,cluster_rows = TRUE,cluster_cols = FALSE,show_colnames=FALSE, filename = 'targetPhosheamap.pdf')
+
+```
+
+Here we can see the trends for the target proteins, are they differentially expressed?
+
+
+```{r diffex}
+ 
+rdf<-ddf|>
+  dplyr::select(condition,drug,stage)|>
+  mutate(stage=stringr::str_replace(stage,'None','Late'))|>
+  distinct()
+
+prot|>left_join(rdf)|>
+  mutate(Significant=(adj.P.Val<0.05))|>
+  subset(Var.1%in%c('FLT3','DNMT1'))|>
+  ggplot(aes(x=stage,y=logFC,fill=drug,shape=Significant))+geom_bar(position='dodge',stat='identity')+facet_grid(Var.1~.)+
+  scale_fill_manual(values=dcolc)+theme_minimal()+geom_point()+coord_flip()
+
+ggsave('protTargetFC.pdf',width=4,height=3)
+
+flt3<-phospho[grep("FLT3",phospho$Var.1),]
+dnmt<-phospho[grep("DNMT1",phospho$Var.1),]
+
+rbind(dnmt,flt3)|>left_join(rdf)|>
+ # tidyr::separate(Var.1,into=c('Protein','site'),sep='-',remove=FALSE)|>
+    mutate(Significant=(adj.P.Val<0.05))|>
+  distinct()|>
+  ggplot(aes(x=stage,y=logFC,fill=drug,shape=Significant))+
+  facet_grid(Var.1~.)+
+  geom_bar(position='dodge',stat='identity')+
+  geom_point()+coord_flip()+
+  #facet_grid(Protein~.)+
+  scale_fill_manual(values=dcolc)+ theme_minimal()#+theme(axis.text.x=element_text(angle=90))
+
+ggsave('phosTargetFC.pdf',height=13,width=4)
+
+```
+
+
+
+## Entire FLT3 signaling pathway is downregulated
+
+```{r FLT3}
+
+paths<-readr::read_csv(file='suppTable_enrichmentResults.csv')
+
+flt3<-paths[grep("FLT3",paths$Term),]|>subset(Adjusted.P.value<0.05)|>print()
+
+flt3_genes<-unique(unlist(sapply(flt3$Genes,function(x) unlist(strsplit(x,split=';')))))
+
+
+##it looks like this pathway is over-represented in down-regualted dec resistant samplesa nd up-regulated combo samples
+ 
+pheatmap(prot_mat[flt3_genes,intersect(rownames(ddf),colnames(prot_mat))],annotation_col=ddf[,c('drug','stage')],annotation_colors = colors,cellwidth = 10,cellheight=10,cluster_rows = FALSE,cluster_cols = FALSE,show_colnames=FALSE,filename='supp_flt3_reactomeheatmap.pdf')
+
+prot|>left_join(rdf)|>
+  mutate(Significant=(adj.P.Val<0.05))|>
+  subset(Var.1%in%flt3_genes)|>
+  ggplot(aes(x=Var.1,y=logFC,fill=drug,shape=Significant))+geom_bar(position='dodge',stat='identity')+facet_grid(~stage)+
+  scale_fill_manual(values=dcolc)+theme_minimal()+geom_point()+coord_flip()
+
+
+```
+## Drug response
+
+Ideally we can screen these cell lines for specific drug response to confirm our suspecion, primarily that FLT3 targeting drugs do not work when patient is resistant to decitabine. Plot those here
+
+```{r drug response}
+
+```
+
+
+
+

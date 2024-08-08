@@ -1,0 +1,105 @@
+---
+title: "Fig 3 Alternate Target Pathways"
+author: "Sara Gosline"
+date: "2024-08-07"
+output: html_document
+---
+
+# Figure 3 figure generation
+
+Here we dive into the differential expression and drug target results
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(dplyr)
+library(pheatmap)
+```
+
+## Load kinase and pathway results
+
+Here we want to load the proteomics and phospho data again
+
+```{r data, warning=FALSE, message=FALSE}
+
+paths<-readr::read_csv(file='suppTable_enrichmentResults.csv')
+kins<-readr::read_csv(file='suppTable2_kinaseEnrichment.csv')
+
+##all metdata here
+conds<-c("Decitabine Resistant","Early Gilteritinib Resistant","Late Gilteritinib Resistant","Early Gilteritinib/Decitabine Resistant","Late Gilteritinib/Decitabine Resistant",'Parental')
+names(conds)=c('D_only','G_Early','G_Late','GD_Early','GD_Late','Parental')
+
+##condition specific color scheme
+colc<-c('#B75E5C','#E66100','#FFC20A','#0C7BDC','#44AA99','#AAAAAA')
+names(colc)<-conds
+
+#drug specific color scheme
+dcolc<-colc[c(1,3,5,6)]
+names(dcolc)=c('Decitabine','Gilteritinib','Gilteritinib/Decitabine','Parental')
+
+```
+
+Top pathways up-regulated in resistant cell lines?
+```{r diffex, message=FALSE,warning=FALSE}
+getTopN<-function(df,n=10){
+  return(df[1:n,])
+}
+
+top_paths<-paths|>arrange(Adjusted.P.value)|>subset(Adjusted.P.value<0.05)|>group_by(condition,direction,pathway)|>group_modify(~getTopN(.x))
+
+##now we can plot those top pathways
+lapply(unique(top_paths$pathway),function(x){
+  top_paths|>
+    subset(pathway==x)|>
+    ggplot(aes(x=Term,y=Odds.Ratio,col=condition,size=-log10(Adjusted.P.value),alpha=0.5,fill=condition))+
+    geom_jitter()+#geom_bar(position='dodge',stat='identity')+
+    facet_grid(~direction)+
+    coord_flip()+
+    theme_minimal()+
+    scale_color_manual(values=colc)+
+    ggtitle(paste0('Top 10 ',x,' terms'))
+  
+  ggsave(filename = paste0('top10',x,'terms.pdf'),width=14)
+})
+
+```
+
+top kinases up-regulated in resistant cell lines?
+```{r kinase, message=FALSE,warning=FALSE}
+
+top_kins<-kins|>arrange(BH_pvalue)|>subset(BH_pvalue<0.05)|>group_by(condition,direction)|>group_modify(~getTopN(.x))
+
+  top_kins|>
+    #subset(pathway==x)|>
+    ggplot(aes(x=Kinase,y=oddsratio,col=condition,size=-log10(BH_pvalue),alpha=0.5,fill=condition))+
+    geom_jitter()+#geom_bar(position='dodge',stat='identity')+
+    facet_grid(~direction)+
+    coord_flip()+
+    theme_minimal()+
+    scale_color_manual(values=colc)+
+    ggtitle(paste0('Top 10 Kinases'))
+  
+  ggsave(filename = paste0('top10Kinases.pdf'),width=8)
+
+```
+
+
+drug MOA prediction?
+
+
+```{r drug response}
+
+```
+
+
+drug experiments - can we test some of these drugs in vitro?
+
+```{r drug test}
+```
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
