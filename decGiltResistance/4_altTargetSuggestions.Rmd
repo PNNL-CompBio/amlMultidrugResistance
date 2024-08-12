@@ -43,7 +43,7 @@ names(dcolc)=c('Decitabine','Gilteritinib','Gilteritinib/Decitabine','Parental')
 
 Top pathways up-regulated in resistant cell lines?
 ```{r diffex, message=FALSE,warning=FALSE}
-getTopN<-function(df,n=10){
+getTopN<-function(df,n=20){
   return(df[1:n,])
 }
 
@@ -59,9 +59,9 @@ lapply(unique(top_paths$pathway),function(x){
     coord_flip()+
     theme_minimal()+
     scale_color_manual(values=colc)+
-    ggtitle(paste0('Top 10 ',x,' terms'))
+    ggtitle(paste0('Top 20 ',x,' terms'))
   
-  ggsave(filename = paste0('top10',x,'terms.pdf'),width=14)
+  ggsave(filename = paste0('top20',x,'terms.pdf'),width=14)
 })
 
 ```
@@ -79,9 +79,9 @@ top_kins<-kins|>arrange(BH_pvalue)|>subset(BH_pvalue<0.05)|>group_by(condition,d
     coord_flip()+
     theme_minimal()+
     scale_color_manual(values=colc)+
-    ggtitle(paste0('Top 10 Kinases'))
+    ggtitle(paste0('Top 20 Kinases'))
   
-  ggsave(filename = paste0('top10Kinases.pdf'),width=8)
+  ggsave(filename = paste0('top20Kinases.pdf'),width=8)
 
 ```
 
@@ -90,6 +90,8 @@ drug MOA prediction?
 
 
 ```{r drug response}
+
+#for each condition, predict MOA and get significant values, plot in bar graph
 
 ```
 

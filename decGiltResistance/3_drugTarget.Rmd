@@ -145,14 +145,14 @@ rbind(dnmt,flt3)|>left_join(rdf)|>
  # tidyr::separate(Var.1,into=c('Protein','site'),sep='-',remove=FALSE)|>
     mutate(Significant=(adj.P.Val<0.05))|>
   distinct()|>
-  ggplot(aes(x=stage,y=logFC,fill=drug,shape=Significant))+
-  facet_grid(Var.1~.)+
+  ggplot(aes(x=Var.1,y=logFC,fill=drug,shape=Significant))+
+  facet_grid(~stage)+
   geom_bar(position='dodge',stat='identity')+
   geom_point()+coord_flip()+
   #facet_grid(Protein~.)+
   scale_fill_manual(values=dcolc)+ theme_minimal()#+theme(axis.text.x=element_text(angle=90))
 
-ggsave('phosTargetFC.pdf',height=13,width=4)
+ggsave('phosTargetFC.pdf',height=3)
 
 ```
 
@@ -179,7 +179,43 @@ prot|>left_join(rdf)|>
   ggplot(aes(x=Var.1,y=logFC,fill=drug,shape=Significant))+geom_bar(position='dodge',stat='identity')+facet_grid(~stage)+
   scale_fill_manual(values=dcolc)+theme_minimal()+geom_point()+coord_flip()
 
+ggsave('reactome_flt3path_signaling_fc.pdf')
+```
 
+Let's also look at the KEGG pathway
+```{r kegg mapk}
+
+mapk<-paths|>
+  subset(pathway=='KEGG_2021_Human')|>
+  subset(Adjusted.P.value<0.05)|>
+  subset(grepl("MAPK",Term))
+         
+print(mapk)
+mapk_genes<-unique(unlist(sapply(mapk$Genes,function(x) unlist(strsplit(x,split=';')))))
+
+
+##it looks like this pathway is over-represented in down-regualted dec resistant samplesa nd up-regulated combo samples
+ 
+pheatmap(prot_mat[mapk_genes,intersect(rownames(ddf),colnames(prot_mat))],annotation_col=ddf[,c('drug','stage')],annotation_colors = colors,cellwidth = 10,cellheight=10,cluster_rows = FALSE,cluster_cols = FALSE,show_colnames=FALSE,filename='supp_mapk_keggheatmap.pdf')
+
+prot|>left_join(rdf)|>
+  mutate(Significant=(adj.P.Val<0.05))|>
+  subset(Var.1%in%mapk_genes)|>
+  ggplot(aes(x=Var.1,y=logFC,fill=drug,shape=Significant))+geom_bar(position='dodge',stat='identity')+facet_grid(~stage)+
+  scale_fill_manual(values=dcolc)+theme_minimal()+geom_point()+coord_flip()
+
+ggsave('kegg_mapkpath_signaling_fc.pdf',height=12)
+
+```
+
+Now we can do a graphical plot
+
+```{r kegg pathway graph, warning=FALSE}
+library(pathview)
+fcmat<-prot|>
+  select(Var.1,logFC,condition)|>tidyr::pivot_wider(names_from='condition',values_from='logFC')|>tibble::column_to_rownames('Var.1')
+
+pv.out <-pathview(gene.data=fcmat,pathway.id='hsa04010',species='hsa',kegg.native=F,out.suffix='mapk',gene.idtype='SYMBOL',low=list(gene='#88AAEE',cpd='darkblue'),mid=c(gene='lightgrey',cpd='grey'),high=list(gene='#EEAA99',cpd='darkred'),pdf.size=c(10,10),text.width=18)
 ```
 ## Drug response
 
