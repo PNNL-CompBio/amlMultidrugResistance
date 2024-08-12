@@ -22,14 +22,14 @@ library(pheatmap)
 Here we want to load the proteomics and phospho data again
 
 ```{r data, message=FALSE, warning=FALSE}
-prot_mat<-readr::read_csv('global_proteomics_matrix.csv')|>
+
+prot_mat<-readr::read_csv(synGet('syn62012882')$path)|>
   tibble::column_to_rownames('...1')|>
   as.matrix()
 
-phos_mat<-readr::read_csv('phospho_proteomics_matrix.csv')|>
+phos_mat<-readr::read_csv(synGet('syn62012883')$path)|>
   tibble::column_to_rownames('...1')|>
   as.matrix()
-
 
 ##all metdata here
 conds<-c("Decitabine Resistant","Early Gilteritinib Resistant","Late Gilteritinib Resistant","Early Gilteritinib/Decitabine Resistant","Late Gilteritinib/Decitabine Resistant",'Parental')
@@ -95,17 +95,20 @@ ddf<-data.frame(Sample=c(samps,phsamps),drug=c(dvals,phdvals),stage=c(stage,phst
   mutate(condition=stringr::str_trim(paste(stage,drug,ifelse(drug=='Parental','','Resistant'))))|>
   tibble::column_to_rownames("Sample")
 
-
-phospho<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
-  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
-    mutate(condition=conds[x])
+##let's pick some standard colors for the conditions to use throughout the paper
+phlist<-c(D_only='syn62012747',GD_Early='syn62012750',GD_Late='syn62012751',G_Early='syn62012748',G_Late='syn62012749')
+phospho<-do.call(rbind,lapply(names(phlist),function(x){
+  readr::read_csv(synGet(phlist[[x]])$path)|>
+#  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
+    mutate(condition=x)
 }))
 
-
-prot<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
-  readr::read_csv(paste0('diff_ex',x,'-none_Parental.csv'))|>
-    mutate(condition=conds[x])
+plist<-c(D_only='syn62012752',GD_Early='syn62012755',GD_Late='syn62012756',G_Early='syn62012753',G_Late='syn62012754')
+prot<-do.call(rbind,lapply(names(plist),function(x){
+  readr::read_csv(synGet(plist[[x]])$path)|>
+    mutate(condition=x)
 }))
+
 
 targ_exp=rbind(phos_mat[c(grep("FLT3",rownames(phos_mat)),
         grep("DNMT1",rownames(phos_mat))),])
@@ -193,6 +196,7 @@ mapk<-paths|>
 print(mapk)
 mapk_genes<-unique(unlist(sapply(mapk$Genes,function(x) unlist(strsplit(x,split=';')))))
 
+###TODO: update this to use HSA valuesa s i'm missing something with gene names.
 
 ##it looks like this pathway is over-represented in down-regualted dec resistant samplesa nd up-regulated combo samples
  
