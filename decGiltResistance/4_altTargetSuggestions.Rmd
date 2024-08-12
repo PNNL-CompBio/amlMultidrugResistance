@@ -16,6 +16,7 @@ library(tidyr)
 library(readr)
 library(dplyr)
 library(pheatmap)
+library(synapser)
 ```
 
 ## Load kinase and pathway results
@@ -23,9 +24,9 @@ library(pheatmap)
 Here we want to load the proteomics and phospho data again
 
 ```{r data, warning=FALSE, message=FALSE}
-
-paths<-readr::read_csv(file='suppTable_enrichmentResults.csv')
-kins<-readr::read_csv(file='suppTable2_kinaseEnrichment.csv')
+synLogin()
+paths<-readr::read_csv(synGet('syn62013061')$path)
+kins<-readr::read_csv(synGet('syn62013171')$path)
 
 ##all metdata here
 conds<-c("Decitabine Resistant","Early Gilteritinib Resistant","Late Gilteritinib Resistant","Early Gilteritinib/Decitabine Resistant","Late Gilteritinib/Decitabine Resistant",'Parental')

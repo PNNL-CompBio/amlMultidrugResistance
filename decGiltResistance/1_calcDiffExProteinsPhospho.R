@@ -1,16 +1,18 @@
 ##RUn differential expression analysis based on harmonized proteomics from step 0
 
 library(limma)
+library(synapser)
+syn <- synLogin()
 
-
-proteomics <- read.csv('global_proteomics_matrix.csv')
+##todo download this from synapse
+proteomics <- read.csv(synGet('syn62012882')$path)
 rownames(proteomics) <- proteomics$X
 colnames(proteomics) <- sub("^X", "", colnames(proteomics))
 columns <- colnames(proteomics)
 parental_cols<- columns[grep("Parental", colnames(proteomics))]
 
 
-meta <- read.csv('meta.csv')
+meta <- read.csv(synGet('syn62012890')$path)
 rownames(meta) <- proteomics$name
 
 
@@ -42,20 +44,22 @@ limma::write.fit(fit, file = "diff_exp_d_only.csv",  adjust = "BH", sep = ",")
 for (i in c('D_only', 'G_Early', 'G_Late','GD_Early', 'GD_Late')){#'GV_Early', 'GV_Late', , 'GVD_Early', 'GVD_Late')){
   constrast <- paste(i, ' - none_Parental', sep='')
   res <- limma::topTable(fit, coef=constrast, number=Inf, sort.by="none")
-  write.table(res, gsub(' ', '', paste('diff_ex', constrast, '.csv')), sep=',',row.names=F)
+  fname = gsub(' ', '', paste('diff_ex', constrast, '.csv'))
+  write.table(res, fname, , sep=',',row.names = F)
+  synStore(File(fname,parent='syn62012746'))
   print(constrast)
 }
 
 ###Phospho results
-phospho <- read.csv('phospho_proteomics_matrix.csv')
+phospho <- read.csv(synGet('syn62012883')$path)
 rownames(phospho) <- phospho$X
 colnames(phospho) <- sub("^X", "", colnames(phospho))
 columns <- colnames(phospho)
 parental_cols<- columns[grep("Parental", colnames(phospho))]
 
 
-meta <- read.csv('meta.csv')
-rownames(meta) <- phospho$name
+#meta <- read.csv('meta.csv')
+#rownames(meta) <- phospho$name
 
 design <- model.matrix(~0 + factor(meta$name))
 colnames(design)<-lapply(colnames(design), function(x) strsplit(x, ")")[[1]][2])
@@ -86,6 +90,8 @@ for (i in c('D_only', 'G_Early', 'G_Late','GD_Early', 'GD_Late')){ #'GV_Late','G
   #  print(i)
   constrast <- paste(i, ' - none_Parental', sep='')
   res <- limma::topTable(phospho_fit, coef=constrast, number=Inf, sort.by="none")
-  write.table(res, gsub(' ', '', paste('diff_ex_phospho_', constrast, '.csv')), , sep=',',row.names = F)
+  fname = gsub(' ', '', paste('diff_ex_phospho_', constrast, '.csv'))
+  write.table(res, fname, , sep=',',row.names = F)
+  synStore(File(fname,parent='syn62012746'))
   print(constrast)
 }

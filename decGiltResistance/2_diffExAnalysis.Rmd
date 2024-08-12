@@ -16,18 +16,20 @@ library(dplyr)
 library(UpSetR)
 library(ggfortify)
 library(pheatmap)
+library(synapser)
 ```
 
 ## Load normalized data
 
 We might as well redo the PCA plots here using ggplot and our annotated colors
 ```{r load matrix data}
-
-prot_mat<-readr::read_csv('global_proteomics_matrix.csv')|>
+synLogin()
+## download from synapse
+prot_mat<-readr::read_csv(synGet('syn62012882')$path)|>
   tibble::column_to_rownames('...1')|>
   as.matrix()
 
-phos_mat<-readr::read_csv('phospho_proteomics_matrix.csv')|>
+phos_mat<-readr::read_csv(synGet('syn62012883')$path)|>
   tibble::column_to_rownames('...1')|>
   as.matrix()
 
@@ -116,17 +118,18 @@ First figure is just a barplot,  upsetplot of differentially expressed proteins 
 
 
 ##let's pick some standard colors for the conditions to use throughout the paper
-
-phospho<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
-  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
-    mutate(condition=conds[x])
+phlist<-c(D_only='syn62012747',GD_Early='syn62012750',GD_Late='syn62012751',G_Early='syn62012748',G_Late='syn62012749')
+phospho<-do.call(rbind,lapply(names(phlist),function(x){
+  readr::read_csv(synGet(phlist[[x]])$path)|>
+#  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
+    mutate(condition=conds[[x]])
 }))
 phospho|>subset(adj.P.Val<0.05)|>group_by(condition)|>summarize(numFeatures=n())
 
-
-prot<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
-  readr::read_csv(paste0('diff_ex',x,'-none_Parental.csv'))|>
-    mutate(condition=conds[x])
+plist<-c(D_only='syn62012752',GD_Early='syn62012755',GD_Late='syn62012756',G_Early='syn62012753',G_Late='syn62012754')
+prot<-do.call(rbind,lapply(names(plist),function(x){
+  readr::read_csv(synGet(plist[[x]])$path)|>
+    mutate(condition=conds[[x]])
 }))
 
 prot|>subset(adj.P.Val<0.05)|>group_by(condition)|>summarize(numFeatures=n())
@@ -189,6 +192,7 @@ eres<-prot|>
   group_modify(~eof(.x$Var.1),.keep=TRUE)
 
 readr::write_csv(eres,file='suppTable_enrichmentResults.csv')
+synStore(File('suppTable_enrichmentResults.csv',parent='syn62012953'))
 
 eres<-eres|>
   unite(c(condition,direction),col='test',sep=' ',remove=FALSE)
@@ -308,6 +312,7 @@ kres<-phospho|>
   group_modify(~doLeapr(.x[,c('psite','logFC','adj.P.Val')]),.keep=TRUE)
 
 readr::write_csv(kres,file='suppTable2_kinaseEnrichment.csv')
+synStore(File('suppTable2_kinaseEnrichment.csv',parent='syn62012953'))
 
 kres|>subset(BH_pvalue<0.05)|>group_by(condition,direction)|>summarize(kinases=n())|>
   ggplot(aes(x=direction,fill=condition,y=kinases))+geom_bar(position='dodge',stat='identity')+scale_fill_manual(values=colc)+theme_minimal()

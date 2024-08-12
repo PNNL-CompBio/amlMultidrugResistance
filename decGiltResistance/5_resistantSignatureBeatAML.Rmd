@@ -29,17 +29,19 @@ Here we want to load the proteomics and phospho data again
 ##all metdata here
 conds<-c("Decitabine Resistant","Early Gilteritinib Resistant","Late Gilteritinib Resistant","Early Gilteritinib/Decitabine Resistant","Late Gilteritinib/Decitabine Resistant",'Parental')
 names(conds)=c('D_only','G_Early','G_Late','GD_Early','GD_Late','Parental')
+##let's pick some standard colors for the conditions to use throughout the paper
 
-phospho<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
-  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
-    mutate(condition=conds[x])
+phlist<-c(D_only='syn62012747',GD_Early='syn62012750',GD_Late='syn62012751',G_Early='syn62012748',G_Late='syn62012749')
+phospho<-do.call(rbind,lapply(names(phlist),function(x){
+  readr::read_csv(synGet(phlist[[x]])$path)|>
+#  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
+    mutate(condition=conds[[x]])
 }))
-phospho|>subset(adj.P.Val<0.05)|>group_by(condition)|>summarize(numFeatures=n())
 
-
-prot<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
-  readr::read_csv(paste0('diff_ex',x,'-none_Parental.csv'))|>
-    mutate(condition=conds[x])
+plist<-c(D_only='syn62012752',GD_Early='syn62012755',GD_Late='syn62012756',G_Early='syn62012753',G_Late='syn62012754')
+prot<-do.call(rbind,lapply(names(plist),function(x){
+  readr::read_csv(synGet(plist[[x]])$path)|>
+    mutate(condition=conds[[x]])
 }))
 
 
