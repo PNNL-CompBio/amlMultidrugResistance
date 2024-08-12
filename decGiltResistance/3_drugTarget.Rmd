@@ -15,6 +15,7 @@ library(tidyr)
 library(readr)
 library(dplyr)
 library(pheatmap)
+library(synapser)
 ```
 
 ## Load data and differential expression results
@@ -22,7 +23,7 @@ library(pheatmap)
 Here we want to load the proteomics and phospho data again
 
 ```{r data, message=FALSE, warning=FALSE}
-
+synLogin()
 prot_mat<-readr::read_csv(synGet('syn62012882')$path)|>
   tibble::column_to_rownames('...1')|>
   as.matrix()
@@ -100,13 +101,13 @@ phlist<-c(D_only='syn62012747',GD_Early='syn62012750',GD_Late='syn62012751',G_Ea
 phospho<-do.call(rbind,lapply(names(phlist),function(x){
   readr::read_csv(synGet(phlist[[x]])$path)|>
 #  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
-    mutate(condition=x)
+    mutate(condition=conds[[x]])
 }))
 
 plist<-c(D_only='syn62012752',GD_Early='syn62012755',GD_Late='syn62012756',G_Early='syn62012753',G_Late='syn62012754')
 prot<-do.call(rbind,lapply(names(plist),function(x){
   readr::read_csv(synGet(plist[[x]])$path)|>
-    mutate(condition=x)
+    mutate(condition=conds[[x]])
 }))
 
 
@@ -165,7 +166,7 @@ ggsave('phosTargetFC.pdf',height=3)
 
 ```{r FLT3}
 
-paths<-readr::read_csv(file='suppTable_enrichmentResults.csv')
+paths<-readr::read_csv(synGet('syn62013061')$path)
 
 flt3<-paths[grep("FLT3",paths$Term),]|>subset(Adjusted.P.value<0.05)|>print()
 

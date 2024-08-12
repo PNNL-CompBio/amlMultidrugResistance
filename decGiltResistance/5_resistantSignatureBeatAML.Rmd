@@ -35,13 +35,13 @@ phlist<-c(D_only='syn62012747',GD_Early='syn62012750',GD_Late='syn62012751',G_Ea
 phospho<-do.call(rbind,lapply(names(phlist),function(x){
   readr::read_csv(synGet(phlist[[x]])$path)|>
 #  readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
-    mutate(condition=x)
+    mutate(condition=conds[[x]])
 }))
 
 plist<-c(D_only='syn62012752',GD_Early='syn62012755',GD_Late='syn62012756',G_Early='syn62012753',G_Late='syn62012754')
 prot<-do.call(rbind,lapply(names(plist),function(x){
   readr::read_csv(synGet(plist[[x]])$path)|>
-    mutate(condition=x)
+    mutate(condition=conds[[x]])
 }))
 
 
