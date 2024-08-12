@@ -16,14 +16,19 @@ library(tidyr)
 library(readr)
 library(dplyr)
 library(pheatmap)
+library(synapser)
+synLogin()
 ```
 
-## Load kinase and pathway results
+## Load differential expression analysis
 
 Here we want to load the proteomics and phospho data again
 
 ```{r data, warning=FALSE, message=FALSE}
 
+##all metdata here
+conds<-c("Decitabine Resistant","Early Gilteritinib Resistant","Late Gilteritinib Resistant","Early Gilteritinib/Decitabine Resistant","Late Gilteritinib/Decitabine Resistant",'Parental')
+names(conds)=c('D_only','G_Early','G_Late','GD_Early','GD_Late','Parental')
 
 phospho<-do.call(rbind,lapply(setdiff(names(conds),'Parental'),function(x){
   readr::read_csv(paste0('diff_ex_phospho_',x,'-none_Parental.csv'))|>
@@ -52,20 +57,35 @@ names(dcolc)=c('Decitabine','Gilteritinib','Gilteritinib/Decitabine','Parental')
 
 ```
 
-Top pathways up-regulated in resistant cell lines?
+## Signature creation
+For each condition, determine a signature of proteins that are up- and down-regulated.Visualize those signatures and show how they segregate the cell lines.
+
 ```{r sigs, message=FALSE,warning=FALSE}
 
 #for each condition, generate a signature of proteins and weights
 
 #visualize that using heatmaps?
+
 ```
 
 ## BeatAML analysis
 
-Get beataml samples, apply signatures to each sample
+Now apply the signatures to each of the BeatAML samples to determine their status according to the cell lines.
 
 ```{r beatAML, message=FALSE,warning=FALSE}
 
+ba_prot<-readr::read_tsv(synapser::synGet('syn25714248')$path)
+ba_phos<-readr::read_tsv(synapser::synGet('syn32528196')$path)
+
+##plot the patients samples by their predicted drug sensitivity
+
+##score each patient based on resistant signature
+drug_data<-synapser::synTableQuery('select * from syn25830473')$asDataFrame()
+
+##we can expand this list, but at least let's focus on the drugs that we are predicting resistnace too as well as other targets
+drugs_of_interest<-c("Azacytidine","Azacytidine - Quizartinib","Gilteritinib","Quizartinib (AC220)","p38 MAP Kinase Inhibitor","Cytarabine")
+
+##plot the AUCs of the samples according to their predicted sensitivity
 
 ```
 
