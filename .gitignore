@@ -6,3 +6,6 @@
 *.png
 *.gz
 */.ipynb_checkpoints/
+
+/exvivo_exp25/GSEA tables/*.txt
+/exvivo_exp25/data/*
