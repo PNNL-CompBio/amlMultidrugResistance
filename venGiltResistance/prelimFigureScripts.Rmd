@@ -1,6 +1,8 @@
 ---
 title: "Venetoclax resistance figures"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 
@@ -11,13 +13,14 @@ library(dplyr)
 library(ggplot2)
 library(bubbleHeatmap)
 library(stringr)
-at='eyJ0eXAiOiJKV1QiLCJraWQiOiJXN05OOldMSlQ6SjVSSzpMN1RMOlQ3TDc6M1ZYNjpKRU9VOjY0NFI6VTNJWDo1S1oyOjdaQ0s6RlBUSCIsImFsZyI6IlJTMjU2In0.eyJhY2Nlc3MiOnsic2NvcGUiOlsidmlldyIsImRvd25sb2FkIl0sIm9pZGNfY2xhaW1zIjp7fX0sInRva2VuX3R5cGUiOiJQRVJTT05BTF9BQ0NFU1NfVE9LRU4iLCJpc3MiOiJodHRwczovL3JlcG8tcHJvZC5wcm9kLnNhZ2ViYXNlLm9yZy9hdXRoL3YxIiwiYXVkIjoiMCIsIm5iZiI6MTcwNzUyNTA5NCwiaWF0IjoxNzA3NTI1MDk0LCJqdGkiOiI1MzIxIiwic3ViIjoiMTQxODA5NiJ9.HEDKH2VHbcTuy_-UAWHU6XFRyBqUqUAz9a5TuL1wdVcjPRvMumhGKY2qrvbE-Z_TZCDsSnk5lk7VWz_Aa6VE8fGvFuyJsbqXzgzntnDI2G-i1aiXt3qHG5gkbPjkZ4x_X1huILB5yqOWBdz5XXWjN3GkVpURMHuHA8PFld-n0F4eLLY3NP8u1jI5fMAGNSEDqFqIJMFencBKIb791yQ_fnDu7b-FPVNltMygkTHpItgu7M59KoHJhhYoCNbghIwpTEOTjq4odgf8bqQcrlycSP14peo8qPp57dRnddfCz4UbjrLgFO6v-DKxd4wjj0cwTXzBVYDTp2oVW822fi3FhQ'
-synLogin(authToken=at)
+library(umap)
+synLogin()
 
 
 ##come up with a common color scheme for all cells
 #https://coolors.co/palette/edae49-d1495b-00798c
 colors=c(`Early resistant`='#EDAE49',Parental='#D1495B',`Late resistant`='#00798C')
+dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',`Gilteritinib/Venetoclax`='#0072B2')
 
 ```
 
@@ -32,15 +35,270 @@ This figure shows the data as it was collected
 ##genomics waterfall plot
 
 ##PCA of parental, g and GV samples, removed GVD and GD
+global<-read.table(synGet('syn51197035')$path,fill=TRUE,header=T,row.names=NULL)|>
+  subset(!is.na(value))|>
+    subset(Treatment%in%(c('none','G','GV')))
+
+
+phospho<-read.table(synGet('syn51197038')$path,fill=TRUE,header=T,row.names=NULL)|>
+    subset(!is.na(value))|>
+  subset(Treatment%in%(c('none','G','GV')))
+
+
+gmat<-global|>dplyr::select(Sample,Gene,value)|>distinct()|>
+  tidyr::pivot_wider(names_from=Sample,values_from=value,values_fill=0.0)|>tibble::column_to_rownames('Gene')
+gmat<-gmat[-which(apply(gmat,1,function(x) any(x==0))),]
+
+pmat<-phospho|>dplyr::select(Sample,SiteID,value)|>distinct()|>
+  tidyr::pivot_wider(names_from=Sample,values_from=value,values_fill=0.0)|>tibble::column_to_rownames('SiteID')
+pmat<-pmat[-which(apply(pmat,1,function(x) any(x==0))),]
+
+meta<-global|>dplyr::select(Sample,Plex,State,Treatment,Ligand,Exp)|>distinct()|>
+  mutate(Drug=ifelse(Treatment=='G',"Gilteritinib",ifelse(Treatment=='GV','Gilteritinib/Venetoclax','none')))|>
+  mutate(State=ifelse(State=='Early',"Early resistant",ifelse(State=="Late","Late resistant",'Parental')))
+
+meta$Exp[which(meta$Exp=='Gilteritinib,')]<-'Ex12'
+
+gpcs<-prcomp(gmat)$rotation|>
+    as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+  left_join(meta)
+
+gu<-umap(t(gmat))$layout
+
+colnames(gu)<-c('Dim1','Dim2')
+
+gu|>  
+  as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+right_join(meta)|>
+  ggplot(aes(x=Dim1,y=Dim2,shape=State,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("UMAP of global proteomics")
+  
+
+gu|>  
+  as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+right_join(meta)|>
+  ggplot(aes(x=Dim1,y=Dim2,shape=Exp,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("UMAP of global proteomics")
+
+ppcs<-prcomp(pmat)$rotation|>
+  as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+  left_join(meta)
+
+ggplot(gpcs,aes(x=PC1,y=PC2,shape=Exp,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("PCA of global proteomics")
+
+ggplot(ppcs,aes(x=PC1,y=PC2,shape=Exp,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+    ggtitle("PCA of phospho proteomics")
+
+
+pu<-umap(t(pmat))$layout
+
+colnames(pu)<-c('Dim1','Dim2')
+
+pu|>  
+  as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+right_join(meta)|>
+  ggplot(aes(x=Dim1,y=Dim2,shape=Exp,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("UMAP of phospho proteomics")
+
+```
+
+That weird experiment is an outlier
+```{r exp 18}
+
+meta<-subset(meta,Exp=='Ex18')
+gpcs<-prcomp(gmat)$rotation|>
+    as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+  right_join(meta)
+
+gu<-umap(t(gmat))$layout
+
+colnames(gu)<-c('Dim1','Dim2')
+
+
+  
+
+ggplot(gpcs,aes(x=PC1,y=PC2,shape=State,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("PCA of global proteomics")
+
+
+gu|>  
+  as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+right_join(meta)|>
+  ggplot(aes(x=Dim1,y=Dim2,shape=State,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("UMAP of global proteomics")
+
+
+
+ppcs<-prcomp(pmat)$rotation|>
+  as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+right_join(meta)
+
+
+ggplot(ppcs,aes(x=PC1,y=PC2,shape=State,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+    ggtitle("PCA of phospho proteomics")
+
+
+
+pu<-umap(t(pmat))$layout
+
+colnames(pu)<-c('Dim1','Dim2')
+
+pu|>  
+  as.data.frame()|>
+  tibble::rownames_to_column('Sample')|>
+right_join(meta)|>
+  ggplot(aes(x=Dim1,y=Dim2,shape=State,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("UMAP of phospho proteomics")
+
+```
+
+
+
+## Figure 1 differential expression
+
+```{r diffex analysis}
+library(limma)
+
+rownames(meta)<-NULL
+meta<-meta|>tibble::column_to_rownames('Sample')
+pars<-subset(meta,State=='Parental')
+gvs<-subset(meta,Treatment=='GV')
+gs<-subset(meta,Treatment=='G')
+
+
+##first let's get gv diffex
+gp<-pmat[,c(rownames(pars),rownames(gs))]
+gg<-gmat[,c(rownames(pars),rownames(gs))]
+design<- model.matrix(~ 0+factor(c(rep(1,nrow(pars)),rep(2,nrow(gs)))))
+colnames(design)<-c('Parental','Gilteritinib')
+
+contrasts.matrix<-cbind(Parental=c(1,0),Gilteritinib=c(0,1),'Gilt-Par'=c(-1,1))
+                      
+fit <- limma::lmFit(gp, design)
+fit <- limma::contrasts.fit(fit, contrasts.matrix)
+#browser()
+fit <- limma::eBayes(fit)
+pdeg <- limma::topTable(fit,
+                       coef='Gilt-Par',
+                                   adjust = "fdr",
+                                   number = nrow(fit), 
+                                sort.by = 'p')|>
+  mutate(Drug='Gilteritinib',data='Phospho')
+
+
+fit <- limma::lmFit(gg, design)
+fit <- limma::contrasts.fit(fit, contrasts.matrix)
+#browser()
+fit <- limma::eBayes(fit)
+gdeg <- limma::topTable(fit,coef='Gilt-Par',
+                                   adjust = "fdr",
+                                   number = nrow(fit), 
+                                sort.by = 'p')|>
+  mutate(Drug='Gilteritinib',data='Global')
+
+
+alldeg<-rbind(pdeg,gdeg)|>
+  tibble::rownames_to_column('Feature')
+
+##then get gv diffex
+gp<-pmat[,c(rownames(pars),rownames(gvs))]
+gg<-gmat[,c(rownames(pars),rownames(gvs))]
+design<- model.matrix(~ 0+factor(c(rep(1,nrow(pars)),rep(2,nrow(gvs)))))
+colnames(design)<-c('Parental','GiltVen')
+
+contrasts.matrix<-cbind(Parental=c(1,0),GiltVen=c(0,1),'GiltVen-Par'=c(-1,1))
+                      
+fit <- limma::lmFit(gp, design)
+fit <- limma::contrasts.fit(fit, contrasts.matrix)
+#browser()
+fit <- limma::eBayes(fit)
+pdeg <- limma::topTable(fit,
+                       coef='GiltVen-Par',
+                                   adjust = "fdr",
+                                   number = nrow(fit), 
+                                sort.by = 'p')|>
+  mutate(Drug='Gilteritinib/Venetoclax',data='Phospho')
+
+
+fit <- limma::lmFit(gg, design)
+fit <- limma::contrasts.fit(fit, contrasts.matrix)
+#browser()
+fit <- limma::eBayes(fit)
+gdeg <- limma::topTable(fit,coef='GiltVen-Par',
+                                   adjust = "fdr",
+                                   number = nrow(fit), 
+                                sort.by = 'p')|>
+  mutate(Drug='Gilteritinib/Venetoclax',data='Global')
+
+alldeg<-rbind(pdeg,gdeg)|>
+  tibble::rownames_to_column('Feature')|>
+  rbind(alldeg)
+
+stats<-alldeg|>subset(adj.P.Val<0.05)|>subset(abs(logFC)>1)|>group_by(data,Drug)|>summarize(nsig=n())
+print(stats)
+ggplot(stats,aes(x=Drug,y=nsig,fill=data))+geom_bar(stat='identity',position='dodge')
+```
+
+## Figure 2 enrichment
+
+This figure shows the enrichment analysis.
+
+```{r fig 2 plotting functions}
+
+##load old library from github 
+#devtools::install_github('PNNL-CompBio/amlresistancenetworks')
+library(amlresistancenetworks)
+gprots<-subset(alldeg,data=='Global')|>
+  subset(Drug=='Gilteritinib')|>
+  arrange(desc(logFC))|>
+  dplyr::select(Gene='Feature',value='logFC')
+
+gres<-computeGSEA(gprots,'gilteritinib',gsea_FDR=0.05)
+
+
+gvprots<-subset(alldeg,data=='Global')|>
+  subset(Drug=='Gilteritinib/Venetoclax')|>
+  arrange(desc(logFC))|>
+  dplyr::select(Gene='Feature',value='logFC')
+
+gvres<-computeGSEA(gprots,'gilteritinib venetoclax',gsea_FDR=0.05)
+
+####now do phospho
+gphos<-subset(alldeg,data=='Phospho')|>
+  subset(Drug=='Gilteritinib')|>
+  arrange(desc(logFC))|>
+  tidyr::separate(Feature,into=c('Gene','residue'),sep='-')|>
+  dplyr::rename(value='logFC',p_adj='adj.P.Val')|>
+  mutate(residue=gsub('[s|t|y]$','',residue))|>
+  tidyr::separate_longer_delim(delim=stringr::regex('s|t|y'),cols='residue')
+#  dplyr::select(Gene='Feature',value='logFC')
+
+gkres<-computeKSEA(gphos,prefix='gilteritinib',ksea_FDR=0.05)
+
+
+gvphos<-subset(alldeg,data=='Phospho')|>
+  subset(Drug=='Gilteritinib/Venetoclax')|>
+  arrange(desc(logFC))|>
+  tidyr::separate(Feature,into=c('Gene','residue'),sep='-')|>
+  dplyr::rename(value='logFC',p_adj='adj.P.Val')|>
+  mutate(residue=gsub('[s|t|y]$','',residue))|>
+  tidyr::separate_longer_delim(delim=stringr::regex('s|t|y'),cols='residue')
+gvkres<-computeKSEA(gvphos,prefix='gilteritinib venetoclax',ksea_FDR=0.05)
 
 
 ```
 
-## Figure 2
 
-This figure shows the enrichment analysis
-
-```{r fig 2 plotting functions}
+```{r other analysis}
 
 ##from camilo
 ## Plotting function
