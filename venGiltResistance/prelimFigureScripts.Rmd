@@ -20,14 +20,14 @@ synLogin()
 ##come up with a common color scheme for all cells
 #https://coolors.co/palette/edae49-d1495b-00798c
 colors=c(`Early resistant`='#EDAE49',Parental='#D1495B',`Late resistant`='#00798C')
-dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',`Gilteritinib/Venetoclax`='#0072B2')
+dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',`Gilteritinib+Venetoclax`='#0072B2')
 
 ```
 
 This workbook will generate the figures for the papers
 
 
-## Figure 1
+## Data collection and normalization
 This figure shows the data as it was collected 
 
 ```{r fig 1}
@@ -54,7 +54,7 @@ pmat<-phospho|>dplyr::select(Sample,SiteID,value)|>distinct()|>
 pmat<-pmat[-which(apply(pmat,1,function(x) any(x==0))),]
 
 meta<-global|>dplyr::select(Sample,Plex,State,Treatment,Ligand,Exp)|>distinct()|>
-  mutate(Drug=ifelse(Treatment=='G',"Gilteritinib",ifelse(Treatment=='GV','Gilteritinib/Venetoclax','none')))|>
+  mutate(Drug=ifelse(Treatment=='G',"Gilteritinib",ifelse(Treatment=='GV','Gilteritinib+Venetoclax','none')))|>
   mutate(State=ifelse(State=='Early',"Early resistant",ifelse(State=="Late","Late resistant",'Parental')))
 
 meta$Exp[which(meta$Exp=='Gilteritinib,')]<-'Ex12'
@@ -108,7 +108,9 @@ right_join(meta)|>
 
 ```
 
-That weird experiment is an outlier
+
+Removing exp 12 because it seems more trouble than it's worth. 
+
 ```{r exp 18}
 
 meta<-subset(meta,Exp=='Ex18')
@@ -120,7 +122,6 @@ gpcs<-prcomp(gmat)$rotation|>
 gu<-umap(t(gmat))$layout
 
 colnames(gu)<-c('Dim1','Dim2')
-
 
   
 
@@ -161,120 +162,183 @@ right_join(meta)|>
 
 ```
 
+now we have just experiment 18 to manage. 
 
 
-## Figure 1 differential expression
+## Differential expression analysis
+Using limma we identify those proteins and phosphosites that are differentailly expressed (absolute fold change of at least 2, FDR<0.05) across conditions
 
-```{r diffex analysis}
+```{r diffex analysis,message=FALSE}
 library(limma)
+
+
 
 rownames(meta)<-NULL
 meta<-meta|>tibble::column_to_rownames('Sample')
+
+####quick funtion to run limma on control vs 
+runDE<-function(mat,control_samps,exp_samps){
+  
+  rmat<-mat[,c(control_samps,exp_samps)]
+  design<- model.matrix(~ 0+factor(c(rep(1,length(control_samps)),rep(2,length(exp_samps)))))
+  colnames(design)<-c('Control','Treat')
+  contrasts.matrix<-cbind(Control=c(1,0),Treat=c(0,1),'Treat-Control'=c(-1,1))
+  fit <- limma::lmFit(rmat, design)
+  fit <- limma::contrasts.fit(fit, contrasts.matrix)
+  #browser()
+  fit <- limma::eBayes(fit)
+  pdeg <- limma::topTable(fit,
+                       coef='Treat-Control',
+                                   adjust = "fdr",
+                                   number = nrow(fit), 
+                                sort.by = 'p')
+  return(pdeg)
+}
+
+####here are all the groups we want to analyze
 pars<-subset(meta,State=='Parental')
 gvs<-subset(meta,Treatment=='GV')
 gs<-subset(meta,Treatment=='G')
+earlyG<-subset(gs,State=='Early resistant')
+lateG<-subset(gs,State=='Late resistant')
+earlyGV<-subset(gvs,State=='Early resistant')
+lateGV<-subset(gvs,State=='Late resistant')
 
 
-##first let's get gv diffex
-gp<-pmat[,c(rownames(pars),rownames(gs))]
-gg<-gmat[,c(rownames(pars),rownames(gs))]
-design<- model.matrix(~ 0+factor(c(rep(1,nrow(pars)),rep(2,nrow(gs)))))
-colnames(design)<-c('Parental','Gilteritinib')
-
-contrasts.matrix<-cbind(Parental=c(1,0),Gilteritinib=c(0,1),'Gilt-Par'=c(-1,1))
-                      
-fit <- limma::lmFit(gp, design)
-fit <- limma::contrasts.fit(fit, contrasts.matrix)
-#browser()
-fit <- limma::eBayes(fit)
-pdeg <- limma::topTable(fit,
-                       coef='Gilt-Par',
-                                   adjust = "fdr",
-                                   number = nrow(fit), 
-                                sort.by = 'p')|>
-  mutate(Drug='Gilteritinib',data='Phospho')
+##is this everything?!?!?!
+condList<-list(`All_Gilteritinib+Venetoclax_vs_All_Parental`=list(treat=rownames(gvs),ctl=rownames(pars)),
+               `All_Gilteritinib_vs_All_Parental`=list(treat=rownames(gs),ctl=rownames(pars)),
+               `Early resistant_Gilteritinib_vs_All_Parental`=list(treat=rownames(earlyG),ctl=rownames(pars)),
+               `Late resistant_Gilteritinib_vs_All_Parental`=list(treat=rownames(lateG),ctl=rownames(pars)),
+               `Early resistant_Gilteritinib+Venetoclax_vs_All_Parental`=list(treat=rownames(earlyGV),ctl=rownames(pars)),
+               `Late resistant_Gilteritinib+Venetoclax_vs_All_Parental`=list(treat=rownames(lateGV),ctl=rownames(pars)),
+               `All_Gilteritinib+Venetoclax_vs_All_Gilteritinib`=list(treat=rownames(gvs),ctl=rownames(gs)),
+               `Late resistant_Gilteritinib_vs_Early resistant_Gilteritinib`=list(treat=rownames(lateG),ctl=rownames(earlyG)),
+               `Late resistant_Gilteritinib+Venetoclax_vs_Early resistant_Gilteritinib+Venetoclax`=list(treat=rownames(lateGV),ctl=rownames(earlyGV)),
+               `Early resistant_Gilteritinib+Venetoclax_vs_Early resistant_Gilteritinib`=list(treat=rownames(earlyGV),ctl=rownames(earlyG)),
+               `Late resistant_Gilteritinib+Venetoclax_vs_Late resistant_Gilteritinib`=list(treat=rownames(lateGV),ctl=rownames(lateG)))
 
 
-fit <- limma::lmFit(gg, design)
-fit <- limma::contrasts.fit(fit, contrasts.matrix)
-#browser()
-fit <- limma::eBayes(fit)
-gdeg <- limma::topTable(fit,coef='Gilt-Par',
-                                   adjust = "fdr",
-                                   number = nrow(fit), 
-                                sort.by = 'p')|>
-  mutate(Drug='Gilteritinib',data='Global')
+all_global_de<-do.call(rbind,lapply(names(condList),function(x){
+  samps=condList[[x]]
+  runDE(gmat,samps$ctl,samps$treat)|>
+    mutate(condition=x,data='Global proteomics')
+}))
 
 
-alldeg<-rbind(pdeg,gdeg)|>
-  tibble::rownames_to_column('Feature')
-
-##then get gv diffex
-gp<-pmat[,c(rownames(pars),rownames(gvs))]
-gg<-gmat[,c(rownames(pars),rownames(gvs))]
-design<- model.matrix(~ 0+factor(c(rep(1,nrow(pars)),rep(2,nrow(gvs)))))
-colnames(design)<-c('Parental','GiltVen')
-
-contrasts.matrix<-cbind(Parental=c(1,0),GiltVen=c(0,1),'GiltVen-Par'=c(-1,1))
-                      
-fit <- limma::lmFit(gp, design)
-fit <- limma::contrasts.fit(fit, contrasts.matrix)
-#browser()
-fit <- limma::eBayes(fit)
-pdeg <- limma::topTable(fit,
-                       coef='GiltVen-Par',
-                                   adjust = "fdr",
-                                   number = nrow(fit), 
-                                sort.by = 'p')|>
-  mutate(Drug='Gilteritinib/Venetoclax',data='Phospho')
-
-
-fit <- limma::lmFit(gg, design)
-fit <- limma::contrasts.fit(fit, contrasts.matrix)
-#browser()
-fit <- limma::eBayes(fit)
-gdeg <- limma::topTable(fit,coef='GiltVen-Par',
-                                   adjust = "fdr",
-                                   number = nrow(fit), 
-                                sort.by = 'p')|>
-  mutate(Drug='Gilteritinib/Venetoclax',data='Global')
-
-alldeg<-rbind(pdeg,gdeg)|>
-  tibble::rownames_to_column('Feature')|>
-  rbind(alldeg)
-
-stats<-alldeg|>subset(adj.P.Val<0.05)|>subset(abs(logFC)>1)|>group_by(data,Drug)|>summarize(nsig=n())
+stats<-all_global_de|>subset(adj.P.Val<0.05)|>subset(abs(logFC)>1)|>group_by(condition)|>summarize(nsig=n())
 print(stats)
-ggplot(stats,aes(x=Drug,y=nsig,fill=data))+geom_bar(stat='identity',position='dodge')
+
+all_phos_de<-do.call(rbind,lapply(names(condList),function(x){
+  samps=condList[[x]]
+  runDE(pmat,samps$ctl,samps$treat)|>
+    mutate(condition=x,data="Phosphoproteomics")
+}))
+
+allde<-rbind(all_global_de,all_phos_de)|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+
+stats<-allde|>subset(adj.P.Val<0.05)|>
+  subset(abs(logFC)>1)|>group_by(data,`Treated state`,`Control state`,Treatment,Control)|>summarize(nsig=n())
+print(stats)
+
+fig<-ggplot(stats,aes(x=data,y=nsig,fill=Treatment))+
+  geom_bar(stat='identity',position='dodge')+
+  coord_flip()+scale_fill_manual(values=dcolors)+
+  facet_grid(`Treated state`~Control)+ggtitle('Differentially expressed features')
+
+ggsave('diffExStats_p05_logfc1.pdf',fig)
+fig
 ```
 
-## Figure 2 enrichment
+We now see the differential expression of each comparison and can now dive into the differential expressions tats. 
 
-This figure shows the enrichment analysis.
+## Enrichment analysis
 
-```{r fig 2 plotting functions}
+This figure shows the enrichment analysis using GSEA and KSEA/
+
+```{r Enrichment analysis,warning=FALSE,message=FALSE}
 
 ##load old library from github 
 #devtools::install_github('PNNL-CompBio/amlresistancenetworks')
+library(WebGestaltR)
+
+
+all_global_enrich<-do.call(rbind,lapply(names(condList),function(x){
+  
+  gprots<-subset(all_global_de,condition==x)|>
+        tibble::rownames_to_column('Feature')|>
+    dplyr::select(genes='Feature',scores='logFC')|>
+ as.data.frame()
+  print(x)
+  
+  
+  try(WebGestaltR(enrichMethod='GSEA',minNum=5,enrichDatabase='geneontology_Biological_Process',fdrThr=1.0,
+              interestGene=gprots,organism='hsapiens',interestGeneType='genesymbol',isOutput=FALSE)|>
+    mutate(condition=x))
+
+}))
+
+
+##summarize enriched terms
+sigTerms<-all_global_enrich|>
+  subset(FDR<0.1)|>
+  group_by(condition)|>
+  summarize(sigTerms=n_distinct(geneSet))|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+
+
+fig<-ggplot(sigTerms,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
+  geom_bar(stat='identity',position='dodge')+
+  coord_flip()+scale_fill_manual(values=dcolors)+
+  facet_grid(.~Control)+ggtitle('Enriched GO BP Terms')
+
+ggsave('enrichedGO_fdr1.pdf',fig)
+fig
+
+all_global_kegg<-do.call(rbind,lapply(names(condList),function(x){
+  
+  gprots<-subset(all_global_de,condition==x)|>
+        tibble::rownames_to_column('Feature')|>
+    arrange(desc(logFC))|>
+    dplyr::select(genes='Feature',scores='logFC')
+  print(x)
+    
+  try(WebGestaltR(enrichMethod='GSEA',enrichDatabase='pathway_KEGG',fdrThr=1.0,
+              interestGene=gprots,minNum=5,organism='hsapiens',interestGeneType='genesymbol',isOutput=FALSE)|>
+    mutate(condition=x))
+  
+}))
+
+
+##summarize enriched terms
+sigPaths<-all_global_kegg|>
+  subset(FDR<0.1)|>
+  group_by(condition)|>
+  summarize(sigTerms=n_distinct(geneSet))|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+
+
+fig<-ggplot(sigPaths,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
+  geom_bar(stat='identity',position='dodge')+
+  coord_flip()+scale_fill_manual(values=dcolors)+
+  facet_grid(.~Control)+ggtitle('Enriched KEGG Pathways')
+
+ggsave('enrichedKEGG_fdr1.pdf',fig)
+fig
+
+##now do KEGG
 library(amlresistancenetworks)
-gprots<-subset(alldeg,data=='Global')|>
-  subset(Drug=='Gilteritinib')|>
-  arrange(desc(logFC))|>
-  dplyr::select(Gene='Feature',value='logFC')
-
-gres<-computeGSEA(gprots,'gilteritinib',gsea_FDR=0.05)
-
-
-gvprots<-subset(alldeg,data=='Global')|>
-  subset(Drug=='Gilteritinib/Venetoclax')|>
-  arrange(desc(logFC))|>
-  dplyr::select(Gene='Feature',value='logFC')
-
-gvres<-computeGSEA(gprots,'gilteritinib venetoclax',gsea_FDR=0.05)
-
-####now do phospho
-gphos<-subset(alldeg,data=='Phospho')|>
-  subset(Drug=='Gilteritinib')|>
+all_kinase_enrich<-do.call(rbind,lapply(names(condList),function(x){
+  
+  gphos<-subset(all_phos_de,condition==x)|>
+    tibble::rownames_to_column('Feature')|>
   arrange(desc(logFC))|>
   tidyr::separate(Feature,into=c('Gene','residue'),sep='-')|>
   dplyr::rename(value='logFC',p_adj='adj.P.Val')|>
@@ -282,143 +346,205 @@ gphos<-subset(alldeg,data=='Phospho')|>
   tidyr::separate_longer_delim(delim=stringr::regex('s|t|y'),cols='residue')
 #  dplyr::select(Gene='Feature',value='logFC')
 
-gkres<-computeKSEA(gphos,prefix='gilteritinib',ksea_FDR=0.05)
+  computeKSEA(gphos,prefix=x,ksea_FDR=1,doPlot=FALSE)|>
+    mutate(condition=x)
+  
+}))
+
+##summarize enriched kinases
 
 
-gvphos<-subset(alldeg,data=='Phospho')|>
-  subset(Drug=='Gilteritinib/Venetoclax')|>
-  arrange(desc(logFC))|>
-  tidyr::separate(Feature,into=c('Gene','residue'),sep='-')|>
-  dplyr::rename(value='logFC',p_adj='adj.P.Val')|>
-  mutate(residue=gsub('[s|t|y]$','',residue))|>
-  tidyr::separate_longer_delim(delim=stringr::regex('s|t|y'),cols='residue')
-gvkres<-computeKSEA(gvphos,prefix='gilteritinib venetoclax',ksea_FDR=0.05)
+##summarize enriched terms
+sigKins<-all_kinase_enrich|>
+  subset(p.adjust<0.05)|>
+  group_by(condition)|>
+  summarize(sigTerms=n_distinct(Kinase.Gene))|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
 
+fig<-ggplot(sigKins,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
+  geom_bar(stat='identity',position='dodge')+
+  coord_flip()+scale_fill_manual(values=dcolors)+
+  facet_grid(.~Control)+ggtitle('Enriched Kinases')
+
+ggsave('enrichedKinase_fdr05.pdf',fig)
+fig
+
+```
+
+## Visualize Protein pathways
+now we can plot the results across conditions
+
+```{r plot enrichment}
+
+##start with go terms
+sigTerms<-all_global_enrich|>subset(FDR<0.05)|>
+  group_by(description)|>summarize(n_distinct(condition))
+
+go_plot<-all_global_enrich|>
+  subset(description%in%sigTerms$description)|>
+  mutate(log10p= -1*log10(as.numeric(FDR)))|>
+  dplyr::select(description,normalizedEnrichmentScore,log10p,condition)|>
+  distinct()|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
+
+
+ggplot(go_plot,aes(x=description,y=`Treated state`,
+                   col=as.numeric(normalizedEnrichmentScore),size=log10p))+geom_point()+facet_grid(~Treatment)+coord_flip()
+
+ggsave('gvGoTerms.pdf')
+##kegg terms
+
+sigPaths<-all_global_kegg|>subset(FDR<0.05)|>
+  group_by(description)|>summarize(n_distinct(condition))
+
+kegg_plot<-all_global_kegg|>
+  subset(description%in%sigPaths$description)|>
+  mutate(log10p= -1*log10(as.numeric(FDR)))|>
+  dplyr::select(description,normalizedEnrichmentScore,log10p,condition)|>
+  distinct()|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
+
+
+ggplot(kegg_plot,aes(x=description,y=`Treated state`,
+                   col=as.numeric(normalizedEnrichmentScore),size=log10p))+geom_point()+facet_grid(~Treatment)+coord_flip()
+
+ggsave('gvKeggPaths.pdf')
 
 ```
 
 
-```{r other analysis}
+## Visualize Kinase enrichment
+```{r kinase summary}
 
-##from camilo
-## Plotting function
-plot_function <- function(enrichment_df, database, treatments, p_cutoff, n_pathways, str_width = 40){
-  plot_title <- paste(treatments, collapse = ", ")
-  enrichment_df <- enrichment_df %>%
-    # filter(DB == database) %>%
-    mutate(Pathway = gsub("_", " ", Pathway),
-           Pathway = str_wrap(Pathway, width = str_width))
-  
-  enrichment_df_s <- enrichment_df %>%
-    filter(p.adjust < p_cutoff,
-           contrast %in% treatments) %>%
-    mutate(sign = case_when(sign == "positive" ~ "o",
-                            TRUE ~ "u")) %>%
-    mutate(CS_ = paste(contrast, sign)) %>%
-    mutate(CS_ = factor(CS_, levels = c(paste(treatments, "u"), paste(treatments, "o")))) %>%
-    group_by(CS_) %>%
-    top_n(n_pathways, -p.adjust) %>% ungroup()
-  enrichment_df_s = rbind(enrichment_df_s %>% filter(sign == "o"), enrichment_df_s %>% filter(sign == "u"))
-  pathways <- enrichment_df_s$Pathway %>% unique() 
-  enrichment_df_s <- enrichment_df_s %>%
-    mutate(Pathway = factor(Pathway, levels = pathways))
+kin_counts<-subset(all_kinase_enrich,p.adjust<0.05)|>
+  group_by(Kinase.Gene)|>
+  summarize(n_distinct(condition))
 
-  if (length(unique(enrichment_df_s$Pathway)) >= 1){
-    p <- ggplot(enrichment_df_s, aes(x = CS_, y = Pathway, size = Count, color = p.adjust)) + geom_point() + 
-      scale_color_gradient(trans = 'log10', limits = c(min(enrichment_df_s$p.adjust),p_cutoff), low = "red", high = "blue") + 
-      ggtitle(treatments) + theme(text = element_text(size = 15))
-  } else {
-    p <- ggplot() + ggtitle("Less than 1 pathways")
-  }
-  return(p)
-}
+to_plot<-all_kinase_enrich|>
+  subset(Kinase.Gene%in%kin_counts$Kinase.Gene)|>
+  mutate(log10p= -1*log10(p.adjust))|>
+  dplyr::select(Kinase.Gene,z.score,log10p,status,condition)|>
+  distinct()|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
 
+ggplot(to_plot,aes(x=Kinase.Gene,y=`Treated state`,
+                   col=z.score,size=log10p))+geom_point()+facet_grid(Treatment~Control)+coord_flip()
+ggsave('sigKinaseSummary.pdf')
+readr::write_csv(all_kinase_enrich,file='kinase_enrichment.csv')
+```
+## MTOR/AURKA targets show change upon drug resistance
 
-new_plot_function <- function(enrichment_df, database, treatments, p_cutoff, n_pathways, str_width = 40){
-  library(ggplotify)
+Here let's focus on those two kinase and their targets.
 
-  plot_title <- paste(treatments, collapse = ", ")
-  enrichment_df <- enrichment_df %>%
-    # filter(DB == database) %>%
-    mutate(Pathway = gsub("_", " ", Pathway))#,
-    #       Pathway = str_wrap(Pathway, width = str_width))
-  
-  enrichment_df_s <- enrichment_df %>%
-    filter(p.adjust < p_cutoff,
-           contrast %in% treatments) %>%
-    mutate(sign = case_when(sign == "positive" ~ 1,
-                            TRUE ~ -1)) %>%
-    mutate(Count=Count*sign)|>
-  #  mutate(CS_ = paste(contrast, sign)) %>%
-  #  mutate(CS_ = factor(CS_, levels = c(paste(treatments, "u"), paste(treatments, "o")))) %>%
-    group_by(contrast) %>%
-    top_n(n_pathways/2, -p.adjust) %>% ungroup()
-#  enrichment_df_s = rbind(enrichment_df_s %>% filter(sign == "o"), enrichment_df_s %>% filter(sign == "u"))
-#  pathways <- enrichment_df_s$Pathway %>% unique() 
-#  enrichment_df_s <- enrichment_df_s %>%
-#    mutate(Pathway = factor(Pathway, levels = pathways))
-  
+```{r kinase substrates}
+library(ggridges)
+mtor_subs<-subset(all_kinase_enrich,Kinase.Gene=='MTOR')|>
+  dplyr::select(Substrate.Gene,Substrate.Mod,condition)|>
+  distinct()|>
+  mutate(mod=tolower(substr(Substrate.Mod,1,1)))|>
+  tidyr::unite(Substrate.Gene,Substrate.Mod,col=site,sep='-')|>
+  tidyr::unite(site,mod,sep='',col='SiteID')|>
+  left_join(phospho)|>
+  subset(Exp=='Ex18')|>
+  dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
+  left_join(tibble::rownames_to_column(meta,'Sample'))
 
-  sizeMat=enrichment_df_s|>
-    mutate(Significance=-log10(p.adjust))|>
-    dplyr::select(Pathway,Significance,contrast)|>
-    tidyr::pivot_wider(names_from=contrast,values_from=Significance,values_fill=0)|>
-    tibble::column_to_rownames('Pathway')|>
-    as.matrix()
+treats<-subset(mtor_subs,State!='Parental')
+pars<-subset(mtor_subs,State=='Parental')
 
-  colorMat=enrichment_df_s|>
-    dplyr::select(Pathway,Count,contrast)|>
-    tidyr::pivot_wider(names_from=contrast,values_from=Count,values_fill=0)|>
-    tibble::column_to_rownames('Pathway')|>
-    as.matrix()
-  
-  res=bubbleHeatmap::bubbleHeatmap(t(colorMat),t(sizeMat),legendTitle=c('-log10 adj p-value','Count'))
-  #grid.newpage()
-  return(res)
-  }
+new_subs=mutate(pars,Drug='Gilteritinib')|>
+        rbind(mutate(pars,Drug='Gilteritinib+Venetoclax'))|>
+  rbind(treats)
 
+ggplot(new_subs,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("MTOR targets")
+ ggsave('mtor_targ_boxplot.pdf')
+ 
+ ggplot(new_subs,aes(x=value,y=SiteID,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+facet_grid(~Drug)+ggtitle("MTOR targets")
+ggsave('mtor_targ_ridge.pdf')
+aurka_subs<-subset(all_kinase_enrich,Kinase.Gene=='AURKA')|>
+  dplyr::select(Substrate.Gene,Substrate.Mod,condition)|>
+  distinct()|>
+  mutate(mod=tolower(substr(Substrate.Mod,1,1)))|>
+  tidyr::unite(Substrate.Gene,Substrate.Mod,col=site,sep='-')|>
+  tidyr::unite(site,mod,sep='',col='SiteID')|>
+  left_join(phospho)|>
+  subset(Exp=='Ex18')|>
+  dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
+  left_join(tibble::rownames_to_column(meta,'Sample'))
+
+treats<-subset(aurka_subs,State!='Parental')
+pars<-subset(aurka_subs,State=='Parental')
+
+new_subs=mutate(pars,Drug='Gilteritinib')|>
+        rbind(mutate(pars,Drug='Gilteritinib+Venetoclax'))|>
+  rbind(treats)
+
+ ggplot(new_subs,aes(x=value,y=SiteID,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+facet_grid(~Drug)+ggtitle("AURKA targets")
+  ggsave('aurka_ridge.pdf',height=12)
+
+ ggplot(new_subs,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("AURKA targets")
+  ggsave("aurka_targ_boxplot.pdf")
 
 ```
 
+## Pathway level changes
+```{r GO process expression}
 
-```{r fig2 plost}
+##hemm lineage
+kegg_genes<-subset(all_global_kegg,description=='Hematopoietic cell lineage')|>
+  dplyr::select(userId)|>
+  tidyr::separate_rows(userId,sep=';')
 
-ORA_global <- read.table(synGet('syn54958485')$path, sep = "\t", header = T)
-ORA_RNA <- read.table(synGet("syn54958490")$path, sep = "\t", header = T)
+kegg_hem_exp<-subset(global, Gene%in%kegg_genes$userId)|>
+  subset(Exp=='Ex18')|>
+  dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
+  left_join(tibble::rownames_to_column(meta,'Sample'))|>
+  subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
 
+ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("KEGG:Hematopoetic Cell Lineage")
+ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("KEGG:hematopoetic Cell Lineage")
 
+#### t cell
+tcell<-subset(all_global_enrich,description=='T cell mediated immunity')|>
+  dplyr::select(userId)|>
+  tidyr::separate_rows(userId,sep=';')
+tcell_exp<-subset(global, Gene%in%tcell$userId)|>
+  subset(Exp=='Ex18')|>
+  dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
+  left_join(tibble::rownames_to_column(meta,'Sample'))|>
+  subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
 
+ggplot(tcell_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("GO:T cell mediated immunity")
+ggplot(tcell_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("GO:T cell mediated immunity")
 
-ORA_df <- ORA_global %>% filter(DB == "GOBP") %>%
-  mutate(contrast = sub("-none_Parental", "", contrast),
-         Pathway = sub("GOBP ", "", ID))
+##cd4 lineage
+cd4<-subset(all_global_enrich,description=='regulation of CD4-positive, alpha-beta T cell activation')|>
+  dplyr::select(userId)|>
+  tidyr::separate_rows(userId,sep=';')
 
-p1 = new_plot_function(ORA_df, "gobp", c("GV_Early", "GV_Late"), 0.05, 40,50)
+cd4_exp<-subset(global, Gene%in%cd4$userId)|>
+  subset(Exp=='Ex18')|>
+  dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
+  left_join(tibble::rownames_to_column(meta,'Sample'))|>
+  subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
 
-
-ORA_df <- ORA_global %>% filter(DB == "Hallmark") %>%
-  mutate(contrast = sub("-none_Parental", "", contrast),
-         Pathway = sub("HALLMARK_", "", ID),
-         Pathway = gsub("_", " ", Pathway))
-p2 = new_plot_function(ORA_df, "Hallmark", c("GV_Early", "GV_Late"), 0.2, 40,50)
-
-ORA_df <- ORA_global %>% filter(DB == "KEGG") %>%
-  mutate(contrast = sub("-none_Parental", "", contrast),
-         Pathway = sub("KEGG ", "", ID))
-p3 = new_plot_function(ORA_df, "KEGG", c("GV_Early", "GV_Late"), 0.05, 40,50)
-
-
-ORA_df <- ORA_global %>% filter(DB == "Reactome") %>%
-  mutate(contrast = sub("-none_Parental", "", contrast),
-         Pathway = sub("REACTOME ", "", ID))
-p4 = new_plot_function(ORA_df, "KEGG", c("GV_Early", "GV_Late"), 0.05, 40,50)
-
+ggplot(cd4_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("GO:regulation of CD4-positive, alpha-beta T cell activation")
+ggplot(cd4_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("GO:regulation of CD4-positive, alpha-beta T cell activation")
 
 ```
 
-## Figure 3 
-
-Cell type deconvolution
+## Deconvolution results
+Camilo previously ran tumor deconvolution on the samples, which is plotted here. This also shows the change in t-cell activity
 
 ```{r fig 3}
 tab<-readr::read_tsv(synGet('syn54488257')$path)
