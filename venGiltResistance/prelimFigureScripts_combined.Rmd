@@ -72,10 +72,7 @@ gu|>
   as.data.frame()|>
   tibble::rownames_to_column('Sample')|>
 right_join(meta)|>
-  ggplot(aes(x=Dim1,y=Dim2,shape=State,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)+
-    scale_fill_manual(values=dcolors)+
+  ggplot(aes(x=Dim1,y=Dim2,shape=State,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
   ggtitle("UMAP of global proteomics")
   
 
@@ -83,10 +80,7 @@ gu|>
   as.data.frame()|>
   tibble::rownames_to_column('Sample')|>
 right_join(meta)|>
-  ggplot(aes(x=Dim1,y=Dim2,shape=Exp,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)+
-    scale_fill_manual(values=dcolors)+
+  ggplot(aes(x=Dim1,y=Dim2,shape=Exp,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
   ggtitle("UMAP of global proteomics")
 
 ppcs<-prcomp(pmat)$rotation|>
@@ -94,16 +88,10 @@ ppcs<-prcomp(pmat)$rotation|>
   tibble::rownames_to_column('Sample')|>
   left_join(meta)
 
-ggplot(gpcs,aes(x=PC1,y=PC2,shape=Exp,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)+
-    scale_fill_manual(values=dcolors)+
+ggplot(gpcs,aes(x=PC1,y=PC2,shape=Exp,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
   ggtitle("PCA of global proteomics")
 
-ggplot(ppcs,aes(x=PC1,y=PC2,shape=Exp,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)+
-    scale_fill_manual(values=dcolors)+
+ggplot(ppcs,aes(x=PC1,y=PC2,shape=Exp,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
     ggtitle("PCA of phospho proteomics")
 
 
@@ -116,10 +104,6 @@ pu|>
   tibble::rownames_to_column('Sample')|>
 right_join(meta)|>
   ggplot(aes(x=Dim1,y=Dim2,shape=Exp,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
-  stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)+
-  scale_fill_manual(values=dcolors)+
   ggtitle("UMAP of phospho proteomics")
 
 ```
@@ -134,7 +118,7 @@ Here are the PCAs and UMAPs of experiment 18 only colored by condition.
 
 ```{r exp 18}
 
-meta<-subset(meta,Exp=='Ex18')
+#meta<-subset(meta,Exp=='Ex18')
 gpcs<-prcomp(gmat)$rotation|>
     as.data.frame()|>
   tibble::rownames_to_column('Sample')|>
@@ -146,9 +130,7 @@ colnames(gu)<-c('Dim1','Dim2')
 
   
 
-ggplot(gpcs,aes(x=PC1,y=PC2,shape=State,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)+
+ggplot(gpcs,aes(x=PC1,y=PC2,shape=State,col=Drug,size=4))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
   ggtitle("PCA of global proteomics")
 
 
@@ -156,13 +138,8 @@ gu|>
   as.data.frame()|>
   tibble::rownames_to_column('Sample')|>
 right_join(meta)|>
-  ggplot(aes(x=Dim1,y=Dim2,shape=State,col=Drug,size=5))+
-      stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)+
-    scale_fill_manual(values=dcolors)+
-    geom_point()+scale_color_manual(values=dcolors)+theme_minimal()+
-    ggtitle("UMAP of global proteomics")
+  ggplot(aes(x=Dim1,y=Dim2,shape=State,col=Drug,size=5))+geom_point()+  scale_color_manual(values=dcolors)+theme_minimal()+
+  ggtitle("UMAP of global proteomics")
 
 
 
@@ -173,10 +150,7 @@ right_join(meta)
 
 
 ggplot(ppcs,aes(x=PC1,y=PC2,shape=State,col=Drug,size=4))+geom_point()+ scale_color_manual(values=dcolors)+theme_minimal()+
-    ggtitle("PCA of phospho proteomics")+
-      stat_ellipse(mapping = aes(fill = Drug, color = NULL),
-                   geom = "polygon", type = "norm",
-                   level = 0.5, alpha = 0.1, show.legend = TRUE)
+    ggtitle("PCA of phospho proteomics")
 
 
 
