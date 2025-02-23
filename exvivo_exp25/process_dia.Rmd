@@ -8,8 +8,17 @@ library(msigdbr)
 source("helper_scripts.R")
 source("synapseUtil.R")
 source("plotting enrichment.R")
+dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
+          `Venetoclax`='#0072B2',
+          `Decitabine`='#D14610',
+          `Gilteritinib+Venetoclax`='#05820F',
+          `Decitabine+Venetoclax`='#D172B2',
+          `Gilteritinib+Decitabine`='#EDAE49',
+          `Gilteritinib+Decitabine+Venetoclax`='#666666')
 
-crosstab_prot <- read.table("crosstab_PTRC_wrkpckg5908_DIA_nolib.txt", sep = "\t")
+
+syn<-synapseLogin()
+crosstab_prot <- read.table(syn$get('syn64604961')$path,sep='\t')#"crosstab_PTRC_wrkpckg5908_DIA_nolib.txt", sep = "\t")
 # syn <- synapseLogin()
 # crosstab_prot <- read.table(syn$get('syn64604961')$path)
 # table(grepl(";", rownames(crosstab_prot)))
@@ -47,6 +56,12 @@ rownames(crosstab) <- crosstab_df$feature
 meta <- data.frame(sample = colnames(crosstab)) %>%
    mutate(Treatment = sub("^.*_", "", sample),
           patient = sub("_.*$", "", sample))
+
+##add in full drug names
+druglist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
+              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
+              GVD='Gilteritinib+Decitabine+Venetoclax')
+meta<-meta|>mutate(Drug=sapply(Treatment,function(x) druglist[[x]]))
 rownames(meta) <- meta$sample
 m <- MSnSet(exprs = crosstab, pData = meta)
 # pData(m)
@@ -63,7 +78,9 @@ col_medians <- apply(exprs(m), 2, median, na.rm = T)
 exprs(m) <- sweep(exprs(m), 2, col_medians, FUN = '-')
  
 plot_pca(m, phenotype = "patient")
-plot_pca(m, phenotype = "Treatment")
+plot_pca(m, phenotype = "Drug")+scale_fill_manual(values=dcolors)+scale_color_manual(values=dcolors)
+
+plot_pca(m, phenotype = "Drug",components=2:3)+scale_fill_manual(values=dcolors)+scale_color_manual(values=dcolors)
 write.table(exprs(m), "ptrc_4patient_cellines_dia.txt", sep = "\t", quote = F)
 
 ```
@@ -76,10 +93,12 @@ write.table(exprs(m), "ptrc_4patient_cellines_dia.txt", sep = "\t", quote = F)
 ```{r}
 m_corrected <- correct_batch_effect_NA(m, "patient", par.prior = TRUE)
 saveRDS(m_corrected, "msnset_4patients_corrected.RDS")
-plot_pca(m_corrected, "Treatment")
+synapseStore("msnset_4patients_corrected.RDS",'syn64134071')
+plot_pca(m_corrected, "Drug")+scale_fill_manual(values=dcolors)+scale_color_manual(values=dcolors)
 plot_pca(m_corrected, "patient")
 
 write.table(exprs(m_corrected), "4patients_corrected_crosstab.tsv", sep = "\t", quote = F)
+synapseStore("4patients_corrected_crosstab.tsv",'syn64134071')
 ```
 
 
