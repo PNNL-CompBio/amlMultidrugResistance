@@ -9,6 +9,7 @@ source("helper_scripts.R")
 source("synapseUtil.R")
 source("plotting enrichment.R")
 
+syn<-synapseLogin()
 ## Load corrected exp25 dataset
 # m_corrected <- readRDS("msnset_4patients_corrected.RDS")
 m_corrected <- readRDS(syn$get("syn64605135")$path)

@@ -51,59 +51,114 @@ meta$hasGilteritinib[grep("UT",meta$Treatment)]<-'Untreated'
 
 pData(m_corrected)<-meta
 
-treatment_contrasts <- c("D-UT", "G-UT", "V-UT", "GV-UT", "GD-UT", "DV-UT", "GVD-UT","GV-V","DV-V","GVD-V")
+treatment_contrasts <- c("D-UT", "G-UT", "V-UT", "GV-UT", "GD-UT", "DV-UT", "GVD-UT")
 treats=list(`D-UT`='Decitabine',`G-UT`='Gilteritinib', 
             `V-UT`='Venetoclax', `GV-UT`='Gilteritinib+Venetoclax', 
             `GD-UT`='Gilteritnib+Decitabine', 
             `DV-UT`='Decitabine+Venetoclax', 
             `GVD-UT`='Gilteritinib+Decitabine+Venetoclax')
 
-indiv_diffexp<- diffexp_helper(m_corrected, "Treatment", treatment_contrasts)
+pats=c("507","335","292","035")
 
-ven_diffexp <- diffexp_helper(m_corrected, "hasVenetoclax", 
+all_diffexp<-do.call(rbind,lapply(pats,function(x){
+  
+  samps=subset(pData(m_corrected),patient==x)|>rownames()
+  exprs<-m_corrected[,samps]
+  
+  ven_diffexp <- diffexp_helper(exprs, "hasVenetoclax", 
                               c('Venetoclax-NoVenetoclax','Venetoclax-Untreated'))
 
-dec_diffexp <-diffexp_helper(m_corrected, "hasDecitabine", 
+  dec_diffexp <-diffexp_helper(exprs, "hasDecitabine", 
                               c('Decitabine-NoDecitabine','Decitabine-Untreated'))
 
 
-gil_diffexp <-diffexp_helper(m_corrected, "hasGilteritinib", 
+  gil_diffexp <-diffexp_helper(exprs, "hasGilteritinib", 
                               c('Gilteritinib-NoGilteritinib','Gilteritinib-Untreated'))
+  
+  res = rbind(ven_diffexp,dec_diffexp,gil_diffexp)|>mutate(patient=x)
+  return(res)}))
 
-pat_diffexp<-rbind(ven_diffexp,gil_diffexp,dec_diffexp,indiv_diffexp)
-#other_diffexp <- diffexp_helper(m_corrected, "Treatment", 
-#                              c('GV-V','DV-V'))
+  ven_diffexp <- diffexp_helper(m_corrected, "hasVenetoclax", 
+                              c('Venetoclax-NoVenetoclax','Venetoclax-Untreated'))
 
-# write.table(pat_diffexp, "patient_lines_diffexp.txt", sep = "\t", quote = F, row.names = F)
-# pat_diffexp <- read.table("patient_lines_diffexp.txt", sep = "\t", header = T)
-#pat_diffexp <- read.table(syn$get("syn64605136")$path, sep = "\t", header = T)|>
-#  mutate(Treatment=sapply(contrast,function(x) treats[[x]]))
+  dec_diffexp <-diffexp_helper(m_corrected, "hasDecitabine", 
+                              c('Decitabine-NoDecitabine','Decitabine-Untreated'))
 
-## For counts
-table(pat_diffexp %>% filter(adj.P.Val < 0.05) %>% pull(contrast),
-      pat_diffexp %>% filter(adj.P.Val < 0.05) %>% pull(logFC) > 0)
 
+  gil_diffexp <-diffexp_helper(m_corrected, "hasGilteritinib", 
+                              c('Gilteritinib-NoGilteritinib','Gilteritinib-Untreated'))
+  
+  res = rbind(ven_diffexp,dec_diffexp,gil_diffexp)|>mutate(patient='all')
+  
 # exp18_diffexp <- read.table("exp18_diffexp_global.txt", sep = "\t", header = T)
-exp18_diffexp <- read.table(syn$get("syn51514584")$path, sep = "\t", header = T)
+#exp18_diffexp <- read.table(syn$get("syn51514584")$path, sep = "\t", header = T)
 # cohort_diffexp <- read.table("210cohort_ven_resistant_sensitive_diffexp.txt", sep = "\t", header = T)
-cohort_diffexp <- read.table(syn$get("syn64605133")$path, sep = "\t", header = T)
+#cohort_diffexp <- read.table(syn$get("syn64605133")$path, sep = "\t", header = T)
+
+all_diffexp|>mutate(sig=(adj.P.Val<0.1))|>subset(sig)|>group_by(patient,contrast)|>summarize(n())
+
+```
+Only some patient shave a signature...what happens if we don't normalize the data???
+
+## Diffexp in un-normalized patients
+
+```{r diffex unnorm}
+
+mat <-read.table('ptrc_4patient_cellines_dia.txt',sep='\t',check.names=FALSE)
+m <- MSnSet(exprs = as.matrix(mat), pData = meta)
+
+all_diffexp<-do.call(rbind,lapply(pats,function(x){
+  
+  samps=subset(pData(m),patient==x)|>rownames()
+  exprs<-m_corrected[,samps]
+  
+  ven_diffexp <- diffexp_helper(exprs, "hasVenetoclax", 
+                              c('Venetoclax-NoVenetoclax','Venetoclax-Untreated'))
+
+  dec_diffexp <-diffexp_helper(exprs, "hasDecitabine", 
+                              c('Decitabine-NoDecitabine','Decitabine-Untreated'))
+
+
+  gil_diffexp <-diffexp_helper(exprs, "hasGilteritinib", 
+                              c('Gilteritinib-NoGilteritinib','Gilteritinib-Untreated'))
+  
+  res = rbind(ven_diffexp,dec_diffexp,gil_diffexp)|>mutate(patient=x)
+  return(res)}))
+
+#  ven_diffexp <- diffexp_helper(m_corrected, "hasVenetoclax", 
+#                              c('Venetoclax-NoVenetoclax','Venetoclax-Untreated'))
+
+#  dec_diffexp <-diffexp_helper(m_corrected, "hasDecitabine", 
+#                              c('Decitabine-NoDecitabine','Decitabine-Untreated'))
+
+
+#  gil_diffexp <-diffexp_helper(m_corrected, "hasGilteritinib", 
+#                              c('Gilteritinib-NoGilteritinib','Gilteritinib-Untreated'))
+  
+#  res = rbind(ven_diffexp,dec_diffexp,gil_diffexp)|>mutate(patient='all')
+  
+# exp18_diffexp <- read.table("exp18_diffexp_global.txt", sep = "\t", header = T)
+#exp18_diffexp <- read.table(syn$get("syn51514584")$path, sep = "\t", header = T)
+# cohort_diffexp <- read.table("210cohort_ven_resistant_sensitive_diffexp.txt", sep = "\t", header = T)
+#cohort_diffexp <- read.table(syn$get("syn64605133")$path, sep = "\t", header = T)
+
+all_diffexp|>mutate(sig=(adj.P.Val<0.1))|>subset(sig)|>group_by(patient,contrast)|>summarize(n())
+
 ```
 
 
 
+## Diffexp counts in 4patients
 
-## Signature comparison across drug treatments
-We can evaluate signatures by individual drug/combination treatments or by pooling them across samples.
 
 
 ```{r}
-#treatment_contrasts <- c("Venetoclax-NoVenetoclax","Venetoclax-Untreated")
+treatment_contrasts <- c("Venetoclax-NoVenetoclax","Venetoclax-Untreated")
 ## Diffexp count barplot here!!
 table(pat_diffexp$contrast, pat_diffexp$adj.P.Val < 0.05)
 
 ##add an additional LFC filter
 table(pat_diffexp$contrast, pat_diffexp$adj.P.Val < 0.05&abs(pat_diffexp$logFC)>1)
-
 
 
 diffEx_desc<-pat_diffexp|>
@@ -116,35 +171,11 @@ dcounts<-diffEx_desc|>
   summarize(nFeatures=n())|>
   subset(sig)
 
-dcounts[grep('UT',dcounts$contrast),]|>
-  mutate(drug=sapply(contrast,function(x) treats[[x]]))|>
-ggplot(aes(x=direction,fill=drug,y=nFeatures))+
+ggplot(dcounts,aes(x=direction,fill=Twofold,y=nFeatures))+
   geom_bar(stat='identity',position='dodge')+
-  facet_grid(Twofold~.)+ggtitle("Number of differentially expressed proteins of drug changes compared to untreated")+scale_fill_manual(values=dcolors)+coord_flip()
+  facet_grid(.~contrast)+scale_fill_manual(values=list(`TRUE`='red',`FALSE`='blue'))
 
-vencounts<-dcounts[grep("V",dcounts$contrast),]#|>mutate(drug=sapply(contrast,function(x) treats[[x]]))
-
-gilcounts<-dcounts[grep("G",dcounts$contrast),]#|> mutate(drug=sapply(contrast,function(x) treats[[x]]))
-
-deccounts<-dcounts[grep("D",dcounts$contrast),]#|> mutate(drug=sapply(contrast,function(x) treats[[x]]))
-
-
-ggplot(vencounts,aes(x=direction,fill=contrast,y=nFeatures))+
-  geom_bar(stat='identity',position='dodge')+#scale_fill_manual(values=dcolors)+
-  facet_grid(Twofold~.)+ggtitle("Venetoclax only")#+scale_fill_manual(values
-
-
-ggplot(gilcounts,aes(x=direction,fill=contrast,y=nFeatures))+
-  geom_bar(stat='identity',position='dodge')+#scale_fill_manual(values=dcolors)+
-  facet_grid(Twofold~.)+ggtitle("Gilteritinib only")#+scale_fill_manual(values
 ##now we can look at similartiies
-
-
-ggplot(deccounts,aes(x=direction,fill=contrast,y=nFeatures))+
-  geom_bar(stat='identity',position='dodge')+#scale_fill_manual(values=dcolors)+
-  facet_grid(Twofold~.)+ggtitle("Decitabine only")#+scale_fill_manual(values
-##now we can look at similartiies
-
 library(UpSetR)
 
 
@@ -157,31 +188,13 @@ sigs<-diffEx_desc|>
   tidyr::unite(col='Sig',contrast,direction,sigName,remove=FALSE)|>
   tidyr::unite(col='Signature',contrast,sigName,remove=FALSE)
 
-ven_over<-sigs[grep('V',sigs$Signature),]|>
-  subset(Twofold)|>
-   dplyr::select(feature,Sig)|>
-  mutate(val=1)|>
-  tidyr::pivot_wider(names_from=Sig,values_from=val,values_fill = 0)|>
-  tibble::column_to_rownames('feature')|>
-  upset(nsets=20,text.scale=2)
-
-ven_over
-
-gil_over<- sigs[grep('G',sigs$Signature),]|>
-    subset(Twofold)|>
-   dplyr::select(feature,Sig)|>
-  mutate(val=1)|>
-  tidyr::pivot_wider(names_from=Sig,values_from=val,values_fill = 0)|>
-  tibble::column_to_rownames('feature')|>
-  upset(nsets=20)
   
-sigs[grep("UT",sigs$contrast),]|>
-  subset(Twofold)|>
+sigs|>
     dplyr::select(feature,Sig)|>
   mutate(val=1)|>
   tidyr::pivot_wider(names_from=Sig,values_from=val,values_fill = 0)|>
   tibble::column_to_rownames('feature')|>
-  upset(nsets=16,nintersects=40,text.scale=2)
+  upset(nsets=8)
   
 # 
 # diffexp_counts <- pat_diffexp %>%
@@ -222,31 +235,20 @@ Now let's look at the effects of the different features across the samples
 ```{r signature heatmaps}
 
 
-f=subset(sigs,Signature=='V-UT_Two-fold')
+f=subset(sigs,Signature=='Venetoclax-NoVenetoclax_Two-fold')
 
-pData(m_corrected)<-as.data.frame(apply(pData(m_corrected),2,as.factor))|>
-    mutate(Drug=sapply(Treatment,function(x) druglist[[x]]))
-
-plot_heatmap(m_corrected, features=f$feature, annotation_cols=c("Drug"), 
-             ann_colors = list(Drug=dcolors),#,patient=pcolors), 
-             heatmap_title = "V-UT_Two-fold")
-
-
-prot_dat$Drug=factor(prot_dat$Drug,
-                     levels=c('none','Decitabine','Gilteritinib','Gilteritinib+Decitabine','Venetoclax','Decitabine+Venetoclax','Gilteritinib+Venetoclax','Gilteritinib+Decitabine+Venetoclax'))
-
-
-f=subset(sigs,Signature=='GV-V_Two-fold')
+pData(m_corrected)<-as.data.frame(apply(pData(m_corrected),2,as.factor))
 
 plot_heatmap(m_corrected, features=f$feature, annotation_cols=c("Drug"), 
              ann_colors = list(Drug=dcolors),#,patient=pcolors), 
-             heatmap_title = "GV-V_Two-fold")
+             heatmap_title = "Venetoclax-NoVenetoclax Two-fold")
 
-#f=subset(sigs,Signature=='Venetoclax-Untreated_Two-fold')
 
-#plot_heatmap(m_corrected, features=f$feature, annotation_cols=c("Drug"), 
-#             ann_colors = list(Drug=dcolors),#,patient=pcolors), 
-#             heatmap_title = "Venetoclax-Untreated Two-fold")
+f=subset(sigs,Signature=='Venetoclax-Untreated_Two-fold')
+
+plot_heatmap(m_corrected, features=f$feature, annotation_cols=c("Drug"), 
+             ann_colors = list(Drug=dcolors),#,patient=pcolors), 
+             heatmap_title = "Venetoclax-Untreated Two-fold")
 
 
 ##now we can visualize in boxplots as well
@@ -258,16 +260,12 @@ prot_dat<-exprs(m_corrected)|>
   left_join(select(diffEx_desc,c(feature,contrast,direction,Twofold,sig)))
 
 prot_dat$Drug=factor(prot_dat$Drug,
-                     levels=c('none','Decitabine','Venetoclax','Decitabine+Venetoclax','Gilteritinib+Decitabine','Gilteritinib','Gilteritinib+Venetoclax','Gilteritinib+Decitabine+Venetoclax'))
+                     levels=c('none','Decitabine','Gilteritinib','Gilteritinib+Decitabine','Venetoclax','Decitabine+Venetoclax','Gilteritinib+Venetoclax','Gilteritinib+Decitabine+Venetoclax'))
 
 p<-prot_dat|>
-  subset(!is.na(direction))|>
-  subset(feature%in%f$feature)|>#sig)|>subset(Twofold)|>
+  subset(sig)|>subset(Twofold)|>
   ggplot(aes(x=direction,y=logExpr,fill=Drug))+
   geom_boxplot()+facet_grid(~patient)+scale_fill_manual(values=dcolors)
-
-p
-
 
 ```
 
@@ -284,18 +282,17 @@ Updating this code to evaluate combined signature instead of ven-only signature
 cohort_diffexp <- read.table(syn$get("syn64605133")$path, sep = "\t", header = T)
 
 
-complete_V_UT_features <- complete.cases(exprs(m_corrected[, m_corrected$Treatment %in% c("UT", "V")]))
-complete_V_UT_features <- featureNames(m_corrected)[complete_V_UT_features]
-
-resistant_markers <- pat_diffexp %>% filter(contrast == "V-UT",#"Venetoclax-NoVenetoclax", 
+complete_V_UT_features <- complete.cases(exprs(m_corrected))#[, m_corrected$Treatment %in% c("UT", "V")]))
+complete_V_UT_features <- featureNames(m_corrected)#[complete_V_UT_features]
+resistant_markers <- pat_diffexp %>% filter(contrast == "Venetoclax-NoVenetoclax", 
                                             feature %in% cohort_diffexp$feature) %>% 
    arrange(t_test_pval) %>%
-   filter(logFC > 1) %>% slice(1:50) %>% pull(feature)
+   filter(logFC > 1) %>% slice(1:10) %>% pull(feature)
 
-sensitive_markers <- pat_diffexp %>% filter(contrast == "V-UT",#Venetoclax-NoVenetoclax", 
+sensitive_markers <- pat_diffexp %>% filter(contrast == "Venetoclax-NoVenetoclax", 
                                             feature %in% cohort_diffexp$feature) %>% 
    arrange(t_test_pval) %>%
-   filter(logFC < 1) %>% slice(1:50) %>% pull(feature)
+   filter(logFC < 1) %>% slice(1:10) %>% pull(feature)
 
 # m_210 <- readRDS("210_cohort_global.RDS")
 m_210 <- readRDS(syn$get("syn64605141")$path)
@@ -350,102 +347,8 @@ plot_df_combine$model_ven <- plot_df$model
 rownames(plot_df_combine) <- plot_df_combine$sample
 
 ```
-## Extracting Gilteritinb signatures from ex vivo and applying to 210 cohort
-
-```{r gilt sig}
-complete_features <- complete.cases(exprs(m_corrected[, m_corrected$Treatment %in% c("UT", "G","GV","GVD","GD")]))
-complete_features <- featureNames(m_corrected)[complete_features]
 
 
-gvmarkers=subset(sigs,Signature=='GV-V_Two-fold')
-#others<-subset(sigs,Signature%in%c('V-V_Two-fold','GVD-UT_Two-fold','DV-UT_Two-fold'))
-
-#gvmarkers=setdiff(gvmarkers$feature,others$feature)
-gvmarkers=intersect(gvmarkers$feature,rownames(exprs(m_210)))
-
-resistant_markers <- pat_diffexp %>% 
-  filter(feature %in% gvmarkers)|>#filter(contrast == "Gilteritinib-NoGilteritinib",#"Venetoclax-NoVenetoclax", 
-                                     #       feature %in% cohort_diffexp$feature) %>% 
-   arrange(t_test_pval) %>%
-   filter(logFC > 1) %>% slice(1:20) %>% pull(feature)
-
-sensitive_markers <- pat_diffexp %>% 
-  subset(feature %in%gvmarkers)|>
-  #filter(contrast == "Gilteritinib-NoGilteritinib",#Venetoclax-NoVenetoclax", 
-  #                                          feature %in% cohort_diffexp$feature) %>% 
-   arrange(t_test_pval) %>%
-   filter(logFC < 1) %>% slice(1:20) %>% pull(feature)
-
-sensitive_signal <- apply(exprs(m_210)[sensitive_markers, ], 2, mean)
-resistant_signal <- apply(exprs(m_210)[resistant_markers, ], 2, mean)
-signal <- resistant_signal - sensitive_signal
-
-drug_data <- read.csv(syn$get("syn51674470")$path) %>% filter(inhibitor == "Gilteritinib")
-
-
-pData(m_210)[names(signal), "sensitive_signal"] <- sensitive_signal
-pData(m_210)[names(signal), "resistant_signal"] <- resistant_signal
-
-pData(m_210)[names(signal), "model_signal"] <- signal
-pData(m_210)[drug_data$sample_id, "Gilteritinib_auc"] <- drug_data$auc
-
-
-gilt_df<-pData(m_210)|>
-  dplyr::select(model_signal,sensitive_signal,resistant_signal,Gilteritinib_auc,FLT3.ITD)|>
-  subset(!is.na(Gilteritinib_auc))|>
-  mutate(Gclass=ifelse(Gilteritinib_auc<100,'Sensitive',ifelse(Gilteritinib_auc<200,'Middle','Resistant')))|>
-  mutate(Gclass=factor(Gclass,levels=c("Sensitive","Middle",'Resistant')))
-
-ggplot(gilt_df,aes(x=Gilteritinib_auc,y=model_signal,col=FLT3.ITD))+geom_point()+facet_grid(FLT3.ITD~.)
-
-ggplot(gilt_df,aes(x=Gclass,y=model_signal,fill=FLT3.ITD))+geom_boxplot()+facet_grid(FLT3.ITD~.)
-
-
-ggplot(gilt_df,aes(x=Gilteritinib_auc,y=sensitive_signal,col=FLT3.ITD))+geom_point()+facet_grid(FLT3.ITD~.)
-
-ggplot(gilt_df,aes(x=Gclass,y=sensitive_signal,fill=FLT3.ITD))+geom_boxplot()+facet_grid(FLT3.ITD~.)
-
-
-ggplot(gilt_df,aes(x=Gilteritinib_auc,y=resistant_signal,col=FLT3.ITD))+geom_point()+facet_grid(FLT3.ITD~.)
-
-ggplot(gilt_df,aes(x=Gclass,y=resistant_signal,fill=FLT3.ITD))+geom_boxplot()+facet_grid(FLT3.ITD~.)
-
-cor(m_210$Gilteritinib_auc, m_210$model_signal, "complete.obs")
-cor(m_210$Gilteritinib_auc, m_210$model_signal, "complete.obs", method = "spearman")
-#plot(m_210$Gilteritinib_auc, m_210$model_signal)
-
-pData(m_210)$group <- "NA"
-pData(m_210)[pData(m_210) %>% filter(Gilteritinib_auc < 100) %>% pull(Barcode.ID), "group"] <- "Sensitive"
-pData(m_210)[pData(m_210) %>% filter(Gilteritinib_auc >= 100,
-                                     Gilteritinib_auc < 200) %>% pull(Barcode.ID), "group"] <- "Middle"
-pData(m_210)[pData(m_210) %>% filter(Gilteritinib_auc >= 200) %>% pull(Barcode.ID), "group"] <- "Resistant"
-
-plot_df <- data.frame(sample = m_210$Barcode.ID, model = m_210$model_signal, 
-                      Gilt_AUC = m_210$Gilteritinib_auc, Gilt_group = m_210$group, FLT3 = m_210$FLT3.ITD) %>% filter(Gilt_group != "NA") %>%
-   mutate(Gilt_group = factor(Gilt_group, levels = c("Sensitive", "Middle", "Resistant")),
-          Gilt_group2 = case_when(Gilt_group == "Resistant" ~ "Resistant",
-                                 TRUE ~ "Sensitive + Middle"),
-          Gilt_group2 = factor(Gilt_group2, levels = c("Sensitive + Middle", "Resistant")))
-
-ggplot(plot_df, aes(x = Gilt_group, y = model)) + geom_boxplot() + ylab("4 patients GV-V signature")
-ggplot(plot_df, aes(x = Gilt_group, y = model, fill = FLT3)) + geom_boxplot() + ylab("4 patients GV-V signature")
-ggplot(plot_df, aes(x = Gilt_group, y = model)) + geom_violin()
-
-ggplot(plot_df, aes(x = Gilt_group2, y = model)) + geom_boxplot() + ylab("4 patients GV-V signature")
-ggplot(plot_df, aes(x = Gilt_group2, y = model)) + geom_violin()
-
-t.test(model ~ Gilt_group, data = plot_df %>% filter(Gilt_group %in% c("Resistant", "Middle")), 
-       alternative = "two.sided", var.equal = TRUE)[[3]]
-t.test(model ~ Gilt_group, data = plot_df %>% filter(Gilt_group %in% c("Resistant", "Sensitive")), 
-       alternative = "two.sided", var.equal = TRUE)[[3]]
-t.test(model ~ Gilt_group, data = plot_df %>% filter(Gilt_group %in% c("Middle", "Sensitive")), 
-       alternative = "two.sided", var.equal = TRUE)[[3]]
-
-
-t.test(model ~ Gilt_group2, data = plot_df %>% filter(Gilt_group2 %in% c("Resistant", "Sensitive + Middle")), 
-       alternative = "two.sided", var.equal = TRUE)[[3]]
-
-```
 
 ## GSEA enrichment
 
@@ -490,10 +393,9 @@ names(all_t2gs) <- c("GOBP", "GOCC", "GOMF", "Hallmark", "KEGG", "Reactome")
 ```{r}
 ## Getting the GSEA results
 
-#pData(m_corrected)=pData(m_corrected)[,c('sample','Treatment','patient','Drug')]
  for (t2g_name in names(all_t2gs)){
    GSEA_helper(m_corrected, treatment_contrasts, t2g = all_t2gs[[t2g_name]],
-               t2g_name = paste0("ptrc_4patient_lines_", t2g_name), "Treatment")
+               t2g_name = paste0("ptrc_4patient_lines_", t2g_name), "hasVenetoclax")
  }
 
 
@@ -527,25 +429,14 @@ Plotting the GSEA results
 
 ```{r}
 enrichment_df <- GSEA_global %>%
-   filter(contrast == "V-UT",
+   filter(contrast == "Venetoclax-NoVenetoclax",
           DB == "Hallmark") %>% 
    mutate(pathway = sub("HALLMARK_", "", Description),
           pathway = gsub("_", " ", pathway),
           enrichment = NES,
           adj_p_val = p.adjust) %>%
    arrange(adj_p_val)
-plot_enrichment_result(enrichment_df, "V-UT", enrichment_title = "Hallmark GSEA Venetoclax - Untreated")
-
-enrichment_df <- GSEA_global %>%
-   filter(contrast == "GV-V",
-          DB == "Hallmark") %>% 
-   mutate(pathway = sub("HALLMARK_", "", Description),
-          pathway = gsub("_", " ", pathway),
-          enrichment = NES,
-          adj_p_val = p.adjust) %>%
-   arrange(adj_p_val)
-plot_enrichment_result(enrichment_df, "GV-V", enrichment_title = "Hallmark GSEA GV - Venetoclax")
-
+plot_enrichment_result(enrichment_df, "Venetoclax - No Venetoclax", enrichment_title = "Hallmark GSEA Venetoclax - No Venetoclax")
 
 enrichment_df <- GSEA_210_ven %>%
    filter(contrast == "Resistant-Sensitive",
@@ -561,26 +452,14 @@ plot_enrichment_result(enrichment_df, "Resistant - Sensitive",
 
 
 enrichment_df <- GSEA_global %>%
-   filter(contrast == "V-UT",
+   filter(contrast == "Venetoclax-NoVenetoclax",
           DB == "Reactome") %>% 
    mutate(pathway = sub("REACTOME ", "", Description),
           pathway = gsub("_", " ", pathway),
           enrichment = NES,
           adj_p_val = p.adjust) %>%
    arrange(adj_p_val)
-plot_enrichment_result(enrichment_df, "V-UT", enrichment_title = "Reactome GSEA Venetoclax -  Untreated")
-
-
-enrichment_df <- GSEA_global %>%
-   filter(contrast == "GV-V",
-          DB == "Reactome") %>% 
-   mutate(pathway = sub("REACTOME", "", Description),
-          pathway = gsub("_", " ", pathway),
-          enrichment = NES,
-          adj_p_val = p.adjust) %>%
-   arrange(adj_p_val)
-plot_enrichment_result(enrichment_df, "GV-V", enrichment_title = "Hallmark GSEA GV - Venetoclax")
-
+plot_enrichment_result(enrichment_df, "Venetoclax -  No Venetoclax", enrichment_title = "Reactome GSEA Venetoclax -  No Venetoclax")
 
 enrichment_df <- GSEA_210_ven %>%
    filter(contrast == "Resistant-Sensitive",
