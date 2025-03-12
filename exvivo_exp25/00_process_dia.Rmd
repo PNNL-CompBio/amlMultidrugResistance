@@ -16,6 +16,8 @@ dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
           `Gilteritinib+Decitabine`='#EDAE49',
           `Gilteritinib+Decitabine+Venetoclax`='#666666')
 
+pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
+
 
 syn<-synapseLogin()
 crosstab_prot <- read.table(syn$get('syn64604961')$path,sep='\t')#"crosstab_PTRC_wrkpckg5908_DIA_nolib.txt", sep = "\t")
@@ -77,11 +79,17 @@ nrow(m)
 col_medians <- apply(exprs(m), 2, median, na.rm = T)
 exprs(m) <- sweep(exprs(m), 2, col_medians, FUN = '-')
  
-plot_pca(m, phenotype = "patient")
+plot_pca(m, phenotype = "patient")+scale_fill_manual(values=pcolors)+scale_color_manual(values=pcolors)
+
+ggsave('patientPCA_uc.pdf')
 plot_pca(m, phenotype = "Drug")+scale_fill_manual(values=dcolors)+scale_color_manual(values=dcolors)
+ggsave('drugPCA_uc.pdf')
 
 plot_pca(m, phenotype = "Drug",components=2:3)+scale_fill_manual(values=dcolors)+scale_color_manual(values=dcolors)
 write.table(exprs(m), "ptrc_4patient_cellines_dia.txt", sep = "\t", quote = F)
+
+saveRDS(m, "msnset_4patients_uncorrected.RDS")
+synapseStore("msnset_4patients_uncorrected.RDS",'syn64134071')
 
 ```
 
@@ -93,12 +101,14 @@ write.table(exprs(m), "ptrc_4patient_cellines_dia.txt", sep = "\t", quote = F)
 ```{r}
 m_corrected <- correct_batch_effect_NA(m, "patient", par.prior = TRUE)
 saveRDS(m_corrected, "msnset_4patients_corrected.RDS")
-synapseStore("msnset_4patients_corrected.RDS",'syn64134071')
+synapseStore("msnset_4patients_corrected.RDS",'syn64961545')
 plot_pca(m_corrected, "Drug")+scale_fill_manual(values=dcolors)+scale_color_manual(values=dcolors)
-plot_pca(m_corrected, "patient")
+ggsave('drugPCA_corrected.pdf')
+plot_pca(m_corrected, "patient")+scale_fill_manual(values=pcolors)+scale_color_manual(values=pcolors)
+ggsave("patientPCA_corrected.pdf")
 
 write.table(exprs(m_corrected), "4patients_corrected_crosstab.tsv", sep = "\t", quote = F)
-synapseStore("4patients_corrected_crosstab.tsv",'syn64134071')
+synapseStore("4patients_corrected_crosstab.tsv",'syn64961545')
 ```
 
 

@@ -1,0 +1,630 @@
+---
+title: "Leverage ex vivo data to identify signatures"
+author: "Sara gosline"
+date: "2025-02-28"
+output: html_document
+---
+
+Here we load the normalized ex vivo data to identify specific proteins that are up-regulated and down-regulated after 1-mont drug treatment
+
+## Pull data
+
+```{r}
+library(dplyr)
+library(MSnSet.utils)
+library(msigdbr)
+
+source("helper_scripts.R")
+source("synapseUtil.R")
+source("plotting enrichment.R")
+
+syn<-synapseLogin()
+## Load corrected exp25 dataset
+# m_corrected <- readRDS("msnset_4patients_corrected.RDS")
+m_corrected <- readRDS(syn$get("syn64605135")$path)
+
+dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
+          `Venetoclax`='#0072B2',
+          `Decitabine`='#D14610',
+          `Gilteritinib+Venetoclax`='#05820F',
+          `Decitabine+Venetoclax`='#D172B2',
+          `Gilteritinib+Decitabine`='#EDAE49',
+          `Gilteritinib+Decitabine+Venetoclax`='#666666')
+
+
+
+
+#pcolors=c(`507`='#667242',`335`="#997242",`292`="#227242",`035`="#887242")
+pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
+
+druglist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
+              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
+              GVD='Gilteritinib+Decitabine+Venetoclax')
+
+treatlist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
+              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
+              GVD='Gilteritinib+Decitabine+Venetoclax')
+names(treatlist)=paste(names(treatlist),'-UT',sep='')
+```
+
+
+## Calculate diffex across treatments
+
+We can calculate signatures across individual drugs and shared drugs. Let's pool the venetoclax treatments.
+```{r diffex}
+
+meta<-pData(m_corrected)
+meta$hasVenetoclax=rep("NoVenetoclax",nrow(meta))
+meta$hasVenetoclax[grep("V",meta$Treatment)]='Venetoclax'
+meta$hasVenetoclax[grep("UT",meta$Treatment)]<-'Untreated'
+
+meta$hasDecitabine=rep('NoDecitabine',nrow(meta))
+meta$hasDecitabine[grep("D",meta$Treatment)]='Decitabine'
+meta$hasDecitabine[grep("UT",meta$Treatment)]<-'Untreated'
+
+
+meta$hasGilteritinib=rep('NoGilteritinib',nrow(meta))
+meta$hasGilteritinib[grep("G",meta$Treatment)]='Gilteritinib'
+meta$hasGilteritinib[grep("UT",meta$Treatment)]<-'Untreated'
+
+pData(m_corrected)<-meta
+
+treatment_contrasts <- c("D-UT", "G-UT", "V-UT", "GV-UT", "GD-UT", "DV-UT", "GVD-UT","GV-V","DV-V","GVD-GV")
+treats=list(`D-UT`='Decitabine',`G-UT`='Gilteritinib', 
+            `V-UT`='Venetoclax', `GV-UT`='Gilteritinib+Venetoclax', 
+            `GD-UT`='Gilteritnib+Decitabine', 
+            `DV-UT`='Decitabine+Venetoclax', 
+            `GVD-UT`='Gilteritinib+Decitabine+Venetoclax')
+
+indiv_diffexp<- diffexp_helper(m_corrected, "Treatment", treatment_contrasts)
+
+#ven_diffexp <- diffexp_helper(m_corrected, "hasVenetoclax", 
+#                              c('Venetoclax-NoVenetoclax','Venetoclax-Untreated'))
+
+#dec_diffexp <-diffexp_helper(m_corrected, "hasDecitabine", 
+#                              c('Decitabine-NoDecitabine','Decitabine-Untreated'))
+
+
+#gil_diffexp <-diffexp_helper(m_corrected, "hasGilteritinib", 
+#                              c('Gilteritinib-NoGilteritinib','Gilteritinib-Untreated'))
+
+pat_diffexp<-indiv_diffexp#rbind(ven_diffexp,gil_diffexp,dec_diffexp,indiv_diffexp)
+#other_diffexp <- diffexp_helper(m_corrected, "Treatment", 
+#                              c('GV-V','DV-V'))
+
+write.table(pat_diffexp, "patient_lines_diffexp.txt", sep = "\t", quote = F, row.names = F)
+synapseStore("patient_lines_diffexp.txt",parentId='syn64961545')
+# pat_diffexp <- read.table("patient_lines_diffexp.txt", sep = "\t", header = T)
+#pat_diffexp <- read.table(syn$get("syn64605136")$path, sep = "\t", header = T)|>
+#  mutate(Treatment=sapply(contrast,function(x) treats[[x]]))
+
+## For counts
+table(pat_diffexp %>% filter(adj.P.Val < 0.05) %>% pull(contrast),
+      pat_diffexp %>% filter(adj.P.Val < 0.05) %>% pull(logFC) > 0)
+
+# exp18_diffexp <- read.table("exp18_diffexp_global.txt", sep = "\t", header = T)
+#exp18_diffexp <- read.table(syn$get("syn51514584")$path, sep = "\t", header = T)
+# cohort_diffexp <- read.table("210cohort_ven_resistant_sensitive_diffexp.txt", sep = "\t", header = T)
+#cohort_diffexp <- read.table(syn$get("syn64605133")$path, sep = "\t", header = T)
+```
+
+
+
+
+## Signature comparison across drug treatments
+We can evaluate signatures by individual drug/combination treatments or by pooling them across samples.
+
+
+```{r}
+#treatment_contrasts <- c("Venetoclax-NoVenetoclax","Venetoclax-Untreated")
+## Diffexp count barplot here!!
+table(pat_diffexp$contrast, pat_diffexp$adj.P.Val < 0.05)
+
+##add an additional LFC filter
+table(pat_diffexp$contrast, pat_diffexp$adj.P.Val < 0.05&abs(pat_diffexp$logFC)>1)
+
+diffEx_desc<-pat_diffexp|>
+  mutate(direction=ifelse(logFC>0,'Upregulated','Downregulated'))|>
+  mutate(sig=adj.P.Val<0.05)|>
+  mutate(Twofold=abs(logFC)>1)
+
+dcounts<-diffEx_desc|>
+  group_by(contrast,sig,Twofold,direction)|>
+  summarize(nFeatures=n())|>
+  subset(sig)
+
+dcounts[grep('UT',dcounts$contrast),]|>
+  mutate(drug=sapply(contrast,function(x) treats[[x]]))|>
+ggplot(aes(x=direction,fill=drug,y=nFeatures))+
+  geom_bar(stat='identity',position='dodge')+
+  facet_grid(Twofold~.)+ggtitle("Number of differentially expressed proteins of drug changes compared to untreated")+scale_fill_manual(values=dcolors)+coord_flip()
+
+
+ggsave('All Diffex Counts.pdf')
+
+vencounts<-dcounts[grep("V",dcounts$contrast),]#|>mutate(drug=sapply(contrast,function(x) treats[[x]]))
+
+gilcounts<-dcounts[grep("G",dcounts$contrast),]#|> mutate(drug=sapply(contrast,function(x) treats[[x]]))
+
+deccounts<-dcounts[grep("D",dcounts$contrast),]#|> mutate(drug=sapply(contrast,function(x) treats[[x]]))
+
+
+ggplot(vencounts,aes(x=direction,fill=contrast,y=nFeatures))+
+  geom_bar(stat='identity',position='dodge')+#scale_fill_manual(values=dcolors)+
+  facet_grid(Twofold~.)+ggtitle("Venetoclax only")#+scale_fill_manual(values
+
+
+ggplot(gilcounts,aes(x=direction,fill=contrast,y=nFeatures))+
+  geom_bar(stat='identity',position='dodge')+#scale_fill_manual(values=dcolors)+
+  facet_grid(Twofold~.)+ggtitle("Gilteritinib only")#+scale_fill_manual(values
+##now we can look at similartiies
+
+
+ggplot(deccounts,aes(x=direction,fill=contrast,y=nFeatures))+
+  geom_bar(stat='identity',position='dodge')+#scale_fill_manual(values=dcolors)+
+  facet_grid(Twofold~.)+ggtitle("Decitabine only")#+scale_fill_manual(values
+##now we can look at similartiies
+
+library(UpSetR)
+
+
+###add some labels and stuff to break up our signature analysis...
+sigs<-diffEx_desc|>
+  subset(sig)|>
+  dplyr::select(feature,contrast,direction,sig,Twofold)|>
+  distinct()|>
+  mutate(sigName=ifelse(Twofold,'Two-fold','Less than two-fold'))|>
+  tidyr::unite(col='Sig',contrast,direction,sigName,remove=FALSE)|>
+  tidyr::unite(col='Signature',contrast,sigName,remove=FALSE)
+
+ven_over<-sigs[grep('GV',sigs$Signature),]|>
+  subset(Twofold)|>
+   dplyr::select(feature,Sig)|>
+  mutate(val=1)|>
+  tidyr::pivot_wider(names_from=Sig,values_from=val,values_fill = 0)|>
+  tibble::column_to_rownames('feature')|>
+  upset(nsets=20,text.scale=2)
+#ven_over
+
+gil_over<- sigs[grep('G',sigs$Signature),]|>
+    subset(Twofold)|>
+   dplyr::select(feature,Sig)|>
+  mutate(val=1)|>
+  tidyr::pivot_wider(names_from=Sig,values_from=val,values_fill = 0)|>
+  tibble::column_to_rownames('feature')|>
+  upset(nsets=20)
+  
+ut_over=sigs[grep("UT",sigs$contrast),]|>
+  subset(Twofold)|>
+    dplyr::select(feature,Sig)|>
+  mutate(val=1)|>
+  tidyr::pivot_wider(names_from=Sig,values_from=val,values_fill = 0)|>
+  tibble::column_to_rownames('feature')|>
+  upset(nsets=16,nintersects=40,text.scale=2)
+#ut_over
+
+```
+
+
+
+## Visualizing the protins across the patient samples
+
+Now let's look at the effects of the different features across the samples
+
+
+```{r signature heatmaps}
+
+
+f=subset(sigs,Signature=='V-UT_Two-fold')
+
+vprots=f$feature
+
+pData(m_corrected)<-as.data.frame(apply(pData(m_corrected),2,as.factor))|>
+    mutate(Drug=sapply(Treatment,function(x) druglist[[x]]))
+
+plot_heatmap(m_corrected, features=vprots, annotation_cols=c("Drug",'patient'), 
+             ann_colors = list(Drug=dcolors,patient=pcolors),cluster_cols=FALSE,#,patient=pcolors), 
+             heatmap_title = "V-UT_Two-fold",file='venUTHeamap.pdf')
+
+
+##now we can visualize in boxplots as well
+prot_dat<-exprs(m_corrected)|>
+  as.data.frame()|>
+  tibble::rownames_to_column('feature')|>
+  tidyr::pivot_longer(cols=contains('_'),
+                      names_to='sample',values_to='logExpr')|>
+  left_join(pData(m_corrected))|>
+  left_join(select(diffEx_desc,c(feature,contrast,direction,Twofold,sig)))
+
+prot_dat$Drug=factor(prot_dat$Drug,
+                     levels=c('none','Decitabine','Gilteritinib','Gilteritinib+Decitabine','Venetoclax','Decitabine+Venetoclax','Gilteritinib+Venetoclax','Gilteritinib+Decitabine+Venetoclax'))
+
+
+p<-prot_dat|>
+  subset(!is.na(direction))|>
+  subset(feature%in%vprots)|>#sig)|>subset(Twofold)|>
+  ggplot(aes(x=direction,y=logExpr,fill=Drug))+
+  geom_boxplot()+facet_grid(~patient)+scale_fill_manual(values=dcolors)+
+  ggtitle("Ven sig across patients")
+
+p
+
+ggsave('venSignatureAcrossPatients.pdf')
+
+###now lets move to doublec ombinations
+
+
+f=subset(sigs,Signature=='DV-UT_Two-fold')
+dvprots=f$feature
+
+plot_heatmap(m_corrected, features=dvprots, annotation_cols=c("Drug",'patient'), 
+             ann_colors = list(Drug=dcolors,patient=pcolors),cluster_cols=FALSE,
+             heatmap_title = "DV-UT_Two-fold",file='decVen_UTHeamap.pdf')
+
+
+
+p<-prot_dat|>
+  subset(!is.na(direction))|>
+  subset(feature%in%dvprots)|>#sig)|>subset(Twofold)|>
+  ggplot(aes(x=direction,y=logExpr,fill=Drug))+
+  geom_boxplot()+facet_grid(~patient)+scale_fill_manual(values=dcolors)+
+  ggtitle("DV sig across patients")
+
+p
+
+ggsave('decVenSignatureAcrossPatients.pdf')
+
+f=subset(sigs,Signature=='GV-UT_Two-fold')
+gvprots=f$feature
+
+plot_heatmap(m_corrected, features=gvprots, annotation_cols=c("Drug",'patient'), 
+             ann_colors = list(Drug=dcolors,patient=pcolors),cluster_cols=FALSE, 
+             heatmap_title = "GV-UT_Two-fold",file='giltVen_UTHeatmap.pdf')
+
+p<-prot_dat|>
+  subset(!is.na(direction))|>
+  subset(feature%in%gvprots)|>#sig)|>subset(Twofold)|>
+  ggplot(aes(x=direction,y=logExpr,fill=Drug))+
+  geom_boxplot()+facet_grid(~patient)+scale_fill_manual(values=dcolors)+
+  ggtitle("GV sig across patients")
+
+p
+ggsave('giltVenSignatureAcrossPatients.pdf')
+
+
+
+f=subset(sigs,Signature=="GVD-UT_Two-fold")
+gvdprots<-f$feature
+
+
+plot_heatmap(m_corrected, features=gvdprots, annotation_cols=c("Drug",'patient'), 
+             ann_colors = list(Drug=dcolors,patient=pcolors),#,patient=pcolors), 
+             heatmap_title = "GVD-UT_Two-fold",cluster_cols=FALSE,
+             file='gvd_UTHeatmap.pdf')
+
+
+p<-prot_dat|>
+  subset(!is.na(direction))|>
+  subset(feature%in%gvdprots)|>#sig)|>subset(Twofold)|>
+  ggplot(aes(x=direction,y=logExpr,fill=Drug))+
+  geom_boxplot()+facet_grid(~patient)+scale_fill_manual(values=dcolors)+ggtitle('GVD sig acrosspatients')
+
+p
+ggsave('decVenGiltSignatureAcrossPatients.pdf')
+
+print(paste('There are',length(intersect(gvprots,gvdprots)),'features in common between gvd and gv'))
+
+gvonly<-setdiff(gvprots,gvdprots)
+
+plot_heatmap(m_corrected, features=gvonly, annotation_cols=c("Drug",'patient'), 
+             ann_colors = list(Drug=dcolors,patient=pcolors), 
+             heatmap_title = "GV-only",cluster_cols=FALSE,
+             file='gvOnly_UTHeatmap.pdf')
+
+p<-prot_dat|>
+  subset(!is.na(direction))|>
+  subset(feature%in%gvonly)|>#sig)|>subset(Twofold)|>
+  ggplot(aes(x=direction,y=logExpr,fill=Drug))+
+  geom_boxplot()+facet_grid(~patient)+scale_fill_manual(values=dcolors)+ggtitle('GV only sig acrosspatients')
+
+p
+ggsave('venGiltOnlySignatureAcrossPatients.pdf')
+
+gvdonly<-setdiff(gvdprots,gvprots)
+
+
+plot_heatmap(m_corrected, features=gvdonly, annotation_cols=c("Drug",'patient'), 
+             ann_colors = list(Drug=dcolors,patient=pcolors), 
+             heatmap_title = "GVD-only",cluster_cols=FALSE,file='gvdOnly_UTheatmap.pdf')
+
+p<-prot_dat|>
+  subset(!is.na(direction))|>
+  subset(feature%in%gvdonly)|>#sig)|>subset(Twofold)|>
+  ggplot(aes(x=direction,y=logExpr,fill=Drug))+
+  geom_boxplot()+facet_grid(~patient)+scale_fill_manual(values=dcolors)+ggtitle('GVD only sig acrosspatients')
+
+p
+ggsave('venGiltDecOnlySignatureAcrossPatients.pdf')
+
+##what if we subtract out other proteins
+
+```
+
+
+## GSEA enrichment
+
+
+First we get all the gene signatures from MSIGDGB
+
+```{r}
+t2g_hallmark <- msigdbr(species = "Homo sapiens", category = "H") %>%
+  dplyr::select(gs_name, gene_symbol)
+
+t2g_gobp <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "BP") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gocc <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "CC") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gomf <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "MF") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_wikipath <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "WIKIPATHWAYS") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_reactome <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "REACTOME") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+
+t2g_kegg <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "KEGG") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+
+all_t2gs <- list(t2g_gobp, t2g_gocc, t2g_gomf, t2g_hallmark, t2g_kegg, t2g_reactome)
+names(all_t2gs) <- c("GOBP", "GOCC", "GOMF", "Hallmark", "KEGG", "Reactome")
+
+```
+
+Then we evaluate everything for each contrats. 
+
+```{r, message=FALSE, warning=FALSE}
+## Getting the GSEA results
+
+#pData(m_corrected)=pData(m_corrected)[,c('sample','Treatment','patient','Drug')]
+ for (t2g_name in names(all_t2gs)){
+   GSEA_helper(m_corrected, treatment_contrasts, t2g = all_t2gs[[t2g_name]],
+               t2g_name = paste0("ptrc_4patient_lines_", t2g_name), "Treatment")
+ }
+
+
+ GSEA_global <- rbind(read.table("GSEA_ptrc_4patient_lines_GOBP_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "GOBP"),
+                      read.table("GSEA_ptrc_4patient_lines_GOCC_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "GOCC"),
+                      read.table("GSEA_ptrc_4patient_lines_GOMF_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "GOMF"),
+                      read.table("GSEA_ptrc_4patient_lines_Hallmark_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "Hallmark"),
+                      read.table("GSEA_ptrc_4patient_lines_KEGG_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "KEGG"),
+                      read.table("GSEA_ptrc_4patient_lines_Reactome_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "Reactome"))
+ write.table(GSEA_global, "patient_lines_GSEA.txt", sep = "\t", quote = F, row.names = F)
+
+# GSEA_global <- read.table("GSEA tables/patient_lines_GSEA.txt", sep = "\t", header = T)
+#GSEA_global <- read.table(syn$get("syn64605143")$path, sep = "\t", header = T)
+# GSEA_210_ven <- read.table("GSEA tables/GSEA_ven_resistant_vs_sensitive_210cohort.txt", sep = "\t", header = T)
+#GSEA_210_ven <- read.table(syn$get("syn64605142")$path, sep = "\t", header = T)
+
+```
+
+
+
+
+Plotting the GSEA results
+
+
+
+```{r,warning=FALSE,message=FALSE}
+enrichment_df <- GSEA_global %>%
+   filter(contrast == "V-UT",
+          DB == "Hallmark") %>% 
+   mutate(pathway = sub("HALLMARK_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "V-UT", enrichment_title = "Hallmark GSEA Venetoclax - Untreated")
+
+enrichment_df <- GSEA_global %>%
+   filter(contrast == "GV-UT",
+          DB == "Hallmark") %>% 
+   mutate(pathway = sub("HALLMARK_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "GV-UT", enrichment_title = "Hallmark GSEA GV - UT")
+
+enrichment_df <- GSEA_global %>%
+   filter(contrast == "GVD-UT",
+          DB == "Hallmark") %>% 
+   mutate(pathway = sub("HALLMARK_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "GVD-UT", enrichment_title = "Hallmark GSEA GVD - UT")
+
+
+enrichment_df <- GSEA_global %>%
+   filter(contrast == "V-UT",
+          DB == "Reactome") %>% 
+   mutate(pathway = sub("REACTOME ", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "V-UT", enrichment_title = "Reactome GSEA Venetoclax -  Untreated")
+
+
+enrichment_df <- GSEA_global %>%
+   filter(contrast == "GV-UT",
+          DB == "Reactome") %>% 
+   mutate(pathway = sub("REACTOME", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "GV-UT", enrichment_title = "Hallmark GSEA GV - UT")
+
+enrichment_df <- GSEA_global %>%
+   filter(contrast == "GVD-UT",
+          DB == "Reactome") %>% 
+   mutate(pathway = sub("REACTOME", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "GVD-UT", enrichment_title = "Hallmark GSEA GVD - UT")
+
+
+```
+
+
+
+### Over representation of differential expression
+Here we can use the basic signatures.
+
+```{r, message=FALSE,warning=FALSE, error=FALSE}
+
+## Using ex vivo
+
+diffexp_ora <- pat_diffexp %>% mutate(adj_pval = adj.P.Val) %>%
+   select(feature, logFC, adj_pval, contrast)
+
+gvonly_ora<-subset(diffexp_ora,contrast=="GV-UT")|>
+  mutate(contrast='GV Only')|>
+  subset(feature%in%gvonly)
+
+gvdonly_ora<-subset(diffexp_ora,contrast=="GV-UT")|>
+    mutate(contrast='GVD Only')|>
+  subset(feature%in%gvdonly)
+
+diffexp_ora<-rbind(diffexp_ora,gvonly_ora,gvdonly_ora)
+
+
+ora_results_global <- rbind(ORA_helper(diffexp_ora, diffexp_ora$feature, t2g_gobp,logFC_cutoff=1) %>% 
+                        mutate(DB = "GOBP"),
+                     ORA_helper(diffexp_ora, diffexp_ora$feature, t2g_gocc,logFC_cutoff=0) %>% 
+                        mutate(DB = "GOCC"),
+                     ORA_helper(diffexp_ora, diffexp_ora$feature, t2g_gomf,logFC_cutoff=0) %>% 
+                        mutate(DB = "GOMF"),
+                     ORA_helper(diffexp_ora, diffexp_ora$feature, t2g_hallmark,logFC_cutoff=0) %>% 
+                        mutate(DB = "Hallmark"),
+                     ORA_helper(diffexp_ora, diffexp_ora$feature, t2g_kegg,logFC_cutoff=0) %>% 
+                        mutate(DB = "KEGG"),
+                     ORA_helper(diffexp_ora, diffexp_ora$feature, t2g_reactome,logFC_cutoff=0) %>% 
+                        mutate(DB = "Reactome"),
+                     ORA_helper(diffexp_ora, diffexp_ora$feature, t2g_wikipath,logFC_cutoff=0) %>% 
+                        mutate(DB = "Wikipath"))
+
+
+stats=ora_results_global|>subset(p.adjust<0.05)|>group_by(DB,contrast,sign)|>summarize(count=n())
+print(stats)
+
+stats|>ggplot(aes(x=contrast,y=count,fill=sign))+facet_grid(~DB)+geom_bar(stat='identity',position='dodge')+coord_flip()
+```
+
+Now we can plot all the conditions of interest
+
+```{r plot ORA, message=FALSE,warning=FALSE}
+enrichment_df <- ora_results_global %>%
+   filter(contrast == "V-UT",
+          DB == "Hallmark") %>% 
+   mutate(pathway = sub("HALLMARK_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = zScore,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "V-UT", enrichment_title = "Hallmark GSEA Venetoclax - Untreated")
+
+
+enrichment_df <- ora_results_global %>%
+   filter(contrast == "GV-UT",
+          DB == "Hallmark") %>% 
+   mutate(pathway = sub("HALLMARK_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = zScore,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+
+#plot_enrichment_result(enrichment_df, "GV-UT", enrichment_title = "Hallmark GSEA GV - UT")
+
+enrichment_df <- ora_results_global %>%
+   filter(contrast == "GVD-UT",
+          DB == "Hallmark") %>% 
+   mutate(pathway = sub("HALLMARK_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = zScore,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "GVD-UT", enrichment_title = "Hallmark GSEA GVD - UT")
+
+
+enrichment_df <- ora_results_global %>%
+   filter(contrast == "V-UT",
+          DB == "Reactome") %>% 
+   mutate(pathway = sub("REACTOME ", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = zScore,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+#plot_enrichment_result(enrichment_df, "V-UT", enrichment_title = "Reactome GSEA Venetoclax -  Untreated")
+
+
+enrichment_df <- ora_results_global %>%
+   filter(contrast == "GV-UT",
+          DB == "Reactome") %>% 
+   mutate(pathway = sub("REACTOME", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = zScore,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "GV-UT", enrichment_title = "Hallmark GSEA GV - UT")
+
+enrichment_df <- ora_results_global %>%
+   filter(contrast == "GVD-UT",
+          DB == "Reactome") %>% 
+   mutate(pathway = sub("REACTOME", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = zScore,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "GVD-UT", enrichment_title = "Hallmark GSEA GVD - UT")
+```
+
+
+```{r}
+#######################################
+
+
+## V-UT compared to Ven Resistant vs Sensitive in 210 cohort.
+#ven_res_vs_sen_pathway <- ora_cohort_venetoclax %>% filter(contrast == "Resistant-Sensitive", p.adjust < 0.05) 
+#View(ora_results_global %>% filter(ID %in% ven_res_vs_sen_pathway$ID, contrast == "V-UT"))
+
+#V_UT_pathways <- ora_results_global %>% filter(contrast == "V-UT", p.adjust < 0.05) 
+#View(ora_cohort_venetoclax %>% filter(ID %in% V_UT_pathways$ID, contrast == "Resistant-Sensitive"))
+
+```
+
+
+
+
+

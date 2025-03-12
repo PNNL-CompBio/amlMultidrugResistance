@@ -1,0 +1,85 @@
+---
+title: "Compare sigs to Cell lines"
+author: "Sara gosline"
+date: "2025-02-28"
+output: html_document
+---
+
+# Overlap
+
+First we will evaluate the basic shared properties between the cell lines and the patient signatures - what is consistent?
+
+## Get cell line data and patient signatures
+
+We need to get the differential expression datasets and cell line data. 
+
+```{r get data, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(MSnSet.utils)
+
+source("synapseUtil.R")
+syn = synapseLogin()
+
+#for each signature, get complete feature and identify resistant and sensitive markers for each...
+
+
+dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
+          `Venetoclax`='#0072B2',
+          `Decitabine`='#D14610',
+          `Gilteritinib+Venetoclax`='#05820F',
+          `Decitabine+Venetoclax`='#D172B2',
+          `Gilteritinib+Decitabine`='#EDAE49',
+          `Gilteritinib+Decitabine+Venetoclax`='#666666')
+
+
+
+
+#pcolors=c(`507`='#667242',`335`="#997242",`292`="#227242",`035`="#887242")
+pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
+
+druglist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
+              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
+              GVD='Gilteritinib+Decitabine+Venetoclax')
+
+treatlist=druglist
+names(treatlist)=paste(names(treatlist),'-UT',sep='')
+
+
+
+sigs <- readr::read_tsv(syn$get('syn64943910')$path)|>
+  mutate(marker=ifelse(logFC>0,'resistant','sensitive'))|>
+  mutate(sig=adj.P.Val<0.05)|>
+  subset(endsWith(contrast,'UT'))|>
+  mutate(treatment=treatlist[contrast])
+
+
+
+sigs|>subset(sig)|>
+  group_by(marker,contrast)|>
+  summarize(nMarkers=n())
+
+#cell line
+global<-read.table(syn$get('syn51197035')$path,fill=TRUE,header=T,row.names=NULL)|>
+  subset(!is.na(value))
+
+
+```
+
+## How do patient signatures look in cell lines?
+```{r eval sigs}
+#for each signature
+#for each cell line 
+#what is the profiel of each? 
+
+```
+
+## Get patient data - how do cell line signatures look in cell lines
+
+# Network analysis
+Then we will identify specific links between the cell line signatures and the patient signatures. Are their pathways? 
+
+
+## What is all pairs shortest paths between pathways...
+
+
