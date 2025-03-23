@@ -23,28 +23,6 @@ syn<-synapseLogin()
 # m_corrected <- readRDS("msnset_4patients_corrected.RDS")
 m_corrected <- readRDS(syn$get("syn64605135")$path)
 
-dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
-          `Venetoclax`='#0072B2',
-          `Decitabine`='#D14610',
-          `Gilteritinib+Venetoclax`='#05820F',
-          `Decitabine+Venetoclax`='#D172B2',
-          `Gilteritinib+Decitabine`='#EDAE49',
-          `Gilteritinib+Decitabine+Venetoclax`='#666666')
-
-
-
-
-#pcolors=c(`507`='#667242',`335`="#997242",`292`="#227242",`035`="#887242")
-pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
-
-druglist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
-              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
-              GVD='Gilteritinib+Decitabine+Venetoclax')
-
-treatlist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
-              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
-              GVD='Gilteritinib+Decitabine+Venetoclax')
-names(treatlist)=paste(names(treatlist),'-UT',sep='')
 ```
 
 
