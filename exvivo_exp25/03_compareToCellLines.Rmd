@@ -64,14 +64,21 @@ global<-read.table(syn$get('syn51197035')$path,fill=TRUE,header=T,row.names=NULL
   subset(!is.na(value))|>
   subset(Exp!='Ex12')
 
+g2<-readr::read_csv(syn$get('syn60202834')$path)
+
+global<-g2|>tidyr::pivot_longer(2:ncol(g2),names_to='Sample',values_to='value')|>
+  tidyr::separate(Sample,into=c('sampNum','Treatment','state'),remove=FALSE,sep='_')|>
+  tidyr::separate(state,into=c('State','num',sep='-'))
+
+colnames(global)[1]='Gene'
 
 ```
 
 ## How do patient signatures look in cell lines?
-```{r eval sigs}
+```{r eval sigs,message=FALSE, warning=FALSE, error=FALSE}
 #for each signature
 sig_names<-unique(sigs$contrast)
-cell_lines<-c('G','GV','GD','GVD')
+cell_lines<-c('G','D','GV','GD','GVD')
 
 ## for a particular contrast and drug, we can measure how well those markers predict AUC
 ## this is a generalization of Camilo's ratio code..
@@ -190,30 +197,42 @@ calc_sig_in_celllines<-function(con, drug_sig,lfcthresh=0){
          #subset(group%in%c('Sensitive','Resistant'))|>
          group_by(`Signature type`)|>
          summarize(t.pval=t.test(signal~Treatment)$p.value,w.pval=wilcox.test(signal~Treatment)$p.value))
-  # 
   
   tp=pvals[1,'t.pval']
    p<-ggplot(mdata,aes(x=Treatment,y=signal,fill=`Signature type`))+
     geom_boxplot()+scale_fill_manual(values=sigcolors)+theme_bw()+ggtitle(paste(con,'signature in',drug_sig,'cell lines','\nt-test p=',tp))
   print(p)
-  # corval=corstats[1,'Rho']
-  # tp=pvals[1,'t.pval']
-  # mdata<-subset(mdata,!is.na(AUC))
-  # p1=ggplot(mdata,aes(x=AUC,y=signal,col=`Signature type`))+geom_point()+ggtitle(paste(con,'treated signature vs. AUC of ',drug_sig,'\n Rho =',corval))+scale_color_manual(values=sigcolors)+theme_bw()
-  # p2=ggplot(mdata,aes(x=group,y=signal,fill=`Signature type`))+geom_boxplot()+ggtitle(paste(con,'treated signature vs. AUC of ',drug_sig,'\nt-test p=',tp))+scale_fill_manual(values=sigcolors)+theme_bw()
-  # res=cowplot::plot_grid(p1,p2,nrow=2)
-  # print(res) #eventually save
-  # 
-  # ret=merge(corstats,pvals)|>
-  #   mutate(upProts=paste(resistant_markers,collapse=';'),downProts=paste(sensitive_markers,collapse=';'))
-  # return(ret)
-  return(pvals|>mutate(sig=con,cellLine=drug_sig))
+
+  ##now calculate if resistant signture is UP or DOWN in resistant cell lines
+  meanSig=mdata|>group_by(Treatment,`Signature type`)|>
+    summarize(meanSig=mean(signal))|>
+    ungroup()|>
+    tidyr::pivot_wider(names_from='Treatment',values_from='meanSig')|>
+    dplyr::rename(treated=drug_sig)|>
+    mutate(difference=treated-none)
+  
+
+  ret<-pvals|>
+    left_join(meanSig)|>
+    mutate(sig=con,cellLine=drug_sig)
+  return(ret)
 }
  
 pdf('cellLineHeatmaps.pdf')
 
 res<-do.call(rbind,lapply(sig_names,function(sig) do.call(rbind,lapply(cell_lines,function(cel){calc_sig_in_celllines(sig,cel)}))))
 dev.off()
+
+
+res <- res|>tidyr::separate(sig,int=c('Treatment','UT'),sep='-')|>
+  mutate(Treatment=unlist(lapply(Treatment,function(x) druglist[[x]])))|>
+  mutate(`cell line`=unlist(lapply(cellLine,function(x) druglist[[x]])))
+
+
+res|>ggplot(aes(x=`cell line`,y=t.pval,fill=Treatment))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("T-test p-value")+scale_fill_manual(values=dcolors)
+
+res|>subset(t.pval<0.05)|>
+  ggplot(aes(x=`cell line`,y=difference,fill=Treatment))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant signals")+scale_fill_manual(values=dcolors)
 
 
 ```
