@@ -21,7 +21,7 @@ source("synapseUtil.R")
 syn = synapseLogin()
 
 #for each signature, get complete feature and identify resistant and sensitive markers for each...
-
+source('ratio_based_functions.R')
 
 dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
           `Venetoclax`='#0072B2',
@@ -37,26 +37,6 @@ dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
 #pcolors=c(`507`='#667242',`335`="#997242",`292`="#227242",`035`="#887242")
 pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
 
-druglist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
-              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
-              GVD='Gilteritinib+Decitabine+Venetoclax')
-
-treatlist=druglist
-names(treatlist)=paste(names(treatlist),'-UT',sep='')
-
-
-
-sigs <- readr::read_tsv(syn$get('syn64943910')$path)|>
-  mutate(marker=ifelse(logFC>0,'resistant','sensitive'))|>
-  mutate(sig=adj.P.Val<0.05)|>
-  subset(endsWith(contrast,'UT'))|>
-  mutate(treatment=treatlist[contrast])
-
-
-
-sigs|>subset(sig)|>
-  group_by(marker,contrast)|>
-  summarize(nMarkers=n())
 
 
 ```
@@ -77,74 +57,32 @@ drug_data <- read.csv(syn$get("syn51674470")$path)
 m_210 <- readRDS(syn$get("syn64605141")$path)
 
 sig_names<-unique(sigs$contrast)
-drug_treatments<-c('Venetoclax','Quizartinib - Venetoclax','Ruxolitinib - Venetoclax', 'Gilteritinib','Azacytidine - Venetoclax','Azacytidine','Azacytidine - Quizartinib')
+drug_treatments<-c('Venetoclax','Dasatinib','Panobinostat','Quizartinib - Venetoclax','Ruxolitinib - Venetoclax', 'Gilteritinib','Azacytidine - Venetoclax','Azacytidine','Azacytidine - Quizartinib')
 
 ## for a particular contrast and drug, we can measure how well those markers predict AUC
 ## this is a generalization of Camilo's ratio code..
-calc_sig_in_patients<-function(con, drug_sig,lfcthresh=0){
+calc_sig_in_patients<-function(sensitive_markers,resistant_markers, drug_sig,signame){
   
-  sigcolors<-c(Ratio='#333333',`resistant signal`="#9999BB",`sensitive signal`='#AAAA77',none='#DDDDDD')
+  message(paste('evaluating',signame,'signature on',drug_sig,'values'))
   ##take all the resistant indicators - features that are up-regulated upon drug treatment
-  resistant_markers <- sigs %>% 
-    filter(contrast == con)|>
-    #subset(sig)|>
-    arrange(t_test_pval) %>%
-    subset(feature%in%rownames(exprs(m_210)))|>
-    subset(logFC>lfcthresh)|>
-    slice(1:10)|>
-        pull(feature)|>
-    unique()
-  
- ##take all the 'sensitive' indicators, drugs that are  down-regulated upon drug treatment
- sensitive_markers <- sigs %>% 
-   filter(contrast == con)|>
-   arrange(t_test_pval) %>%
-   #subset(sig)|>
-  subset(feature%in%rownames(exprs(m_210)))|>
-         subset(logFC<(-1*lfcthresh))|>
-  slice(1:10)|>
-     pull(feature)|>
-    unique()
-     
- sigs<-sigs|>
-   mutate(sigMarker=ifelse(feature%in%sensitive_markers,'sensitive signal',ifelse(feature%in%resistant_markers,'resistant signal','none')))
- ###let's plot the proteins
- lfcs<-sigs|>
-   subset(contrast==con)|>
-   arrange(logFC)#|>
- #  subset(sigMarker!='none')
- 
- p<-ggplot(lfcs,aes(y=-1*log10(t_test_pval),x=logFC,col=sigMarker))+geom_point()+scale_color_manual(values=sigcolors)+theme_bw()+ggtitle(paste(treatlist[[con]],'Signature markers by p-value'))
- print(p)
- # print(paste('found',length(resistant_markers),'resistant and',length(sensitive_markers),'sensitive markers for',con))
-  
   if(length(sensitive_markers)<2||length(resistant_markers)<2)
-      return(data.frame(Rho=NULL,Rho.p=NULL,`Signature type`=NULL,t.pval=NULL,w.pval=NULL)
-)
+      return(data.frame(Rho=NULL,Rho.p=NULL,`Signature type`=NULL,t.pval=NULL,w.pval=NULL))
 
   ##find the drug data in the patient samples
   drug_vals<-subset(drug_data,inhibitor==drug_sig)
  # print(paste("Found",nrow(drug_vals),'auc vals for',drug_sig))
   ##heatmap of markers in sample?
 
-  
-  ##calculate the signature scores in patients amples
-  sensitive_signal <- apply(exprs(m_210)[sensitive_markers, ], 2, mean,na.rm=T)
-  resistant_signal <- apply(exprs(m_210)[resistant_markers, ], 2, mean,na.rm=T)
-  signal <- resistant_signal - sensitive_signal
-  
-  signal<-signal[drug_vals$sample_id]
-  #print(signal)
-  #signame=paste(con,'model signal')
-  #aucval=paste(drug_sig,'AUC')
-  
+  signal<-calcRatio(resistant_markers,sensitive_markers,exprs(m_210))
+  signal<-signal[drug_vals$sample_id,]
+
   mdata<-pData(m_210)|>
     #mutate(auc=NA,signal=NA)|>
     subset(Barcode.ID%in%drug_vals$sample_id)
   
-  mdata[names(signal), 'Ratio'] <- signal
-  mdata[names(resistant_signal), 'resistant signal'] <- resistant_signal
-  mdata[names(sensitive_signal), 'sensitive signal'] <- sensitive_signal
+  mdata[rownames(signal), 'Ratio'] <- signal[,'ratio']
+  mdata[rownames(signal), 'resistant signal'] <- signal[,'resistant_signal']
+  mdata[rownames(signal), 'sensitive signal'] <- signal[,'sensitive_signal']
 
   mdata[drug_vals$sample_id, 'AUC'] <- drug_vals$auc
   
@@ -160,7 +98,8 @@ calc_sig_in_patients<-function(con, drug_sig,lfcthresh=0){
   
   cdata<-mdata[,c('Ratio','AUC')]
   mdata<-mdata|>
-    tidyr::pivot_longer(cols=c('Ratio','resistant signal','sensitive signal'),names_to='Signature type',values_to='signal')
+    tidyr::pivot_longer(cols=c('Ratio','resistant signal','sensitive signal'),names_to='Signature type',values_to='signature')|>
+    subset(!is.na(signature))
   
   #valid<-rownames(cdata[is.na(cdata$AUC),])
   #print(valid)
@@ -168,16 +107,20 @@ calc_sig_in_patients<-function(con, drug_sig,lfcthresh=0){
   adata<-c(rep('sensitive signal',length(sensitive_markers)),rep('resistant signal',length(resistant_markers)))
   names(adata)=c(sensitive_markers,resistant_markers)
   #print(cdata)
-  pheatmap::pheatmap(exprs(m_210)[c(sensitive_markers,resistant_markers),],
+  aucvals<-rownames(cdata[,!is.na('AUC')])
+  #print(aucvals)
+  pmat<-exprs(m_210)[c(sensitive_markers,resistant_markers),aucvals]
+  pmat[which(is.na(pmat),arr.ind=TRUE)]<-0.0
+  pheatmap::pheatmap(pmat,
                      annotation_col=cdata,cluster_rows=FALSE,clustering_distance_cols = 'correlation',
-                     annotation_colors = list(signal=sigcolors),
-                     annotation_row=data.frame(signal=adata),cellheight=10)
+                     annotation_colors = list(signature=sigcolors),
+                     annotation_row=data.frame(signature=adata),cellheight=10,main=paste(signame,'treated signature\n with',drug_sig,'AUC'))
            
   ## compute spearman, do we need pearson???
   corstats = mdata|>
       group_by(`Signature type`)|>
-      summarize(Rho=cor(signal,AUC,use='complete.obs',method='spearman'),
-                  Rho.p=cor.test(signal,AUC,use='complete.obs',method='spearman')$p.value)
+      summarize(Rho=cor(signature,AUC,use='complete.obs',method='spearman'),
+                  Rho.p=cor.test(signature,AUC,use='complete.obs',method='spearman')$p.value)
   
   ##compute sens vs. res p-values
   pvals=data.frame(`Signature type`=NULL,t.pval=NULL,w.pval=NULL)
@@ -185,13 +128,13 @@ calc_sig_in_patients<-function(con, drug_sig,lfcthresh=0){
   try(pvals<-mdata|>
         subset(group%in%c('Sensitive','Resistant'))|>
         group_by(`Signature type`)|>
-        summarize(t.pval=t.test(signal~group)$p.value,w.pval=wilcox.test(signal~group)$p.value))
+        summarize(t.pval=t.test(signature~group)$p.value,w.pval=wilcox.test(signature~group)$p.value))
   
   corval=corstats[1,'Rho']
   tp=pvals[1,'t.pval']
   mdata<-subset(mdata,!is.na(AUC))
-  p1=ggplot(mdata,aes(x=AUC,y=signal,col=`Signature type`))+geom_point()+ggtitle(paste(con,'treated signature vs. AUC of ',drug_sig,'\n Rho =',corval))+scale_color_manual(values=sigcolors)+theme_bw()
-  p2=ggplot(mdata,aes(x=group,y=signal,fill=`Signature type`))+geom_boxplot()+ggtitle(paste(con,'treated signature vs. AUC of ',drug_sig,'\nt-test p=',tp))+scale_fill_manual(values=sigcolors)+theme_bw()
+  p1=ggplot(mdata,aes(x=AUC,y=signature,col=`Signature type`))+geom_point()+ggtitle(paste(signame,'treated signature vs. patient AUC of ',drug_sig,'\n Rho =',corval))+scale_color_manual(values=sigcolors)+theme_bw()
+  p2=ggplot(mdata,aes(x=group,y=signature,fill=`Signature type`))+geom_boxplot()+ggtitle(paste(signame,'treated signature vs. patient AUC of ',drug_sig,'\nt-test p=',tp))+scale_fill_manual(values=sigcolors)+theme_bw()
   res=cowplot::plot_grid(p1,p2,nrow=2)
   print(res) #eventually save
   
@@ -200,7 +143,11 @@ calc_sig_in_patients<-function(con, drug_sig,lfcthresh=0){
   return(ret)
 }
  
+```
 
+Now we define function so we can evaluate it
+
+```{r single drug,error=FALSE,warning=FALSE}
 
 ##now we can compare and contrast various ways to determine a signature. 
 pdf('singleDrugCorStatsLFC0.pdf')
@@ -208,11 +155,12 @@ singles<-c("V-UT","G-UT","D-UT")
 combos=setdiff(sig_names,singles)
 
 ##let's collect the stats in a table                
-res<-do.call(rbind,lapply(drug_treatments,function(dr){
-  do.call(rbind,lapply(singles,function(sn){
-        res=calc_sig_in_patients(sn,dr)
+res<-do.call(rbind,lapply(singles,function(sn){
+    markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)))
+    do.call(rbind,lapply(drug_treatments,function(dr,markers){
+        res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
         res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0)
-  }))
+  },markers))
 }))
 dev.off()
 
@@ -226,6 +174,31 @@ ggsave("singlesigCorsLFC0.pdf")
 
 Now that we have a framework for comparing signatures to dose response, we can expand and evaluate across other parameters. 
 
+## Drug combinations
+First we can evaluate the drug combinations.
+
+```{r drug combos, message=FALSE, error=FALSE,warning=FALSE}
+combos=setdiff(sig_names,singles)
+
+pdf('comboDrugCorStatsLFC0.pdf')
+##let's collect the stats in a table                
+res4<-do.call(rbind,lapply(combos,function(sn){
+    markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)))
+    do.call(rbind,lapply(drug_treatments,function(dr,markers){
+        res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
+        res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0)
+  },markers))
+}))
+dev.off()
+
+
+##we can plot the significant correlations
+res4|>subset(Rho.p<0.05)|>ggplot(aes(x=Drug,y=Rho,fill=Signal))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant correlations")+scale_fill_manual(values=dcolors)
+
+ggsave("combosigCorsLFC0.pdf")
+
+
+```
 ## Changing LFC makes signature correlations worse
 
 ```{r lfc change, message=FALSE, error=FALSE,warning=FALSE}
@@ -236,11 +209,12 @@ Now that we have a framework for comparing signatures to dose response, we can e
 ##what if we alter LFC threshold. 
 pdf('singledrugCorStatsLFC5.pdf')
 ##let's collect the stats in a table                
-res2<-do.call(rbind,lapply(drug_treatments,function(dr){
-  do.call(rbind,lapply(singles,function(sn){
-        res=calc_sig_in_patients(sn,dr,lfcthresh = 0.5)
+res2<-do.call(rbind,lapply(singles,function(sn){
+    markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)),lfcthresh = 0.5)
+    do.call(rbind,lapply(drug_treatments,function(dr,markers){
+        res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
         res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0.5)
-  }))
+  },markers))
 }))
 dev.off()
 
@@ -252,11 +226,12 @@ ggsave("singleSigCorsLFC5.pdf")
 ##what if we alter LFC threshold. 
 pdf('singledrugCorStatsLFC1.pdf')
 ##let's collect the stats in a table                
-res3<-do.call(rbind,lapply(drug_treatments,function(dr){
-  do.call(rbind,lapply(singles,function(sn){
-        res=calc_sig_in_patients(sn,dr,lfcthresh = 1)
-        res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=1)
-  }))
+res3<-do.call(rbind,lapply(singles,function(sn){
+    markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)),lfcthresh = 1.0)
+    do.call(rbind,lapply(drug_treatments,function(dr,markers){
+        res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
+        res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=1.0)
+  },markers))
 }))
 dev.off()
 
@@ -265,34 +240,10 @@ res3|>subset(Rho.p<0.05)|>ggplot(aes(x=Drug,y=Rho,fill=Signal))+geom_bar(stat='i
 
 ggsave("singleSigCorsLFC1.pdf")
 
-```
-
-Increasing LFC changes doesn't make a huge difference.
-
-How do the combination signatures compare??
-
-```{r drug combos, message=FALSE, error=FALSE,warning=FALSE}
-combos=setdiff(sig_names,singles)
-
-pdf('comboDrugCorStatsLFC0.pdf')
-
-##let's collect the stats in a table                
-res4<-do.call(rbind,lapply(drug_treatments,function(dr){
-  do.call(rbind,lapply(combos,function(sn){
-        res=calc_sig_in_patients(sn,dr)
-        res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0)
-  }))
-}))
-dev.off()
-
-##we can plot the significant correlations
-res4|>subset(Rho.p<0.05)|>ggplot(aes(x=Drug,y=Rho,fill=Signal))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant correlations")+scale_fill_manual(values=dcolors)
-
-ggsave("combosigCorsLFC0.pdf")
 
 allres<-rbind(res,res2,res3,res4)
 readr::write_csv(allres,file='signatureDrugRespCors.csv')
-
 ```
+
 
 

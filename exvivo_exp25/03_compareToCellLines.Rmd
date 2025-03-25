@@ -20,6 +20,7 @@ library(MSnSet.utils)
 
 source("synapseUtil.R")
 syn = synapseLogin()
+source("ratio_based_functions.R")
 
 #for each signature, get complete feature and identify resistant and sensitive markers for each...
 
@@ -37,27 +38,6 @@ dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
 
 #pcolors=c(`507`='#667242',`335`="#997242",`292`="#227242",`035`="#887242")
 pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
-
-druglist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
-              GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
-              GVD='Gilteritinib+Decitabine+Venetoclax')
-
-treatlist=druglist
-names(treatlist)=paste(names(treatlist),'-UT',sep='')
-
-
-
-sigs <- readr::read_tsv(syn$get('syn64943910')$path)|>
-  mutate(marker=ifelse(logFC>0,'resistant','sensitive'))|>
-  mutate(sig=adj.P.Val<0.05)|>
-  subset(endsWith(contrast,'UT'))|>
-  mutate(treatment=treatlist[contrast])
-
-
-
-sigs|>subset(sig)|>
-  group_by(marker,contrast)|>
-  summarize(nMarkers=n())
 
 #cell line
 global<-read.table(syn$get('syn51197035')$path,fill=TRUE,header=T,row.names=NULL)|>
@@ -82,114 +62,42 @@ cell_lines<-c('G','D','GV','GD','GVD')
 
 ## for a particular contrast and drug, we can measure how well those markers predict AUC
 ## this is a generalization of Camilo's ratio code..
-calc_sig_in_celllines<-function(con, drug_sig,lfcthresh=0){
-  
-  sigcolors<-c(Ratio='#333333',`resistant signal`="#9999BB",`sensitive signal`='#AAAA77',none='#DDDDDD')
-  ##take all the resistant indicators - features that are up-regulated upon drug treatment
-  resistant_markers <- sigs %>% 
-    filter(contrast == con)|>
-    #subset(sig)|>
-    arrange(t_test_pval) %>%
-    subset(feature%in%global$Gene)|>
-    subset(logFC>lfcthresh)|>
-    slice(1:10)|>
-        pull(feature)|>
-    unique()
-  
- ##take all the 'sensitive' indicators, drugs that are  down-regulated upon drug treatment
- sensitive_markers <- sigs %>% 
-   filter(contrast == con)|>
-   arrange(t_test_pval) %>%
-   #subset(sig)|>
-  subset(feature%in%global$Gene)|>
-         subset(logFC<(-1*lfcthresh))|>
-  slice(1:10)|>
-     pull(feature)|>
-    unique()
-     
- sigs<-sigs|>
-   mutate(sigMarker=ifelse(feature%in%sensitive_markers,'sensitive signal',
-                           ifelse(feature%in%resistant_markers,'resistant signal','none')))
- ###let's plot the proteins
- lfcs<-sigs|>
-   subset(contrast==con)|>
-   arrange(logFC)#|>
- #  subset(sigMarker!='none')
- 
-# p<-ggplot(lfcs,aes(y=-1*log10(t_test_pval),x=logFC,col=sigMarker))+geom_point()+scale_color_manual(values=sigcolors)+theme_bw()+ggtitle(paste(treatlist[[con]],'Signature markers by p-value'))
-# print(p)
- # print(paste('found',length(resistant_markers),'resistant and',length(sensitive_markers),'sensitive markers for',con))
-  
+calc_sig_in_celllines<-function(sensitive_markers,resistant_markers, drug_sig,signame){
+    message(paste('evaluating',signame,'signature on',drug_sig,'values'))
+
   if(length(sensitive_markers)<2||length(resistant_markers)<2)
-      return(data.frame(Rho=NULL,Rho.p=NULL,`Signature type`=NULL,t.pval=NULL,w.pval=NULL)
-)
+      return(data.frame(Rho=NULL,Rho.p=NULL,`Signature type`=NULL,t.pval=NULL,w.pval=NULL))
 
   ##find the drug data in the patient samples
   drug_vals<-subset(global,Treatment%in%c('none',drug_sig))|>
     dplyr::select(Sample,Gene,value)|>
     tidyr::pivot_wider(names_from=Sample,values_from=value,values_fill=0.0)|>
     tibble::column_to_rownames('Gene')
-    
- # print(paste("Found",nrow(drug_vals),'auc vals for',drug_sig))
-  ##heatmap of markers in sample?
+  
+  signal<-calcRatio(resistant_markers,sensitive_markers,drug_vals)
 
-  
-  ##calculate the signature scores in patients amples
-  sensitive_signal <- apply(drug_vals[sensitive_markers, ], 2, mean,na.rm=T)
-  resistant_signal <- apply(drug_vals[resistant_markers, ], 2, mean,na.rm=T)
-  signal <- resistant_signal - sensitive_signal
-  
-  #signal<-signal[drug_vals$sample_id]
-  #print(signal)
-  #signame=paste(con,'model signal')
-  #aucval=paste(drug_sig,'AUC')
-  
   mdata<-subset(global,Treatment%in%c('none',drug_sig))|>
     dplyr::select(Sample,State,Treatment)|>
     distinct()|>
     tibble::column_to_rownames('Sample')
-    #mutate(auc=NA,signal=NA)|>
-#    subset(Barcode.ID%in%drug_vals$sample_id)
-  
-  mdata[names(signal), 'Ratio'] <- signal
-  mdata[names(resistant_signal), 'resistant signal'] <- resistant_signal
-  mdata[names(sensitive_signal), 'sensitive signal'] <- sensitive_signal
 
- # mdata[drug_vals$sample_id, 'AUC'] <- drug_vals$auc
-  
-  
-  ##create a sensitive/resistant group
-  #mdata$group <- "NA"
-  #mdata[mdata%>% filter(AUC < 100) %>% pull(Barcode.ID), "group"] <- "Sensitive"
-  #mdata[mdata %>% filter(AUC >= 100,
- #                                     AUC < 200) %>% pull(Barcode.ID), "group"] <- "Middle"
-  #mdata[mdata %>% filter(AUC >= 200) %>% pull(Barcode.ID), "group"] <- "Resistant"
-  #mdata$group<-factor(mdata$group,levels=c("Sensitive","Middle",'Resistant'))
-  
-  
+  mdata[rownames(signal), 'Ratio'] <- signal[,'ratio']
+  mdata[rownames(signal), 'resistant signal'] <- signal[,'resistant_signal']
+  mdata[rownames(signal), 'sensitive signal'] <- signal[,'sensitive_signal']
+
   cdata<-mdata#[,c('Ratio','AUC')]
   mdata<-mdata|>
     tidyr::pivot_longer(cols=c('Ratio','resistant signal','sensitive signal'),names_to='Signature type',values_to='signal')
-  
-  #valid<-rownames(cdata[is.na(cdata$AUC),])
-  #print(valid)
-  
+
   adata<-c(rep('sensitive signal',length(sensitive_markers)),rep('resistant signal',length(resistant_markers)))
   names(adata)=c(sensitive_markers,resistant_markers)
   #print(cdata)
   pheatmap::pheatmap(drug_vals[c(sensitive_markers,resistant_markers),],
                      annotation_col=cdata,cluster_rows=FALSE,clustering_distance_cols = 'correlation',
                      annotation_colors = list(signal=sigcolors),
-                     annotation_row=data.frame(signal=adata),cellheight=10,main=paste(con,'signature in',drug_sig,'cell lines'))
+                     annotation_row=data.frame(signal=adata),cellheight=10,main=paste(signame,'signature in',drug_sig,'cell lines'))
            
-  ## we can't do correlation here, instead do t-test
-  ## to see if signature is different
- 
-  # corstats = mdata|>
-  #     group_by(`Signature type`)|>
-  #     summarize(Rho=cor(signal,AUC,use='complete.obs',method='spearman'),
-  #                 Rho.p=cor.test(signal,AUC,use='complete.obs',method='spearman')$p.value)
-  # 
+
   # ##compute sens vs. res p-values
   pvals=data.frame(`Signature type`=NULL,t.pval=NULL,w.pval=NULL)
   # 
@@ -200,7 +108,7 @@ calc_sig_in_celllines<-function(con, drug_sig,lfcthresh=0){
   
   tp=pvals[1,'t.pval']
    p<-ggplot(mdata,aes(x=Treatment,y=signal,fill=`Signature type`))+
-    geom_boxplot()+scale_fill_manual(values=sigcolors)+theme_bw()+ggtitle(paste(con,'signature in',drug_sig,'cell lines','\nt-test p=',tp))
+    geom_boxplot()+scale_fill_manual(values=sigcolors)+theme_bw()+ggtitle(paste(signame,'signature in',drug_sig,'cell lines','\nt-test p=',tp))
   print(p)
 
   ##now calculate if resistant signture is UP or DOWN in resistant cell lines
@@ -214,25 +122,30 @@ calc_sig_in_celllines<-function(con, drug_sig,lfcthresh=0){
 
   ret<-pvals|>
     left_join(meanSig)|>
-    mutate(sig=con,cellLine=drug_sig)
+    mutate(sig=signame,cellLine=drug_sig)
   return(ret)
 }
  
 pdf('cellLineHeatmaps.pdf')
 
-res<-do.call(rbind,lapply(sig_names,function(sig) do.call(rbind,lapply(cell_lines,function(cel){calc_sig_in_celllines(sig,cel)}))))
+res<-do.call(rbind,lapply(sig_names,function(sn){
+    markers=getSigsFromData(condition=sn,protList=unique(global$Gene),lfcthresh = 0)
+    do.call(rbind,lapply(cell_lines,function(dr,markers){
+        res=calc_sig_in_celllines(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
+        res|>mutate(Signature=treatlist[[sn]],CellLine=dr,lfc=0)
+  },markers))
+}))
+
 dev.off()
-
-
 res <- res|>tidyr::separate(sig,int=c('Treatment','UT'),sep='-')|>
   mutate(Treatment=unlist(lapply(Treatment,function(x) druglist[[x]])))|>
   mutate(`cell line`=unlist(lapply(cellLine,function(x) druglist[[x]])))
 
 
-res|>ggplot(aes(x=`cell line`,y=t.pval,fill=Treatment))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("T-test p-value")+scale_fill_manual(values=dcolors)
+res|>ggplot(aes(x=`cell line`,y=t.pval,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("T-test p-value")+scale_fill_manual(values=dcolors)
 
 res|>subset(t.pval<0.05)|>
-  ggplot(aes(x=`cell line`,y=difference,fill=Treatment))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant signals")+scale_fill_manual(values=dcolors)
+  ggplot(aes(x=`cell line`,y=difference,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant signals")+scale_fill_manual(values=dcolors)
 
 
 ```
