@@ -1,0 +1,62 @@
+---
+title: "Leverage ex vivo data to identify signatures"
+author: "Sara gosline"
+date: "2025-02-28"
+output: html_document
+---
+
+Here we load the normalized ex vivo data to identify specific proteins that are up-regulated and down-regulated after 1-mont drug treatment
+
+## Pull data
+
+```{r}
+library(dplyr)
+library(MSnSet.utils)
+library(msigdbr)
+
+source("helper_scripts.R")
+source("synapseUtil.R")
+source("plotting enrichment.R")
+source("ratio_based_functions.R")
+
+## Load corrected exp25 dataset
+# m_corrected <- readRDS("msnset_4patients_corrected.RDS")
+m_corrected <- readRDS(syn$get("syn64605135")$path)
+
+```
+
+
+## Create signatures via different means
+
+Determine signatures in different ways - lfc, p-value, combination, etc. 
+
+```{r diffex}
+
+meta<-pData(m_corrected)
+
+treatment_contrasts <- c("D-UT", "G-UT", "V-UT", "GV-UT", "GD-UT", "DV-UT", "GVD-UT","GV-V","DV-V","GVD-GV")
+treats=list(`D-UT`='Decitabine',`G-UT`='Gilteritinib', 
+            `V-UT`='Venetoclax', `GV-UT`='Gilteritinib+Venetoclax', 
+            `GD-UT`='Gilteritnib+Decitabine', 
+            `DV-UT`='Decitabine+Venetoclax', 
+            `GVD-UT`='Gilteritinib+Decitabine+Venetoclax')
+
+
+```
+
+
+
+
+## Tweaking the signatures
+We can generate different signatures and see how the values change
+
+### Concordance with cell line diffex
+
+```{r}
+```
+
+### GO enrichment
+can we identif enriched terms? 
+
+### Other metrics?
+How can we assess these things? 

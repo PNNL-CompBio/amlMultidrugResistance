@@ -24,7 +24,10 @@ sigs|>subset(sig)|>
   summarize(nMarkers=n())
 
 ##permanent colors fors ignature
-sigcolors<<-c(Ratio='#555555',`resistant signal`="#9999BB",`sensitive signal`='#AAAA77',none='#DDDDDD')
+sigcolors<<-c(Ratio='#666666',`resistant signal`="#9999DD",`sensitive signal`='#AAAA77',none='#EEEEEE')
+
+#colors for true false
+tfcolors<<-c(`TRUE`='#DD7333',`FALSE`='#4477EE')
 
 ##calculate signal from data
 ## this is the core functionality - it takes the signatures and a specific condition and returns the signal found in the data

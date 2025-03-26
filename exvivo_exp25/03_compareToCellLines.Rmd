@@ -137,6 +137,7 @@ res<-do.call(rbind,lapply(sig_names,function(sn){
 }))
 
 dev.off()
+
 res <- res|>tidyr::separate(sig,int=c('Treatment','UT'),sep='-')|>
   mutate(Treatment=unlist(lapply(Treatment,function(x) druglist[[x]])))|>
   mutate(`cell line`=unlist(lapply(cellLine,function(x) druglist[[x]])))
@@ -150,6 +151,24 @@ res|>subset(t.pval<0.05)|>
 
 ```
 
+Now we can evaluate how well the signals align
+
+```{r concordance,message=FALSE}
+fulldat<-res|>
+  mutate(concordant=ifelse(difference>0,TRUE,FALSE))|>
+  mutate(significant=ifelse(t.pval<0.05,TRUE,FALSE))
+
+fulldat$Signature<-factor(fulldat$Signature,levels=c("Venetoclax","Gilteritinib","Decitabine","Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
+
+fulldat$`cell line`<-factor(fulldat$`cell line`,levels=c('Gilteritinib','Decitabine',"Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
+#fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
+
+subset(fulldat,`Signature type`=='Ratio')|>
+  ggplot(aes(y=Signature,x=`cell line`,size=abs(difference),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with Cell line changes")+scale_color_manual(values=tfcolors)
+
+ggsave('AUCCellLineconcordance.pdf')
+
+```
 ## Get patient data - how do cell line signatures look in cell lines
 
 # Network analysis
