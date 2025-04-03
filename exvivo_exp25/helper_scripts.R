@@ -585,7 +585,6 @@ plot_diffexp_pathway <- function(diffexp, pathway, t2g, sig_cutoff = 0.05,
                      heatmap_title = pathway_title, ...)
 }
 
-
 diffexp_helper <- function(m, contrast_var, contrasts){
   pData(m)$bgd_ <- pData(m)[[contrast_var]]
   pData(m)$Sample <- sampleNames(m)

@@ -1,1 +1,0 @@
-These are the scripts of the analysis of the ex vivo dataset (exp25, G, V, D, VD, GV, GD, GVD)

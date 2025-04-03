@@ -8,7 +8,7 @@ library(gridExtra)
 plot_enrichment_result <- function(enrichment_result, enrichment_label, top = 10,
                                    adj_pval_cutoff = 0.05, enrich_width = 9, sig_width = 4,
                                    enrichment_title = "Enrichment"){
-   
+
    #' Used to make reversed logarithmic scales
    #' @import scales
    reverselog_trans <- function(base = exp(1)) {
@@ -19,8 +19,8 @@ plot_enrichment_result <- function(enrichment_result, enrichment_label, top = 10
                         breaks = scales::log_breaks(base = base),
                         domain = c(1e-100, Inf))
    }
-   
-   
+
+
    plot_df <- enrichment_result %>%
       dplyr::select(pathway, adj_p_val, enrichment) %>%
       filter(adj_p_val < adj_pval_cutoff) %>%
@@ -30,7 +30,9 @@ plot_enrichment_result <- function(enrichment_result, enrichment_label, top = 10
       arrange(adj_p_val) %>%
       slice(1:top) %>%
       ungroup()
-   
+
+   if(nrow(plot_df)<1)
+     return(NULL)
    p_enrichment <- ggplot(plot_df, aes(x = enrichment, y = reorder(pathway, enrichment))) +
       geom_bar(stat = 'identity', aes(fill = sign)) +
       scale_fill_manual(values = c("Down" = "dodgerblue3", "Up" = "firebrick2", "Not significant" = "black")) +
@@ -46,8 +48,8 @@ plot_enrichment_result <- function(enrichment_result, enrichment_label, top = 10
             axis.ticks.y = element_blank()) +
       labs(x = enrichment_label) +
       ggtitle(enrichment_title)
-   
-   
+
+
    p_sig <- ggplot(plot_df, aes(x = adj_p_val, y = reorder(pathway, enrichment))) +
       geom_bar(stat='identity') +
       theme_minimal() +
@@ -62,7 +64,7 @@ plot_enrichment_result <- function(enrichment_result, enrichment_label, top = 10
       scale_x_continuous(trans = reverselog_trans(10)) +
       labs(x = "Adjusted p-value") +
       ggtitle("Significance")
-   
+
    arrange_matrix <- as.matrix(c(rep(1, enrich_width), rep(2, sig_width))) %>% t()
    p_both <- grid.arrange(p_enrichment, p_sig, layout_matrix = arrange_matrix)
 }

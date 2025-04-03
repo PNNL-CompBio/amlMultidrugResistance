@@ -1,0 +1,181 @@
+---
+title: "Compare sigs to Cell lines"
+author: "Sara gosline"
+date: "2025-02-28"
+output: html_document
+---
+
+# Overlap
+
+First we will evaluate the basic shared properties between the cell lines and the patient signatures - what is consistent?
+
+## Get cell line data and patient signatures
+
+We need to get the differential expression datasets and cell line data. 
+
+```{r get data, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(MSnSet.utils)
+
+source("synapseUtil.R")
+syn = synapseLogin()
+source("ratio_based_functions.R")
+
+#for each signature, get complete feature and identify resistant and sensitive markers for each...
+
+
+dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
+          `Venetoclax`='#0072B2',
+          `Decitabine`='#D14610',
+          `Gilteritinib+Venetoclax`='#05820F',
+          `Decitabine+Venetoclax`='#D172B2',
+          `Gilteritinib+Decitabine`='#EDAE49',
+          `Gilteritinib+Decitabine+Venetoclax`='#666666')
+
+
+
+
+#pcolors=c(`507`='#667242',`335`="#997242",`292`="#227242",`035`="#887242")
+pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
+
+#cell line
+global<-read.table(syn$get('syn51197035')$path,fill=TRUE,header=T,row.names=NULL)|>
+  subset(!is.na(value))|>
+  subset(Exp!='Ex12')
+
+g2<-readr::read_csv(syn$get('syn60202834')$path)
+
+global<-g2|>tidyr::pivot_longer(2:ncol(g2),names_to='Sample',values_to='value')|>
+  tidyr::separate(Sample,into=c('sampNum','Treatment','state'),remove=FALSE,sep='_')|>
+  tidyr::separate(state,into=c('State','num',sep='-'))
+
+colnames(global)[1]='Gene'
+
+```
+
+## How do patient signatures look in cell lines?
+```{r eval sigs,message=FALSE, warning=FALSE, error=FALSE}
+#for each signature
+sig_names<-unique(sigs$contrast)
+cell_lines<-c('G','D','GV','GD','GVD')
+
+## for a particular contrast and drug, we can measure how well those markers predict AUC
+## this is a generalization of Camilo's ratio code..
+calc_sig_in_celllines<-function(sensitive_markers,resistant_markers, drug_sig,signame){
+    message(paste('evaluating',signame,'signature on',drug_sig,'values'))
+
+  if(length(sensitive_markers)<2||length(resistant_markers)<2)
+      return(data.frame(Rho=NULL,Rho.p=NULL,`Signature type`=NULL,t.pval=NULL,w.pval=NULL))
+
+  ##find the drug data in the patient samples
+  drug_vals<-subset(global,Treatment%in%c('none',drug_sig))|>
+    dplyr::select(Sample,Gene,value)|>
+    tidyr::pivot_wider(names_from=Sample,values_from=value,values_fill=0.0)|>
+    tibble::column_to_rownames('Gene')
+  
+  signal<-calcRatio(resistant_markers,sensitive_markers,drug_vals)
+
+  mdata<-subset(global,Treatment%in%c('none',drug_sig))|>
+    dplyr::select(Sample,State,Treatment)|>
+    distinct()|>
+    tibble::column_to_rownames('Sample')
+
+  mdata[rownames(signal), 'Ratio'] <- signal[,'ratio']
+  mdata[rownames(signal), 'resistant signal'] <- signal[,'resistant_signal']
+  mdata[rownames(signal), 'sensitive signal'] <- signal[,'sensitive_signal']
+  mdata$Treatment<-unlist(lapply(mdata$Treatment,function(x) ifelse(x=='none','none',druglist[[x]])))
+
+  cdata<-mdata#[,c('Ratio','AUC')]
+  mdata<-mdata|>
+    tidyr::pivot_longer(cols=c('Ratio','resistant signal','sensitive signal'),names_to='Signature type',values_to='signal')
+
+  adata<-c(rep('sensitive signal',length(sensitive_markers)),rep('resistant signal',length(resistant_markers)))
+  names(adata)=c(sensitive_markers,resistant_markers)
+  #print(cdata)
+  pheatmap::pheatmap(drug_vals[c(sensitive_markers,resistant_markers),],
+                     annotation_col=cdata,cluster_rows=FALSE,clustering_distance_cols = 'correlation',
+                     annotation_colors = list(signal=sigcolors),
+                     annotation_row=data.frame(signal=adata),cellheight=10,main=paste(signame,'signature in',drug_sig,'cell lines'))
+           
+
+  # ##compute sens vs. res p-values
+  pvals=data.frame(`Signature type`=NULL,t.pval=NULL,w.pval=NULL)
+  # 
+  try(pvals<-mdata|>
+         #subset(group%in%c('Sensitive','Resistant'))|>
+         group_by(`Signature type`)|>
+         summarize(t.pval=t.test(signal~Treatment)$p.value,w.pval=wilcox.test(signal~Treatment)$p.value))
+  
+  
+  tp=pvals[1,'t.pval']
+   p<-ggplot(mdata,aes(x=Treatment,y=signal,fill=`Signature type`))+
+    geom_boxplot()+scale_fill_manual(values=sigcolors)+theme_bw()+ggtitle(paste(signame,'signature in',drug_sig,'cell lines','\nt-test p=',tp))
+  print(p)
+
+  ##now calculate if resistant signture is UP or DOWN in resistant cell lines
+  meanSig=mdata|>group_by(Treatment,`Signature type`)|>
+    summarize(meanSig=mean(signal))|>
+    ungroup()|>
+    tidyr::pivot_wider(names_from='Treatment',values_from='meanSig')|>
+    dplyr::rename(treated=druglist[[drug_sig]])|>
+    mutate(difference=treated-none)
+  
+
+  ret<-pvals|>
+    left_join(meanSig)|>
+    mutate(sig=signame,cellLine=druglist[[drug_sig]])
+  return(ret)
+}
+ 
+pdf('cellLineHeatmaps.pdf')
+
+res<-do.call(rbind,lapply(sig_names,function(sn){
+    markers=getSigsFromData(condition=sn,protList=unique(global$Gene),lfcthresh = 0)
+    do.call(rbind,lapply(cell_lines,function(dr,markers){
+        res=calc_sig_in_celllines(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
+        res|>mutate(Signature=treatlist[[sn]],CellLine=dr,lfc=0)
+  },markers))
+}))
+
+dev.off()
+
+res <- res|>tidyr::separate(sig,int=c('Treatment','UT'),sep='-')|>
+  mutate(Treatment=unlist(lapply(Treatment,function(x) druglist[[x]])))
+
+
+res|>ggplot(aes(x=cellLine,y=t.pval,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("T-test p-value")+scale_fill_manual(values=dcolors)
+
+res|>subset(t.pval<0.05)|>
+  ggplot(aes(x=cellLine,y=difference,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant signals")+scale_fill_manual(values=dcolors)
+
+
+```
+
+Now we can evaluate how well the signals align
+
+```{r concordance,message=FALSE}
+fulldat<-res|>
+  mutate(concordant=ifelse(difference>0,TRUE,FALSE))|>
+  mutate(significant=ifelse(t.pval<0.05,TRUE,FALSE))
+
+fulldat$Signature<-factor(fulldat$Signature,levels=c("Venetoclax","Gilteritinib","Decitabine","Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
+
+fulldat$cellLine<-factor(fulldat$cellLine,levels=c('Gilteritinib','Decitabine',"Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
+#fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
+
+subset(fulldat,`Signature type`=='Ratio')|>
+  ggplot(aes(y=Signature,x=cellLine,size=abs(difference),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with Cell line changes")+scale_color_manual(values=tfcolors)
+
+ggsave('AUCCellLineconcordance.pdf')
+
+```
+## Get patient data - how do cell line signatures look in cell lines
+
+# Network analysis
+Then we will identify specific links between the cell line signatures and the patient signatures. Are their pathways? 
+
+
+## What is all pairs shortest paths between pathways...
+
+

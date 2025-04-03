@@ -8,11 +8,11 @@ output:
 Here we subset the data from the drug-resistant cell line data to focus on those that are resistant to only Gilteritinib and Venetoclax. 
 
 ```{r packages, echo=FALSE,message=FALSE}
-library(synapser)
 library(dplyr)
 library(ggplot2)
 library(bubbleHeatmap)
 library(stringr)
+
 library(umap)
 synLogin()
 
