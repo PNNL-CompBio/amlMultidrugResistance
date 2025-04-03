@@ -6,13 +6,12 @@ output: html_notebook
 
 
 ```{r packages, echo=FALSE,message=FALSE}
-library(synapser)
 library(dplyr)
 library(ggplot2)
 library(bubbleHeatmap)
 library(stringr)
 
-synLogin(authToken)
+synLogin()
 
 
 ##come up with a common color scheme for all cells

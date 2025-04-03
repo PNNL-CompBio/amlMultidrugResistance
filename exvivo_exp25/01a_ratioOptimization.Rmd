@@ -16,6 +16,8 @@ library(msigdbr)
 
 source("helper_scripts.R")
 source("synapseUtil.R")
+
+syn = synapseLogin()
 source("plotting enrichment.R")
 source("ratio_based_functions.R")
 
@@ -34,10 +36,10 @@ Determine signatures in different ways - lfc, p-value, combination, etc.
 
 meta<-pData(m_corrected)
 
-treatment_contrasts <- c("D-UT", "G-UT", "V-UT", "GV-UT", "GD-UT", "DV-UT", "GVD-UT","GV-V","DV-V","GVD-GV")
+treatment_contrasts <- c("D-UT", "G-UT", "V-UT", "GV-UT", "GD-UT", "DV-UT", "GVD-UT")#,"GV-V","DV-V","GVD-GV")
 treats=list(`D-UT`='Decitabine',`G-UT`='Gilteritinib', 
             `V-UT`='Venetoclax', `GV-UT`='Gilteritinib+Venetoclax', 
-            `GD-UT`='Gilteritnib+Decitabine', 
+            `GD-UT`='Gilteritinib+Decitabine', 
             `DV-UT`='Decitabine+Venetoclax', 
             `GVD-UT`='Gilteritinib+Decitabine+Venetoclax')
 
@@ -48,15 +50,218 @@ treats=list(`D-UT`='Decitabine',`G-UT`='Gilteritinib',
 
 
 ## Tweaking the signatures
-We can generate different signatures and see how the values change
 
-### Concordance with cell line diffex
 
-```{r}
+I'm not sure what the best way is to tweak the signatures, but here are a series of tests we can perform.
+
+### Generate signatures
+
+Choose a set of parameters and get signatures. 
+
+```{r optimize}
+
+pdf('sigPlots.pdf',width=11)
+finalsigs<-do.call(rbind,lapply(treatment_contrasts,function(y){
+    markers=getSigsFromData(condition=y,doPlot=TRUE)
+    rbind(data.frame(treatment=treats[[y]],markers=markers$resistant,condition='resistant'),
+          data.frame(treatment=treats[[y]],markers=markers$sensitive,condition='sensitive'))}))
+
+dev.off()
+
+
+##plotSigsOn original data
+pdf('patientHeatmaps.pdf')
+res<-lapply(unique(finalsigs$treatment),function(treat){
+    cmeta<-meta[c('patient','Treatment')]
+    cmeta$Treatment=sapply(cmeta$Treatment,function(x) ifelse(x=='UT','none',treats[[paste0(x,'-UT')]]))
+     dat<-subset(finalsigs,treatment==treat)|>
+      tibble::remove_rownames()
+    expr<-exprs(m_corrected[dat$marker,rownames(subset(cmeta,Treatment%in%c('none',treat)))])
+    expr[which(is.na(expr),arr.ind=TRUE)]<-0.0
+   
+    rmdata=tibble::column_to_rownames(dat,'markers')|>select(condition)|>mutate(condition=paste(condition,'signal'))
+    #print(cmeta)
+    #print(rmdata)
+  pheatmap::pheatmap(expr,
+                     annotation_col=cmeta,cluster_rows=FALSE,clustering_distance_cols = 'correlation',
+                     annotation_colors = list(condition=sigcolors,Treatment=dcolors,patient=pcolors),cellwidth=10,
+                     annotation_row=data.frame(rmdata),cellheight=10,main=paste(treat,'treated signature\n in patient samples'))
+  
+})
+dev.off()
 ```
 
-### GO enrichment
-can we identif enriched terms? 
+### Evaluate Concordance with per-patient scores
 
-### Other metrics?
-How can we assess these things? 
+How does each patient sample score? We want to make sure the signatures themselves are concordant across all 4 patients. 
+
+```{r}
+
+
+res<-do.call(rbind,lapply(treats,function(x){
+   rtab<-subset(finalsigs,treatment==x)|>
+     subset(condition=='resistant')
+  stab<-subset(finalsigs,treatment==x)|>
+     subset(condition=='sensitive')
+  rat=calcRatio(rtab$markers,stab$markers,exprs(m_corrected))|>as.data.frame()|>
+    tibble::rownames_to_column('sample')|>
+    mutate(signature=x)
+  rat
+}))
+
+res<-res|>tidyr::separate(sample,into=c('patient','treatment'),sep='_')
+res$treatment=unlist(lapply(res$treatment,function(x) ifelse(x=='UT','none',treats[[paste0(x,'-UT')]])))
+
+ggplot(res,aes(x=treatment,y=ratio,fill=signature))+geom_boxplot()+scale_fill_manual(values=dcolors)+coord_flip()
+
+
+ggplot(res,aes(x=signature,y=ratio,fill=treatment))+geom_boxplot()+scale_fill_manual(values=dcolors)+coord_flip()
+
+#ggplot(res,aes(y=signature,x=ratio,fill=treatment,alpha=0.8))+ggridges::geom_density_ridges()+scale_fill_manual(values=dcolors)
+
+ggsave('signatureScoreOfSamples.pdf',height=4)
+
+```
+
+### Calculate signature overlap
+some of the signatures have a lot in common. how can we check?
+
+```{r sign overlap}
+
+library(UpSetR)
+ sigprots<-finalsigs|>tidyr::pivot_wider(names_from=condition,values_from=markers)|>
+   tidyr::unnest(cols=c(resistant,sensitive))
+ 
+ 
+ resmat<-sigprots|>dplyr::select(treatment,resistant)|>
+   mutate(value=1)|>
+   tidyr::pivot_wider(names_from=treatment,values_from=value,values_fill=0)|>
+   as.data.frame()#|>
+   #tibble::column_to_rownames('signature')|>as.matrix()
+ 
+ pdf('resSigOverlap.pdf')
+ UpSetR::upset(resmat,nsets=7,main.bar.color=sigcolors[2])
+dev.off()
+
+pdf('sensSigOverlap.pdf')
+ sensmat<-sigprots|>dplyr::select(treatment,sensitive)|>
+   mutate(value=1)|>
+   tidyr::pivot_wider(names_from=treatment,values_from=value,values_fill=0)|>
+   as.data.frame()#|>
+   #tibble::column_to_rownames('signature')|>as.matrix()
+ 
+ UpSetR::upset(sensmat,nsets=7,main.bar.color=sigcolors[3])
+ dev.off()
+```
+It looks like there are a few pairs of genes that show up in multiple signatures...
+```{r dupes}
+
+doub_sens=sigprots|>group_by(sensitive)|>summarize(numsigs=n_distinct(treatment))|>subset(numsigs>1)
+doub_res=sigprots|>group_by(resistant)|>summarize(numsigs=n_distinct(treatment))|>subset(numsigs>1)
+
+doub_res|>left_join(sigprots)|>dplyr::select(resistant,numsigs,treatment)
+doub_sens|>left_join(sigprots)|>dplyr::select(sensitive,numsigs,treatment)
+
+```
+### Calculate Pathway enrichment
+
+For each signature/paramtere we need to evaluate the functional enrichment of each signature to show what it is predicting. 
+
+```{r go enrichment}
+##first generate a list of libraries
+t2g_hallmark <- msigdbr(species = "Homo sapiens", category = "H") %>%
+  dplyr::select(gs_name, gene_symbol)
+
+t2g_gobp <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "BP") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gocc <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "CC") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gomf <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "MF") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_wikipath <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "WIKIPATHWAYS") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_reactome <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "REACTOME") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+
+t2g_kegg <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "KEGG") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+
+all_t2gs <- list(t2g_gobp, t2g_gocc, t2g_gomf, t2g_hallmark, t2g_kegg, t2g_reactome)
+names(all_t2gs) <- c("GOBP", "GOCC", "GOMF", "Hallmark", "KEGG", "Reactome")
+
+##now iterate through every signature and get terms enriched for sensitive and resistnat
+##markers
+universe=unique(sigs$feature)
+
+eres<-do.call(rbind,lapply(names(all_t2gs),function(x){
+  t2g=all_t2gs[[x]]
+  do.call(rbind,lapply(treatment_contrasts,function(y){
+    markers=getSigsFromData(condition=y)
+  res <- try(clusterProfiler::enricher(markers$resistant, 
+                                               universe = universe, TERM2GENE = t2g,
+                                               maxGSSize = 500, pvalueCutoff = 0.05)@result %>%
+        mutate(sign = 'resistant', signature = treats[[y]],path=x))
+  sens<-try(clusterProfiler::enricher(markers$sensitive, 
+                                             universe = universe, TERM2GENE = t2g,
+                                             maxGSSize = 500, pvalueCutoff = 0.05)@result %>%
+      mutate(sign = 'sensitive', signature = treats[[y]],path=x))
+  return(rbind(res,sens))
+  }))
+}))
+
+eres|>subset(qvalue<0.25)|>subset(Count>1)|>group_by(sign,signature,path)|>summarize(nterms=n())|>ggplot(aes(x=path,y=nterms,fill=signature))+geom_bar(stat='identity',position='dodge')+facet_grid(sign~.)+scale_fill_manual(values=dcolors)
+
+ggsave('enrichedTermsQval25AtLeast2Proteins.pdf')
+
+readr::write_csv(eres,file='functionalEnrichmentResults.csv')
+```
+What terms are shared? are there anything interesting?/
+
+```{r enrich results}
+
+paths<-eres|>subset(qvalue<0.25)|>subset(Count>1)|>
+  subset(path%in%c('Reactome','GOBP'))|>
+  group_by(ID)|>summarize(nsigs=n_distinct(signature))|>subset(nsigs>1)
+
+eres$signature=factor(eres$signature,levels=c('Gilteritinib','Venetoclax','Decitabine','Decitabine+Venetoclax','Gilteritinib+Venetoclax','Gilteritinib+Decitabine','Gilteritinib+Decitabine+Venetoclax'))
+
+##now create a bubble plot of the pathways by enrichment? 
+eres|>subset(sign=='resistant')|>
+  subset(ID%in%paths$ID)|>ggplot(aes(x=signature,y=ID,size=Count,col=qvalue))+geom_point()+ggtitle("Resistant signature enrichment - GO BP")+theme(axis.text.x=element_text(angle=90, hjust=1))
+ggsave('resEnrichGOBPReactome.pdf',height=12)
+
+eres|>subset(sign=='sensitive')|>
+  subset(ID%in%paths$ID)|>ggplot(aes(x=signature,y=ID,size=Count,col=qvalue))+geom_point()+ggtitle("Sensitive signature enrichment - GO BP")+theme(axis.text.x=element_text(angle=90, hjust=1))
+ggsave('sensEnrichGOBPReactome.pdf',height=12)
+
+
+##should we do reactome too?
+paths<-eres|>subset(qvalue<0.25)|>subset(Count>1)|>
+  subset(path=='Reactome')|>
+  group_by(ID)|>summarize(nsigs=n_distinct(signature))|>subset(nsigs>1)
+
+##now create a bubble plot of the pathways by enrichment? 
+eres|>subset(sign=='resistant')|>
+  subset(ID%in%paths$ID)|>ggplot(aes(x=signature,y=ID,size=Count,col=qvalue))+geom_point()+ggtitle("Resistant signature enrichment - Reactome")+theme(axis.text.x=element_text(angle=90, hjust=1))
+ggsave('resEnrichReactome.pdf',height=4)
+
+eres|>subset(sign=='sensitive')|>
+  subset(ID%in%paths$ID)|>ggplot(aes(x=signature,y=ID,size=Count,col=qvalue))+geom_point()+ggtitle("Sensitive signature enrichment - Reactome")+theme(axis.text.x=element_text(angle=90, hjust=1))
+dev.off()
+ggsave('sensEnrichReactome.pdf',height=4)
+```
+
+## Other metrics?
+How can we assess these things? can we look at publicly available cell lines

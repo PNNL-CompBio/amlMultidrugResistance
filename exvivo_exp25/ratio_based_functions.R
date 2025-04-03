@@ -23,8 +23,16 @@ sigs|>subset(sig)|>
   group_by(marker,contrast)|>
   summarize(nMarkers=n())
 
+dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
+          `Venetoclax`='#0072B2',
+          `Decitabine`='#D14610',
+          `Gilteritinib+Venetoclax`='#05820F',
+          `Decitabine+Venetoclax`='#D172B2',
+          `Gilteritinib+Decitabine`='#EDAE49',
+          `Gilteritinib+Decitabine+Venetoclax`='#666666')
+
 ##permanent colors fors ignature
-sigcolors<<-c(Ratio='#666666',`resistant signal`="#9999DD",`sensitive signal`='#AAAA77',none='#EEEEEE')
+sigcolors<<-c(Ratio='#666666',`resistant signal`="#9999DD",`sensitive signal`='#AAAA77',none='#DDDDDD')
 
 #colors for true false
 tfcolors<<-c(`TRUE`='#DD7333',`FALSE`='#4477EE')
@@ -42,10 +50,9 @@ getSigsFromData<-function(condition='V-UT',numProts=10,protList=c(),lfcthresh=0.
     #subset(sig)|>
     arrange(t_test_pval) %>%
     subset(feature%in%protList)|>
-    subset(logFC>lfcthresh)|>
-    slice(1:10)|>
-    pull(feature)|>
-    unique()
+    subset(logFC>lfcthresh)
+  resistant_markers = resistant_markers$feature[1:numProts]
+
 
   ##take all the 'sensitive' indicators, drugs that are  down-regulated upon drug treatment
   sensitive_markers <- sigs %>%
@@ -53,10 +60,9 @@ getSigsFromData<-function(condition='V-UT',numProts=10,protList=c(),lfcthresh=0.
     arrange(t_test_pval) %>%
     #subset(sig)|>
     subset(feature%in%protList)|>
-    subset(logFC<(-1*lfcthresh))|>
-    slice(1:10)|>
-    pull(feature)|>
-    unique()
+    subset(logFC<(-1*lfcthresh))
+
+  sensitive_markers = sensitive_markers$feature[1:numProts]
 
   if(doPlot){
     ###let's plot the proteins
@@ -67,12 +73,24 @@ getSigsFromData<-function(condition='V-UT',numProts=10,protList=c(),lfcthresh=0.
       arrange(logFC)#|>
     #  subset(sigMarker!='none')
 
-    p<-ggplot(lfcs,aes(y=-1*log10(t_test_pval),x=logFC,col=sigMarker))+
+ #   lfcs$significance<-apply(lfcs,1,function(x){if(x$logFC<0) return(log10(x$t_test_pval)) else return(-1*log10(x$t_test_pval))})
+    lfcs<-lfcs|>
+      mutate(significance=ifelse(logFC<0, log10(t_test_pval), -1*log10(t_test_pval)))|>
+      arrange(significance)|>
+      subset(!is.na(significance))
+    lfcs$feature=factor(lfcs$feature,levels=lfcs$feature)
+
+
+    p<-ggplot(lfcs,aes(y=-1*log10(t_test_pval),x=logFC,col=sigMarker,size=10))+
       geom_point()+
       scale_color_manual(values=sigcolors)+
       theme_bw()+
-      ggtitle(paste(treatlist[[condition]],'Signature markers by p-value'))
-    print(p)
+      ggtitle(paste("Selection of ",treatlist[[condition]],'markers by significance'))
+
+    p2<-ggplot(lfcs[c(1:200,(nrow(lfcs)-200):nrow(lfcs)),],aes(x=feature,y=significance,fill=sigMarker))+geom_bar(stat='identity')+scale_fill_manual(values=sigcolors)+theme_bw()+coord_flip()
+    print(cowplot::plot_grid(p,p2,ncol=2))
+
+    ##also print original expression?
   }
 
   ## TODO: add in some check about the 'quality' of the signature in the original data?

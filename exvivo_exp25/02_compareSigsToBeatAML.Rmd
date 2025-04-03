@@ -23,13 +23,6 @@ syn = synapseLogin()
 #for each signature, get complete feature and identify resistant and sensitive markers for each...
 source('ratio_based_functions.R')
 
-dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
-          `Venetoclax`='#0072B2',
-          `Decitabine`='#D14610',
-          `Gilteritinib+Venetoclax`='#05820F',
-          `Decitabine+Venetoclax`='#D172B2',
-          `Gilteritinib+Decitabine`='#EDAE49',
-          `Gilteritinib+Decitabine+Venetoclax`='#666666')
 
 
 
@@ -133,7 +126,8 @@ calc_sig_in_patients<-function(sensitive_markers,resistant_markers, drug_sig,sig
   
   corval=corstats[1,'Rho']
   tp=pvals[1,'t.pval']
-  mdata<-subset(mdata,!is.na(AUC))
+  mdata<-subset(mdata,!is.na(AUC))#|>
+    #subset(`Signature type`=='Ratio')
   p1=ggplot(mdata,aes(x=AUC,y=signature,col=`Signature type`))+geom_point()+ggtitle(paste(signame,'treated signature vs. patient AUC of ',drug_sig,'\n Rho =',corval))+scale_color_manual(values=sigcolors)+theme_bw()
   p2=ggplot(mdata,aes(x=group,y=signature,fill=`Signature type`))+geom_boxplot()+ggtitle(paste(signame,'treated signature vs. patient AUC of ',drug_sig,'\nt-test p=',tp))+scale_fill_manual(values=sigcolors)+theme_bw()
   res=cowplot::plot_grid(p1,p2,nrow=2)
@@ -151,6 +145,7 @@ Now we define function so we can evaluate it
 
 ##now we can compare and contrast various ways to determine a signature. 
 pdf('singleDrugCorStatsLFC0.pdf')
+
 singles<-c("V-UT","G-UT","D-UT")
 combos=setdiff(sig_names,singles)
 
@@ -162,6 +157,7 @@ res<-do.call(rbind,lapply(singles,function(sn){
         res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0)
   },markers))
 }))
+
 dev.off()
 
 
@@ -186,6 +182,7 @@ First we can evaluate the drug combinations.
 combos=setdiff(sig_names,singles)
 
 pdf('comboDrugCorStatsLFC0.pdf')
+
 ##let's collect the stats in a table                
 res4<-do.call(rbind,lapply(combos,function(sn){
     markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)))
@@ -194,6 +191,7 @@ res4<-do.call(rbind,lapply(combos,function(sn){
         res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0)
   },markers))
 }))
+
 dev.off()
 
 
@@ -223,10 +221,11 @@ fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Gilteritinib","Deci
 
 fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
 
-subset(fulldat,`Signature type`=='Ratio')|>
+fulldat|>#subset(fulldat,`Signature type`=='Ratio')|>
   ggplot(aes(y=Signal,x=Drug,size=abs(Rho),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with ex vivo AUC")+scale_color_manual(values=tfcolors)
 
 ggsave('signalAUCconcordanceLFC0.pdf')
+
 allcombos <-  fulldat|>dplyr::select(Signal,Drug)|>distinct()
 
 
@@ -238,71 +237,71 @@ First let's change the threshold to 0.5.
 
 ```{r lfc change, message=FALSE, error=FALSE,warning=FALSE}
 
-##and save the file
-#readr::write_csv(res,file='singleSigDrugCorrelationsLFC0.csv')
-
-##what if we alter LFC threshold. 
-pdf('drugCorStatsLFC5.pdf')
-##let's collect the stats in a table                
-res2<-do.call(rbind,lapply(sig_names,function(sn){
-    markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)),lfcthresh = 0.5)
-    do.call(rbind,lapply(drug_treatments,function(dr,markers){
-        res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
-        res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0.5)
-  },markers))
-}))
-dev.off()
-
-##we can plot the significant correlations
-res2|>subset(Rho.p<0.05)|>ggplot(aes(x=Drug,y=Rho,fill=Signal))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant correlations LFC 0.5")+scale_fill_manual(values=dcolors)
-
-
-fulldat<-res2|>
-  mutate(concordant=ifelse(Rho>0,TRUE,FALSE))|>
-  mutate(significant=ifelse(Rho.p<0.05,TRUE,FALSE))
-
-fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Gilteritinib","Decitabine","Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
-
-fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
-
-subset(fulldat,`Signature type`=='Ratio')|>
-  ggplot(aes(y=Signal,x=Drug,size=abs(Rho),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with ex vivo AUC")+scale_color_manual(values=tfcolors)
-
-ggsave('AUCconcordanceLFC5.pdf')
-
-
-##what if we alter LFC threshold. 
-pdf('drugCorStatsLFC1.pdf')
-##let's collect the stats in a table                
-res3<-do.call(rbind,lapply(sig_names,function(sn){
-    markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)),lfcthresh = 1.0)
-    do.call(rbind,lapply(drug_treatments,function(dr,markers){
-        res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
-        res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=1.0)
-  },markers))
-}))
-dev.off()
-
-##we can plot the significant correlations
-res3|>subset(Rho.p<0.05)|>ggplot(aes(x=Drug,y=Rho,fill=Signal))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant correlations LFC 1")+scale_fill_manual(values=dcolors)
-
-ggsave("sigCorsLFC1.pdf")
-
-fulldat<-res3|>
-  mutate(concordant=ifelse(Rho>0,TRUE,FALSE))|>
-  mutate(significant=ifelse(Rho.p<0.05,TRUE,FALSE))
-
-fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Gilteritinib","Decitabine","Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
-
-fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
-
-subset(fulldat,`Signature type`=='Ratio')|>
-  ggplot(aes(y=Signal,x=Drug,size=abs(Rho),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with ex vivo AUC")+scale_color_manual(values=tfcolors)
-
-ggsave('AUCconcordanceLFC1.pdf')
-
-allres<-rbind(res,res2,res3,res4)
-readr::write_csv(allres,file='signatureDrugRespCors.csv')
+# ##and save the file
+# #readr::write_csv(res,file='singleSigDrugCorrelationsLFC0.csv')
+# 
+# ##what if we alter LFC threshold. 
+# pdf('drugCorStatsLFC5.pdf')
+# ##let's collect the stats in a table                
+# res2<-do.call(rbind,lapply(sig_names,function(sn){
+#     markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)),lfcthresh = 0.5)
+#     do.call(rbind,lapply(drug_treatments,function(dr,markers){
+#         res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
+#         res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=0.5)
+#   },markers))
+# }))
+# dev.off()
+# 
+# ##we can plot the significant correlations
+# res2|>subset(Rho.p<0.05)|>ggplot(aes(x=Drug,y=Rho,fill=Signal))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant correlations LFC 0.5")+scale_fill_manual(values=dcolors)
+# 
+# 
+# fulldat<-res2|>
+#   mutate(concordant=ifelse(Rho>0,TRUE,FALSE))|>
+#   mutate(significant=ifelse(Rho.p<0.05,TRUE,FALSE))
+# 
+# fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Gilteritinib","Decitabine","Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
+# 
+# fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
+# 
+# subset(fulldat,`Signature type`=='Ratio')|>
+#   ggplot(aes(y=Signal,x=Drug,size=abs(Rho),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with ex vivo AUC")+scale_color_manual(values=tfcolors)
+# 
+# ggsave('AUCconcordanceLFC5.pdf')
+# 
+# 
+# ##what if we alter LFC threshold. 
+# pdf('drugCorStatsLFC1.pdf')
+# ##let's collect the stats in a table                
+# res3<-do.call(rbind,lapply(sig_names,function(sn){
+#     markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)),lfcthresh = 1.0)
+#     do.call(rbind,lapply(drug_treatments,function(dr,markers){
+#         res=calc_sig_in_patients(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
+#         res|>mutate(Signal=treatlist[[sn]],Drug=dr,lfc=1.0)
+#   },markers))
+# }))
+# dev.off()
+# 
+# ##we can plot the significant correlations
+# res3|>subset(Rho.p<0.05)|>ggplot(aes(x=Drug,y=Rho,fill=Signal))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant correlations LFC 1")+scale_fill_manual(values=dcolors)
+# 
+# ggsave("sigCorsLFC1.pdf")
+# 
+# fulldat<-res3|>
+#   mutate(concordant=ifelse(Rho>0,TRUE,FALSE))|>
+#   mutate(significant=ifelse(Rho.p<0.05,TRUE,FALSE))
+# 
+# fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Gilteritinib","Decitabine","Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
+# 
+# fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
+# 
+# subset(fulldat,`Signature type`=='Ratio')|>
+#   ggplot(aes(y=Signal,x=Drug,size=abs(Rho),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with ex vivo AUC")+scale_color_manual(values=tfcolors)
+# 
+# ggsave('AUCconcordanceLFC1.pdf')
+# 
+# allres<-rbind(res,res2,res3,res4)
+# readr::write_csv(allres,file='signatureDrugRespCors.csv')
 ```
 
 

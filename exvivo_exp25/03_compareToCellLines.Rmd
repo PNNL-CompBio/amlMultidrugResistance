@@ -84,6 +84,7 @@ calc_sig_in_celllines<-function(sensitive_markers,resistant_markers, drug_sig,si
   mdata[rownames(signal), 'Ratio'] <- signal[,'ratio']
   mdata[rownames(signal), 'resistant signal'] <- signal[,'resistant_signal']
   mdata[rownames(signal), 'sensitive signal'] <- signal[,'sensitive_signal']
+  mdata$Treatment<-unlist(lapply(mdata$Treatment,function(x) ifelse(x=='none','none',druglist[[x]])))
 
   cdata<-mdata#[,c('Ratio','AUC')]
   mdata<-mdata|>
@@ -106,6 +107,7 @@ calc_sig_in_celllines<-function(sensitive_markers,resistant_markers, drug_sig,si
          group_by(`Signature type`)|>
          summarize(t.pval=t.test(signal~Treatment)$p.value,w.pval=wilcox.test(signal~Treatment)$p.value))
   
+  
   tp=pvals[1,'t.pval']
    p<-ggplot(mdata,aes(x=Treatment,y=signal,fill=`Signature type`))+
     geom_boxplot()+scale_fill_manual(values=sigcolors)+theme_bw()+ggtitle(paste(signame,'signature in',drug_sig,'cell lines','\nt-test p=',tp))
@@ -116,13 +118,13 @@ calc_sig_in_celllines<-function(sensitive_markers,resistant_markers, drug_sig,si
     summarize(meanSig=mean(signal))|>
     ungroup()|>
     tidyr::pivot_wider(names_from='Treatment',values_from='meanSig')|>
-    dplyr::rename(treated=drug_sig)|>
+    dplyr::rename(treated=druglist[[drug_sig]])|>
     mutate(difference=treated-none)
   
 
   ret<-pvals|>
     left_join(meanSig)|>
-    mutate(sig=signame,cellLine=drug_sig)
+    mutate(sig=signame,cellLine=druglist[[drug_sig]])
   return(ret)
 }
  
@@ -139,14 +141,13 @@ res<-do.call(rbind,lapply(sig_names,function(sn){
 dev.off()
 
 res <- res|>tidyr::separate(sig,int=c('Treatment','UT'),sep='-')|>
-  mutate(Treatment=unlist(lapply(Treatment,function(x) druglist[[x]])))|>
-  mutate(`cell line`=unlist(lapply(cellLine,function(x) druglist[[x]])))
+  mutate(Treatment=unlist(lapply(Treatment,function(x) druglist[[x]])))
 
 
-res|>ggplot(aes(x=`cell line`,y=t.pval,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("T-test p-value")+scale_fill_manual(values=dcolors)
+res|>ggplot(aes(x=cellLine,y=t.pval,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("T-test p-value")+scale_fill_manual(values=dcolors)
 
 res|>subset(t.pval<0.05)|>
-  ggplot(aes(x=`cell line`,y=difference,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant signals")+scale_fill_manual(values=dcolors)
+  ggplot(aes(x=cellLine,y=difference,fill=Signature))+geom_bar(stat='identity',position='dodge')+facet_grid(`Signature type`~.)+coord_flip()+ggtitle("Significant signals")+scale_fill_manual(values=dcolors)
 
 
 ```
@@ -160,11 +161,11 @@ fulldat<-res|>
 
 fulldat$Signature<-factor(fulldat$Signature,levels=c("Venetoclax","Gilteritinib","Decitabine","Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
 
-fulldat$`cell line`<-factor(fulldat$`cell line`,levels=c('Gilteritinib','Decitabine',"Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
+fulldat$cellLine<-factor(fulldat$cellLine,levels=c('Gilteritinib','Decitabine',"Gilteritinib+Venetoclax","Gilteritinib+Decitabine","Decitabine+Venetoclax","Gilteritinib+Decitabine+Venetoclax"))
 #fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Quizartinib","Azacytidine - Venetoclax","Dasatinib",'Panobinostat','Ruxolitinib - Venetoclax'))
 
 subset(fulldat,`Signature type`=='Ratio')|>
-  ggplot(aes(y=Signature,x=`cell line`,size=abs(difference),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with Cell line changes")+scale_color_manual(values=tfcolors)
+  ggplot(aes(y=Signature,x=cellLine,size=abs(difference),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with Cell line changes")+scale_color_manual(values=tfcolors)
 
 ggsave('AUCCellLineconcordance.pdf')
 

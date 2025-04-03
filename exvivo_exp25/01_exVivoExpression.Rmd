@@ -17,7 +17,7 @@ library(msigdbr)
 source("helper_scripts.R")
 source("synapseUtil.R")
 source("plotting enrichment.R")
-
+source("ratio_based_functions.R")
 syn<-synapseLogin()
 ## Load corrected exp25 dataset
 # m_corrected <- readRDS("msnset_4patients_corrected.RDS")
@@ -50,7 +50,7 @@ pData(m_corrected)<-meta
 treatment_contrasts <- c("D-UT", "G-UT", "V-UT", "GV-UT", "GD-UT", "DV-UT", "GVD-UT","GV-V","DV-V","GVD-GV")
 treats=list(`D-UT`='Decitabine',`G-UT`='Gilteritinib', 
             `V-UT`='Venetoclax', `GV-UT`='Gilteritinib+Venetoclax', 
-            `GD-UT`='Gilteritnib+Decitabine', 
+            `GD-UT`='Gilteritinib+Decitabine', 
             `DV-UT`='Decitabine+Venetoclax', 
             `GVD-UT`='Gilteritinib+Decitabine+Venetoclax')
 
@@ -117,6 +117,13 @@ ggplot(aes(x=direction,fill=drug,y=nFeatures))+
   geom_bar(stat='identity',position='dodge')+
   facet_grid(Twofold~.)+ggtitle("Number of differentially expressed proteins of drug changes compared to untreated")+scale_fill_manual(values=dcolors)+coord_flip()
 
+
+
+dcounts[grep('UT',dcounts$contrast),]|>
+  mutate(drug=sapply(contrast,function(x) treats[[x]]))|>
+ggplot(aes(x=direction,fill=drug,y=nFeatures))+
+  geom_bar(stat='identity',position='dodge')+
+  ggtitle("Number of differentially expressed proteins of drug changes compared to untreated")+scale_fill_manual(values=dcolors)+coord_flip()
 
 ggsave('All Diffex Counts.pdf')
 
