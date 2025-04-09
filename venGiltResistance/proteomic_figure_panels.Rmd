@@ -444,9 +444,6 @@ all_kinase_enrich<-do.call(rbind,lapply(enrichlist,function(x){
   ksea_res
 }))
 
-all_kinase_enrich$m<-unlist(all_kinase_enrich$m)
-all_kinase_enrich$z.score<-unlist(all_kinase_enrich$z.score)
-
 ##summarize enriched kinases
 
 
@@ -502,6 +499,7 @@ go_plot|>
   geom_point()+coord_flip()
 #(stat='identity',position='dodge')
 
+readr::write_csv(all_global_enrich,'go_gsea.csv')
 ggsave('gvGoTerms_05.pdf',width=12)
 ```
 
@@ -565,9 +563,11 @@ kegg_plot<-all_global_kegg|>
 ggplot(kegg_plot,aes(x=description,y=`Treated state`,
                    size=log10p,col=normalizedEnrichmentScore))+
   geom_point()+coord_flip()+
-  ggtitle("KEGG ORA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))
+  ggtitle("KEGG GSEA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))
 
 ggsave('gvKeggPaths_FDR05.pdf')
+
+readr::write_csv(all_global_kegg,file='kegg_GSEA.csv')
 
 ```
 Now that we have all these conditions we can focus on those of interest
@@ -601,7 +601,10 @@ to_plot<-all_kinase_enrich|>
 ggplot(to_plot,aes(x=Kinase,y=`Treated state`,
                    col=z.score,size=log10p))+geom_point()+coord_flip()
 ggsave('sigKinaseSummary.pdf')
-readr::write_csv(all_kinase_enrich,file='kinase_enrichment.csv')
+
+apply(all_kinase_enrich,2,unlist)|>
+  as.data.frame()|>
+  readr::write_csv(file='kinase_enrichment.csv')
 ```
 
 Now that we have all these conditions we can focus on those of interest
@@ -763,10 +766,11 @@ kegg_hem_exp<-subset(global, Gene%in%kegg_genes$userId)|>
   dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
   left_join(meta)|>
   subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
-
-ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("KEGG:Hematopoetic Cell Lineage")
 ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("KEGG:hematopoetic Cell Lineage")
 
+ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("KEGG:Hematopoetic Cell Lineage")
+
+ggsave('hemLineage.pdf')
 #### t cell
 tcell<-subset(all_global_enrich,description=='T cell mediated immunity')|>
   dplyr::select(userId)|>
