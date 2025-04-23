@@ -1,0 +1,271 @@
+---
+title: "Cell Line Differential expression"
+author: "Sara gosline"
+date: "2025-04-20"
+output: html_document
+---
+
+# Cell line differential expression with Decitabine
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(limma)
+library(synapser)
+library(MSnSet.utils)
+library(msigdbr)
+syn <- synLogin()
+
+##todo download this from synapse
+proteomics <- read.csv(synGet('syn62012882')$path)|>
+  tibble::column_to_rownames('X')
+rownames(proteomics) <- proteomics$X
+colnames(proteomics) <- sub("^X", "", colnames(proteomics))
+columns <- colnames(proteomics)
+parental_cols<- columns[grep("Parental", colnames(proteomics))]
+
+
+meta <- read.csv(synGet('syn62012890')$path)
+rownames(meta) <- proteomics$name
+
+
+###Phospho results
+phospho <- read.csv(synGet('syn62012883')$path)
+rownames(phospho) <- phospho$X
+colnames(phospho) <- sub("^X", "", colnames(phospho))
+columns <- colnames(phospho)
+parental_cols<- columns[grep("Parental", colnames(phospho))]
+
+source("ratio_based_functions.R")
+
+#for each signature, get complete feature and identify resistant and sensitive markers for each...
+
+
+
+
+#pcolors=c(`507`='#667242',`335`="#997242",`292`="#227242",`035`="#887242")
+pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
+# 
+
+```
+
+Now we have the cell line data, we are really only interested in Decitabine.
+
+```{r dec diffex}
+design <- model.matrix(~0 + factor(meta$name))
+colnames(design)<-lapply(colnames(design), function(x) strsplit(x, ")")[[1]][2])
+contrast_matrix <- limma::makeContrasts(
+  D_only-none_Parental, 
+  G_Early-none_Parental, 
+  G_Late-none_Parental, 
+  
+  GD_Early-none_Parental, 
+  GD_Late-none_Parental, 
+  
+  #GV_Early-none_Parental, 
+  #GV_Late-none_Parental, 
+  
+  #GVD_Early-none_Parental, 
+  #GVD_Late-none_Parental, 
+  levels = design
+) 
+dim(contrast_matrix)
+fit <- limma::lmFit(proteomics, design)
+fit <- limma::contrasts.fit(fit, contrast_matrix)
+fit <- limma::eBayes(fit)
+
+limma::write.fit(fit, file = "diff_exp_d_only.csv",  adjust = "BH", sep = ",")
+
+
+constrast <- paste('D_only - none_Parental')
+gres <- limma::topTable(fit, coef=constrast, number=Inf, sort.by="none")
+
+design <- model.matrix(~0 + factor(meta$name))
+colnames(design)<-lapply(colnames(design), function(x) strsplit(x, ")")[[1]][2])
+contrast_matrix <- limma::makeContrasts(
+  D_only-none_Parental, 
+  G_Early-none_Parental, 
+  G_Late-none_Parental, 
+  
+  GD_Early-none_Parental, 
+  GD_Late-none_Parental, 
+  
+  #GV_Early-none_Parental, 
+  #GV_Late-none_Parental, 
+  
+  #GVD_Early-none_Parental, 
+  #GVD_Late-none_Parental, 
+  levels = design
+) 
+dim(contrast_matrix)
+phospho_fit <- limma::lmFit(phospho, design)
+phospho_fit <- limma::contrasts.fit(phospho_fit, contrast_matrix)
+phospho_fit <- limma::eBayes(phospho_fit)
+
+limma::write.fit(phospho_fit, file = "diff_exp_phospho.csv",  adjust = "BH", sep = ",")
+
+
+#for (i in c('D_only')){ #'GV_Late','GV_Early' , 'GVD_Early', 'GVD_Late')){
+  #  print(i)
+constrast <- 'D_only - none_Parental'
+phres <- limma::topTable(phospho_fit, coef=constrast, number=Inf, sort.by="none")
+
+
+```
+
+Now we have the differential expression and can compare it to the signatures?
+
+
+```{r dec diffex in patients}
+diffex<-subset(gres,adj.P.Val<0.01)|>subset(abs(logFC)>1)
+
+upreg<-subset(diffex,logFC>0)
+downreg<-subset(diffex,logFC<0)
+prots<-rownames(diffex)
+
+m_corrected <- readRDS(syn$get("syn64605135")$path)
+pat_diffexp<-read.table(syn$get('syn66278940')$path,header=TRUE)
+
+pData(m_corrected)<-as.data.frame(apply(pData(m_corrected),2,as.factor))|>
+    mutate(Drug=sapply(Treatment,function(x) druglist[[x]]))
+
+diffEx_desc<-pat_diffexp|>
+  mutate(direction=ifelse(logFC>0,'Upregulated','Downregulated'))|>
+  mutate(sig=adj.P.Val<0.05)|>
+  mutate(Twofold=abs(logFC)>1)
+
+nog_pats<-rownames(subset(pData(m_corrected),Treatment%in%c('UT','V','D',"DV")))
+
+exprs(m_corrected)[which(is.na(exprs(m_corrected)),arr.ind=T)]<-0.0
+##now we can visualize in boxplots as well
+prot_dat<-exprs(m_corrected[,nog_pats])|>
+  as.data.frame()|>
+  tibble::rownames_to_column('feature')|>
+  tidyr::pivot_longer(cols=contains('_'),
+                      names_to='sample',values_to='logExpr')|>
+  left_join(pData(m_corrected))|>
+  left_join(select(diffEx_desc,c(feature,contrast,direction,sig)))
+
+prot_dat$Drug=factor(prot_dat$Drug,
+                     levels=c('none','Decitabine','Venetoclax','Decitabine+Venetoclax'))
+
+```
+
+Now we can get the gene enrichment of the cell lines.
+```{r signatures}
+t2g_hallmark <- msigdbr(species = "Homo sapiens", collection = "H") %>%
+  dplyr::select(gs_name, gene_symbol)
+
+t2g_gobp <- msigdbr(species = "Homo sapiens", collection = "C5", subcollection = "BP") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gocc <- msigdbr(species = "Homo sapiens", collection = "C5", subcollection = "CC") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gomf <- msigdbr(species = "Homo sapiens", collection = "C5", subcollection = "MF") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_wikipath <- msigdbr(species = "Homo sapiens", collection = "C2", subcollection = "WIKIPATHWAYS") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_reactome <- msigdbr(species = "Homo sapiens", collection = "C2", subcollection = "REACTOME") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+
+t2g_kegg <- msigdbr(species = "Homo sapiens", collection = "C2", subcollection = "KEGG_MEDICUS") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+
+all_t2gs <- list(t2g_gobp, t2g_gocc, t2g_gomf, t2g_hallmark, t2g_kegg, t2g_reactome)
+names(all_t2gs) <- c("GOBP", "GOCC", "GOMF", "Hallmark", "KEGG", "Reactome")
+
+```
+
+Then we evaluate everything for each contrats. 
+
+```{r, message=FALSE, warning=FALSE,echo=FALSE}
+## Getting the GSEA results
+colnames(proteomics)<-rownames(meta)
+newset<-ExpressionSet(as.matrix(proteomics),phenoData=AnnotatedDataFrame(meta))
+
+treatment_contrasts=("D_only-none_Parental")
+#pData(m_corrected)=pData(m_corrected)[,c('sample','Treatment','patient','Drug')]
+ for (t2g_name in names(all_t2gs)){
+   GSEA_helper(newset, treatment_contrasts, t2g = all_t2gs[[t2g_name]],
+               t2g_name = paste0("ptrc_decRes_lines_", t2g_name), "name")
+ }
+
+
+ GSEA_global <- rbind(read.table("GSEA_ptrc_decRes_lines_GOBP_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "GOBP"),
+                      read.table("GSEA_ptrc_decRes_lines_GOCC_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "GOCC"),
+                      read.table("GSEA_ptrc_decRes_lines_GOMF_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "GOMF"),
+                      read.table("GSEA_ptrc_decRes_lines_Hallmark_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "Hallmark"),
+                      read.table("GSEA_ptrc_decRes_lines_KEGG_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "KEGG"),
+                      read.table("GSEA_ptrc_decRes_lines_Reactome_combined.txt", sep = "\t") %>% 
+                        mutate(DB = "Reactome"))
+ write.table(GSEA_global, "decRes_lines_GSEA.txt", sep = "\t", quote = F, row.names = F)
+ 
+ ```
+ 
+ We cam do a little bit of plotting
+ 
+ ```{r plots}
+ enrichment_df <- GSEA_global %>%
+   filter(contrast == "D_only-none_Parental",
+          DB == "Hallmark") %>% 
+   mutate(pathway = sub("HALLMARK_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "Decitabine Resistant - Parental", enrichment_title = "Hallmark GSEA Decitabine Resistant")
+
+
+enrichment_df <- GSEA_global %>%
+   filter(contrast == "D_only-none_Parental",
+          DB == "KEGG") %>% 
+   mutate(pathway = sub("KEGG MEDICUS", "", Description),
+          pathway = gsub("REFERENCE", "", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df,"Decitabine Resistant - Parental", enrichment_title = "KEGG GSEA Decitabine Resistant")
+
+
+ enrichment_df <- GSEA_global %>%
+   filter(contrast == "D_only-none_Parental",
+          DB == "Reactome") %>% 
+   mutate(pathway = sub("REACTOME_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "Decitabine Resistant - Parental", enrichment_title = "Reactome GSEA Decitabine Resistant")
+
+
+ enrichment_df <- GSEA_global %>%
+   filter(contrast == "D_only-none_Parental",
+          DB == "GOBP") %>% 
+   mutate(pathway = sub("GOBP_", "", Description),
+          pathway = gsub("_", " ", pathway),
+          enrichment = NES,
+          adj_p_val = p.adjust) %>%
+   arrange(adj_p_val)
+plot_enrichment_result(enrichment_df, "Decitabine Resistant - Parental", enrichment_title = "GO BP GSEA Decitabine Resistant")
+
+```
+
+
+These only plot the top results, can we compare with the patient samples?
+
+```{r patient samples}

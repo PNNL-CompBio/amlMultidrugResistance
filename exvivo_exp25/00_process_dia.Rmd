@@ -8,12 +8,13 @@ library(msigdbr)
 source("helper_scripts.R")
 source("synapseUtil.R")
 source("plotting enrichment.R")
-dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',
-          `Venetoclax`='#0072B2',
+
+dcolors=c(none='#CCCAAA',Gilteritinib='#0072B2',
+          `Venetoclax`='#EEDD55',
           `Decitabine`='#D14610',
           `Gilteritinib+Venetoclax`='#05820F',
-          `Decitabine+Venetoclax`='#D172B2',
-          `Gilteritinib+Decitabine`='#EDAE49',
+          `Decitabine+Venetoclax`='#EDAE49',
+          `Gilteritinib+Decitabine`='#D172B2',
           `Gilteritinib+Decitabine+Venetoclax`='#666666')
 
 pcolors=c(`035`='#669999',`292`="#AABB66",`335`="#BBAABB",`507`="#CCBB33")
@@ -64,8 +65,11 @@ druglist=list(UT='none',D='Decitabine',V='Venetoclax',G='Gilteritinib',
               GV='Gilteritinib+Venetoclax',GD='Gilteritinib+Decitabine',DV='Decitabine+Venetoclax',
               GVD='Gilteritinib+Decitabine+Venetoclax')
 meta<-meta|>mutate(Drug=sapply(Treatment,function(x) druglist[[x]]))
+
+meta<-meta|>subset(Treatment%in%c("UT","V","DV","D"))
+
 rownames(meta) <- meta$sample
-m <- MSnSet(exprs = crosstab, pData = meta)
+m <- MSnSet(exprs = crosstab[,meta$sample], pData = meta)
 # pData(m)
 # exprs(m)
    
@@ -91,6 +95,7 @@ write.table(exprs(m), "ptrc_4patient_cellines_dia.txt", sep = "\t", quote = F)
 saveRDS(m, "msnset_4patients_uncorrected.RDS")
 synapseStore("msnset_4patients_uncorrected.RDS",'syn64134071')
 
+
 ```
 
 
@@ -109,6 +114,19 @@ ggsave("patientPCA_corrected.pdf")
 
 write.table(exprs(m_corrected), "4patients_corrected_crosstab.tsv", sep = "\t", quote = F)
 synapseStore("4patients_corrected_crosstab.tsv",'syn64961545')
+
+nmmat<-exprs(m_corrected)
+nmmat[which(is.na(nmmat),arr.ind=T)]<-0.0
+
+library(umap)
+res<-umap(t(nmmat))
+
+pu<-res$layout
+colnames(pu)<-c('Dim1','Dim2')
+pu<-pu[rownames(meta),]
+pu<-cbind(pu,meta)
+
+ggplot(pu,aes(x=Dim1,y=Dim2,col=Drug))+geom_point()
 ```
 
 
