@@ -131,10 +131,10 @@ calc_sig_in_celllines<-function(sensitive_markers,resistant_markers, drug_sig,si
 pdf('cellLineHeatmaps.pdf')
 
 res<-do.call(rbind,lapply(sig_names,function(sn){
-    markers=getSigsFromData(condition=sn,protList=unique(global$Gene),lfcthresh = 0)
+    markers=getSigsFromData(condition=sn,protList=unique(global$Gene))
     do.call(rbind,lapply(cell_lines,function(dr,markers){
         res=calc_sig_in_celllines(markers$sensitive,markers$resistant,dr,treatlist[[sn]])
-        res|>mutate(Signature=treatlist[[sn]],CellLine=dr,lfc=0)
+        res|>mutate(Signature=treatlist[[sn]],CellLine=dr)
   },markers))
 }))
 
