@@ -82,7 +82,7 @@ ggplot(gpcs,aes(x=PC1,y=PC2,shape=State,col=Drug,size=4))+geom_point()+  scale_c
   ggtitle("PCA of global proteomics")
 
 ggsave('pcaglobal.pdf')
-
+synStore(File('pcaglobal.pdf',parentId='syn66504211'))
 gu|>  
   as.data.frame()|>
   tibble::rownames_to_column('Sample')|>
@@ -96,7 +96,7 @@ right_join(meta)|>
     ggtitle("UMAP of global proteomics")
 
 ggsave('umapGlobal.pdf')
-
+synStore(File('umapGlobal.pdf',parentId='syn66504211'))
 
 ppcs<-prcomp(pmat)$rotation|>
   as.data.frame()|>
@@ -111,6 +111,7 @@ ggplot(ppcs,aes(x=PC1,y=PC2,shape=State,col=Drug,size=4))+geom_point()+ scale_co
                    level = 0.5, alpha = 0.1, show.legend = TRUE)
 
 ggsave('pcaphospho.pdf')
+synStore(File("pcaphospho.pdf",parentId='syn66504211'))
 
 pu<-umap(t(pmat))$layout
 
@@ -124,6 +125,7 @@ right_join(meta)|>
   ggtitle("UMAP of phospho proteomics")
 
 ggsave('umapPhospho.pdf')
+synStore(File('umapPhospho.pdf',parentId='syn66504211'))
 
 ```
 
@@ -209,6 +211,9 @@ allde<-rbind(all_global_de,all_phos_de)|>
   tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
   tidyr::separate(Control,into=c('Control state','Control'),sep='_')
 
+readr::write_csv(allde,'DiffExFeaturesAllComparisons.csv')
+synStore(File('DiffExFeaturesAllComparisons.csv',parentId='syn66504212'))
+
 stats<-allde|>subset(adj.P.Val<0.05)|>
   #subset(abs(logFC)>1)|>
   group_by(data,`Treated state`,`Control state`,Treatment,Control)|>summarize(nsig=n())
@@ -220,6 +225,7 @@ fig<-ggplot(stats,aes(x=data,y=nsig,fill=Treatment))+
   facet_grid(`Treated state`~Control)+ggtitle('Differentially expressed features')
 
 ggsave('diffExStats_p05_logfc0.pdf',fig)
+synStore(File('diffExStats_p05_logfc0.pdf',parentId='syn66504212'))
 fig
 ```
 The two columns represent the control dataset - the left side are samples compared to Gilteritinib resistant samples, the right are samples compared to parental. There are the most changes between the two-resistant conditions (left panel) but there are also a few changes between the treated and parental samples. We now see the differential expression of each comparison and can now dive into the differential expressions tats. 
@@ -269,6 +275,7 @@ fig<-ggplot(sigTerms,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   facet_grid(.~Control)+ggtitle('Enriched GO BP Terms')
 
 ggsave('enrichedGO_fdr05.pdf',fig)
+synStore(File('enrichedGO_fdr05.pdf',parentId='syn66504213'))
 fig
 
 ##now do GO ORA analysis
@@ -312,6 +319,7 @@ fig<-ggplot(sigORA,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   facet_grid(direction~Control)+ggtitle('Enriched GO BP ORA Terms')
 
 ggsave('enrichedGO_ORA_fdr01.pdf',fig)
+synStore(File('enrichedGO_ORA_fdr01.pdf',parentId='syn66504213'))
 fig
 }
 ##now KEGG GSEA
@@ -347,6 +355,7 @@ fig<-ggplot(sigPaths,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   facet_grid(.~Control)+ggtitle('GSEA Enriched KEGG Pathways')
 
 ggsave('enrichedKEGG_fdr05.pdf',fig)
+synStore(File('enrichedKEGG_fdr05.pdf',parentId='syn66504213'))
 fig
 
 
@@ -396,11 +405,14 @@ fig<-ggplot(sigKeggORA,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   facet_grid(direction~Control)+ggtitle('ORA Enriched KEGG ORA Terms')
 
 ggsave('enrichedKEGG_ORA_fdr1.pdf',fig)
+synStore(File('enrichedKEGG_ORA_fdr1.pdf',parentId='syn66504213'))
 fig
 
 
 #library(amlresistancenetworks)
+
 psp_db='PSP May 23 2023'
+#psp_db='PSP_networkin_2016'
 KSDB <- load_ksdb(psp_db)
 red.db<-KSDB|>
   dplyr::select(Kinase.Gene=GENE,SUB_GENE,SUB_MOD_RSD)|>
@@ -462,6 +474,7 @@ fig<-ggplot(sigKins,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   facet_grid(.~Control)+ggtitle('Enriched Kinases')
 
 ggsave('enrichedKinase_fdr05.pdf',fig)
+synStore(File('enrichedKinase_fdr05.pdf',parentId='syn66504213'))
 fig
 
 ```
@@ -496,11 +509,13 @@ go_plot|>
 #  mutate(description=factor(description,levels=description))|>
   ggplot(aes(x=description,y=`Treated state`,#fill=`Treated state`
                    col=normalizedEnrichmentScore,size=log10p))+
-  geom_point()+coord_flip()
+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+ theme(axis.text.x=element_text(angle=90, hjust=1))
 #(stat='identity',position='dodge')
 
 readr::write_csv(all_global_enrich,'go_gsea.csv')
-ggsave('gvGoTerms_05.pdf',width=12)
+synStore(File('go_gsea.csv',parentId='syn66504213'))
+ggsave('gvGoTerms_05.pdf',width=11,height=10)
+synStore(File('gvGoTerms_05.pdf',parentId='syn66504213'))
 ```
 
 ### GO ORA analysis
@@ -531,10 +546,10 @@ go_plot|>
 #  subset(`Treated state`=='All')|>
   ggplot(aes(x=description,y=`Treated state`,
                    size=log10p,col=score))+
-  geom_point()+coord_flip()+
+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+
   ggtitle("GO BP ORA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))
 ggsave('gvORAGoTerms_FDR01.pdf',width=8,height=8)
-
+synStore(File('gvORAGoTerms_FDR01.pdf',parentId='syn66504213'))
 
 ```
 
@@ -562,12 +577,13 @@ kegg_plot<-all_global_kegg|>
 
 ggplot(kegg_plot,aes(x=description,y=`Treated state`,
                    size=log10p,col=normalizedEnrichmentScore))+
-  geom_point()+coord_flip()+
+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+
   ggtitle("KEGG GSEA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))
 
-ggsave('gvKeggPaths_FDR05.pdf')
-
+ggsave('gvKeggPaths_FDR05.pdf',width=6)
+synStore(File('gvKeggPaths_FDR05.pdf',parentId='syn66504213'))
 readr::write_csv(all_global_kegg,file='kegg_GSEA.csv')
+synStore(File("kegg_GSEA.csv",parentId='syn66504213'))
 
 ```
 Now that we have all these conditions we can focus on those of interest
@@ -599,12 +615,13 @@ to_plot<-all_kinase_enrich|>
   tidyr::separate(Control,into=c('Control state','Control'),sep='_')
 
 ggplot(to_plot,aes(x=Kinase,y=`Treated state`,
-                   col=z.score,size=log10p))+geom_point()+coord_flip()
-ggsave('sigKinaseSummary.pdf')
+                   col=z.score,size=log10p))+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+ theme(axis.text.x=element_text(angle=90, hjust=1))
+ggsave('sigKinaseSummary.pdf',width=3)
 
 apply(all_kinase_enrich,2,unlist)|>
   as.data.frame()|>
   readr::write_csv(file='kinase_enrichment.csv')
+synStore(File('kinase_enrichment.csv',parentId='syn66504213'))
 ```
 
 Now that we have all these conditions we can focus on those of interest
@@ -640,9 +657,11 @@ new_subs=mutate(pars,Drug='Gilteritinib')|>
 
 ggplot(new_subs,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("MTOR targets")
  ggsave('mtor_targ_boxplot.pdf')
+ synStore(File("mtor_targ_boxplot.pdf",parentId='syn66504213'))
  
  ggplot(new_subs,aes(x=value,y=SiteID,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+facet_grid(~Drug)+ggtitle("MTOR targets")
-ggsave('mtor_targ_ridge.pdf')
+ggsave('mtor_targ_ridge.pdf',width=8,height=5)
+synStore(File('mtor_targ_ridge.pdf',parentId='syn66504213'))
 aurka_subs<-subset(all_kinase_enrich,Kinase.Gene=='AURKB')|>
    dplyr::select(SiteID='Feature',logFC,condition)|>
   distinct()|>
@@ -662,7 +681,7 @@ new_subs=mutate(pars,Drug='Gilteritinib')|>
   rbind(treats)
 
  ggplot(new_subs,aes(x=value,y=SiteID,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+facet_grid(~Drug)+ggtitle("AURKB targets")
-  ggsave('aurkb_ridge.pdf')
+  ggsave('aurkb_ridge.pdf',width=8,height=5)
 
  ggplot(new_subs,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("AURKB targets")
   ggsave("aurkb_targ_boxplot.pdf")
@@ -687,10 +706,36 @@ new_subs=mutate(pars,Drug='Gilteritinib')|>
   rbind(treats)
 
  ggplot(new_subs,aes(x=value,y=SiteID,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+facet_grid(~Drug)+ggtitle("SRC targets")
-  ggsave('src_ridge.pdf')
+  ggsave('src_ridge.pdf',height=3,width=8)
 
  ggplot(new_subs,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("SRC targets")
   ggsave("src_targ_boxplot.pdf")
+  
+  
+   ##lastly we have SRC targets
+ aurka_subs<-subset(all_kinase_enrich,Kinase.Gene=='PRKG1')|>
+   dplyr::select(SiteID='Feature',logFC,condition)|>
+  distinct()|>
+  #mutate(mod=tolower(substr(Substrate.Mod,1,1)))|>
+  #tidyr::unite(Substrate.Gene,Substrate.Mod,col=site,sep='-')|>
+  #tidyr::unite(site,mod,sep='',col='SiteID')|>
+  left_join(phospho)|>
+  subset(Exp=='Ex18')|>
+  dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
+  left_join(meta)
+
+treats<-subset(aurka_subs,State!='Parental')
+pars<-subset(aurka_subs,State=='Parental')
+
+new_subs=mutate(pars,Drug='Gilteritinib')|>
+        rbind(mutate(pars,Drug='Gilteritinib+Venetoclax'))|>
+  rbind(treats)
+
+ ggplot(new_subs,aes(x=value,y=SiteID,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+facet_grid(~Drug)+ggtitle("PRKG1 targets")
+  ggsave('PRKG1_ridge.pdf')
+
+ ggplot(new_subs,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("PRKG1 targets")
+  ggsave("PRKG1_targ_boxplot.pdf")
 ```
 ### Decitabine  targets
 now we can soom in on decitabine targets
@@ -743,7 +788,8 @@ new_subs=mutate(pars,Drug='Gilteritinib')|>
 
  ggplot(new_subs,aes(x=value,y=Feature,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+facet_grid(~Drug)
  
- 
+ggsave('dnmt1_expr.pdf',height=5,width=8)
+
  ggplot(new_subs,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("DNMT3 protein and substrates")
  
  
@@ -762,7 +808,7 @@ kegg_genes<-subset(all_global_kegg,description=='Hematopoietic cell lineage')|>
   tidyr::separate_rows(userId,sep=';')
 
 kegg_hem_exp<-subset(global, Gene%in%kegg_genes$userId)|>
-  subset(Exp=='Ex18')|>
+  subset(Exp%in%c('Gilteritinib,','Ex18'))|>
   dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
   left_join(meta)|>
   subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
@@ -770,7 +816,25 @@ ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_ma
 
 ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("KEGG:Hematopoetic Cell Lineage")
 
-ggsave('hemLineage.pdf')
+ggsave('hemLineage.pdf',width=6,height=3)
+
+##mtor
+
+kegg_genes<-subset(all_global_kegg,description=='Cell adhesion molecules')|>
+  dplyr::select(userId)|>
+  tidyr::separate_rows(userId,sep=';')
+
+kegg_hem_exp<-subset(global, Gene%in%kegg_genes$userId)|>
+  subset(Exp=='Ex18')|>
+  dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
+  left_join(meta)|>
+  subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
+ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("KEGG:cell adhesion")
+
+ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("KEGG:cell adhesion")
+
+ggsave('kegg_cellAdhesion.pdf',width=6,height=5)
+
 #### t cell
 tcell<-subset(all_global_enrich,description=='T cell mediated immunity')|>
   dplyr::select(userId)|>
@@ -821,7 +885,7 @@ p<-ggplot(tab,aes(x=`Cell type`,fill=MOLM14,y=value))+
 
 p
 
-ggsave('fig3_deconv.pdf',p,width=7,height=4)
+ggsave('fig3_deconv.pdf',p,width=5,height=3)
 ggsave('fig3_deconv.jpg',p,width=7,height=4)
 
 ```

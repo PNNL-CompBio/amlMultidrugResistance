@@ -51,7 +51,8 @@ m_210 <- readRDS(syn$get("syn64605141")$path)
 
 sig_names<-unique(sigs$contrast)
 #drug_treatments<-c('Venetoclax','Dasatinib','Panobinostat','Quizartinib - Venetoclax','Azacytidine - Quizartinib','Ruxolitinib - Venetoclax', 'Gilteritinib','Azacytidine - Venetoclax','Azacytidine','Azacytidine - Quizartinib')
-drug_treatments = c('Venetoclax','Azacytidine - Venetoclax','Azacytidine')
+drug_treatments<-c('Venetoclax','Quizartinib - Venetoclax','Azacytidine - Quizartinib','Gilteritinib','Azacytidine - Venetoclax','Azacytidine')
+#drug_treatments = c('Venetoclax','Azacytidine - Venetoclax','Azacytidine')
 ## for a particular contrast and drug, we can measure how well those markers predict AUC
 ## this is a generalization of Camilo's ratio code..
 calc_sig_in_patients<-function(sensitive_markers,resistant_markers, drug_sig,signame){
@@ -164,8 +165,8 @@ lfc=0
 
 pdf(paste0('corStatsLFC',lfc,'.pdf'))
 
-singles<-c("V-UT","D-UT",'DV-UT')
-
+#singles<-c("V-UT","D-UT",'DV-UT')
+singles <- c("V-UT",'G-UT','D-UT','GV-UT','DV-UT','GD-UT','GVD-UT')
 ##let's collect the stats in a table                
 res<-do.call(rbind,lapply(singles,function(sn){
     markers=getSigsFromData(condition=sn,protList=rownames(exprs(m_210)),byPval=TRUE,lfcthresh = lfc)
@@ -208,9 +209,13 @@ fulldat<-res|>#rbind(res,res4)|>
   mutate(concordant=ifelse(Rho>0,TRUE,FALSE))|>
   mutate(significant=ifelse(Rho.p<0.05,TRUE,FALSE))
 
-fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Decitabine","Gilteritinib+Decitabine","Decitabine+Venetoclax"))
+#fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Decitabine","Gilteritinib+Decitabine","Decitabine+Venetoclax"))
+fulldat$Signal<-factor(fulldat$Signal,levels=c("Venetoclax","Gilteritinib","Decitabine",
+                                               "Gilteritinib+Venetoclax","Decitabine+Venetoclax",
+                                               "Gilteritinib+Decitabine","Gilteritinib+Decitabine+Venetoclax"))
 
-fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Azacytidine","Azacytidine - Venetoclax"))
+#fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax","Azacytidine","Azacytidine - Venetoclax"))
+fulldat$Drug<-factor(fulldat$Drug,levels=c("Venetoclax", "Gilteritinib","Azacytidine","Quizartinib - Venetoclax","Azacytidine - Venetoclax",  "Azacytidine - Quizartinib"))
 
 subset(fulldat,`Signature type`=='Ratio')|>
   ggplot(aes(y=Signal,x=Drug,size=abs(Rho),col=concordant,shape=significant))+geom_point()+scale_x_discrete(guide = guide_axis(angle = 90))+ggtitle("Ratio signal correlation with ex vivo AUC")+scale_color_manual(values=tfcolors)
