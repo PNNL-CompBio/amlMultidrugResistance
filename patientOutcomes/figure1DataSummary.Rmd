@@ -1,0 +1,172 @@
+---
+title: "patient outcomes cohort Data Summary"
+author: "Sara Gosline"
+date: "2025-06-25"
+output: html_document
+---
+
+Here we can pull the metadata from Synapse to evaluate the numbers of samples and the overall data we have for those samples ahead of the patient outcomes study. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(synapser)
+library(tidyverse)
+library(readxl)
+synapser::synLogin()
+```
+
+## Pull beatAML data
+
+We have the initial beatAML data, including metabolomics and lipidomics, for beatAML samples to see what we have from there. 
+
+```{r beataml data}
+
+#patient data without proteomics sample numbers
+ba_pats <- readxl::read_xlsx(synapser::synGet('syn68710501')$path) |>
+  mutate(RNASeq=ifelse(is.na(dbgap_rnaseq_sample),FALSE,TRUE), Mutation = ifelse(is.na(dbgap_dnaseq_sample),FALSE,TRUE)) |>
+  dplyr::select(patientId,labId,consensus_sex,inferred_sex,reportedRace,reportedEthnicity,inferred_ethnicity,RNASeq, Mutation) |>
+  distinct()
+
+#syn25796769 contains only metadata for the 210 samples with proteomics
+ba_meta <- readxl::read_xlsx(synapser::synGet('syn25796769')$path) |>
+  left_join(ba_pats,by = 'labId') |>
+  #mutate(Accession = labId) |>
+  tidyr::separate(`SampleID(full)`, into = c("PTRC",'exp10','SampleID'),sep = '_') |>
+  mutate(SampleID=as.numeric(SampleID))|>
+  mutate(Race = ifelse(is.na(reportedRace),inferred_ethnicity,reportedRace))|> ##focus on reported RACE first
+  mutate(Race = stringr::str_remove(Race,'Admixed')) |> ##remove the admixed 
+  dplyr::select(Accession='labId', SampleID,'FLT3-ITDcalls',Sex='gender',Age='ageAtDiagnosis',Race,RNASeq, Mutation)|>
+  mutate(Proteomics=TRUE,Phospho=TRUE)  ##all these patients have proteomics
+
+
+#proteomics
+
+#phospho
+
+#lipidomics
+ba_lipids <- readxl::read_xlsx(synapser::synGet('syn52121001')$path) |>
+  tidyr::pivot_longer(cols = starts_with('BEAT_AML'), names_to = 'sample', values_to = 'value') |>
+  tidyr::separate(sample, into = c('Beat','AML','PNL','SampleID.abbrev', 'l','posneg','date','other'), 
+                  sep = '_') |>
+  mutate(SampleID = as.numeric(SampleID.abbrev)) |>
+  left_join(ba_meta, by = 'SampleID') |>
+  dplyr::select('Average Mz','Metabolite name','Adduct type','Ontology','SampleID',
+                'Accession')
+#metabolomics
+ba_met <- readxl::read_xlsx(synapser::synGet('syn53678273')$path) |>
+  tidyr::pivot_longer(cols = starts_with('BEAT_AML'), names_to = 'sample', values_to = 'value') |>
+  tidyr::separate(sample, into = c('Beat','AML','PNL','SampleID.abbrev', 'm','hilic','posneg'), 
+                  sep = '_') |>
+  mutate(SampleID = as.numeric(SampleID.abbrev)) |>
+  left_join(ba_meta, by = 'SampleID') |>
+  dplyr::select('m/z','Name','Standardized name','Super class','Main class','SampleID',
+                'Accession')
+
+##let's collect all BA metadata
+ba_meta <- ba_meta |>
+  #mutate(Proteomics=labId%in%ba_meta$Accession, Phospho=labId%in%ba_meta$Accession) |>
+  mutate(Metabolomics = Accession%in%ba_met$Accession, Lipidomics = Accession%in%ba_lipids$Accession) |>
+  mutate(source='BeatAML', study="BeatAML")
+#rnaseq
+
+```
+
+## Pull new metadata
+
+While we might not have the data yet, we have the manifests for additional samples we are collecting.
+
+```{r new data}
+library(ggplot2)
+
+rcolors <- c(Black='orchid4',White='goldenrod',Unknown='ivory',HispNative='darkgreen',Asian='darkorange',Multiracial='darkred')
+
+sample_exp_metadata <- readxl::read_xlsx(synGet('syn68522106')$path)
+
+new_samp <- subset(sample_exp_metadata, !Accession %in% ba_meta$Accession)  |>
+  dplyr::select(Accession,Age,`Sex (1-male, 0-female)`,Race = 'Race_label') |>
+  mutate(Sex = ifelse(`Sex (1-male, 0-female)` == 1,'Male','Female'))
+
+ba <- subset(ba_meta,Accession %in% sample_exp_metadata$Accession)  |>
+  dplyr::select(Accession, Age,Sex, Race,source) |>
+  mutate(Race = ifelse(is.na(Race),'White',Race)) 
+
+##how many samples by race and sex are there in each experiment? 
+comb <- new_samp |>
+  dplyr::select(Accession,Age,Sex,Race) |>
+  mutate(source = 'newSamples')
+##what is the age distribution of each experiment?
+
+full_meta_pilot <- rbind(comb,ba) |>
+  mutate(Study = 'pilotStudy')
+
+full_meta_pilot |> ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) + geom_bar(position='dodge') +scale_y_log10() +scale_fill_manual(values=rcolors)
+ggsave('pilotStudySamples.png',height=3)
+
+plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Metabolomics'),function(x)
+  ba_meta |> 
+    subset(get(x)) |> ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) +  geom_bar(position='dodge') + scale_y_log10() + ggtitle(paste('Samples with',x,'data'))+scale_fill_manual(values=rcolors)
+)
+
+cowplot::plot_grid(plotlist=plotlist,nrow=2)
+ggsave('beatAMLSamples.png',height=6,width=16)
+
+##samples with data in both cohorts
+
+plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Metabolomics'),function(x)
+  ba_meta |> subset(Accession %in% full_meta_pilot$Accession) |> 
+    subset(get(x)) |> 
+    data.frame()|>
+    ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) +  geom_bar(position='dodge') + ggtitle(paste('Samples with',x,'data'))+scale_fill_manual(values=rcolors)
+)
+
+cowplot::plot_grid(plotlist=plotlist,nrow=2)
+ggsave('beatAMLAndPilotSamples.png',height=6,width=16)
+
+
+##now lets compare ages
+
+pilot_age <- ggplot(full_meta_pilot,aes(x=Age,fill=Race))+geom_bar(position='dodge')+ggtitle("Pilot study age distribution")+scale_fill_manual(values=rcolors)
+ba_age <- ggplot(ba_meta, aes(x=Age,fill=Race))+geom_bar(position='dodge')+ggtitle("BeatAMLstudy age distribution")+scale_fill_manual(values=rcolors)
+
+cowplot::plot_grid(pilot_age,ba_age,nrow=2)
+
+ggsave('combinedAgeDistribution.png',height=6)
+
+```
+
+
+## Pull/process metabolomics
+We have the metabolomics meaurements in five tabs of this spreadsheet
+
+```{r met}
+
+mfile <- synGet('syn68710369')$path
+
+hp <- readxl::read_xlsx(mfile,sheet = 'HILIC Positive') |>
+  tidyr::pivot_longer(starts_with('PTRC'),names_to='Sample',values_to = 'value')|>
+  mutate(Sample=stringr::str_replace(Sample,'QC_Pool_','QCPool'))|>  
+  mutate(Sample=stringr::str_replace(Sample,'Blank_Pr_','BlankPr'))|>
+  tidyr::separate(Sample,into=c('PTRC','exp','datatype','SampleID','runType','posneg'),sep='_')
+
+hn <- readxl::read_xlsx(mfile,sheet = 'HILIC Negative')|>
+  tidyr::pivot_longer(starts_with('PTRC'),names_to='Sample',values_to = 'value')|>
+  mutate(Sample=stringr::str_replace(Sample,'QC_Pool_','QCPool'))|>  
+  mutate(Sample=stringr::str_replace(Sample,'Blank_Pr_','BlankPr'))|>
+  tidyr::separate(Sample,into=c('PTRC','exp','datatype','SampleID','runType','posneg'),sep='_')
+
+rp <- readxl::read_xlsx(mfile,sheet = 'RP Positive')|>
+  tidyr::pivot_longer(starts_with('PTRC'),names_to='Sample',values_to = 'value')|>
+  mutate(Sample=stringr::str_replace(Sample,'QC_Pool_','QCPool'))|>  
+  mutate(Sample=stringr::str_replace(Sample,'Blank_Pr_','BlankPr'))|>
+  tidyr::separate(Sample,into=c('PTRC','exp','datatype','SampleID','runType','posneg'),sep='_')
+
+rn <- readxl::read_xlsx(mfile,sheet = 'RP Negative')|>
+  tidyr::pivot_longer(starts_with('PTRC'),names_to='Sample',values_to = 'value')|>
+  mutate(Sample=stringr::str_replace(Sample,'QC_Pool_','QCPool'))|>  
+  mutate(Sample=stringr::str_replace(Sample,'Blank_Pr_','BlankPr'))|>
+  tidyr::separate(Sample,into=c('PTRC','exp','datatype','SampleID','runType','posneg'),sep='_')
+
+full_metab <- rbind(hp,hn,rp,rn)
+
+
+```
