@@ -24,8 +24,17 @@ We have the initial beatAML data, including metabolomics and lipidomics, for bea
 #patient data without proteomics sample numbers
 ba_pats <- readxl::read_xlsx(synapser::synGet('syn68710501')$path) |>
   mutate(RNASeq=ifelse(is.na(dbgap_rnaseq_sample),FALSE,TRUE), Mutation = ifelse(is.na(dbgap_dnaseq_sample),FALSE,TRUE)) |>
-  dplyr::select(patientId,labId,consensus_sex,inferred_sex,reportedRace,reportedEthnicity,inferred_ethnicity,RNASeq, Mutation) |>
+  dplyr::select(labId,consensus_sex,reportedRace,reportedEthnicity,inferred_ethnicity,RNASeq, Mutation) |>
   distinct()
+
+
+##now we have extra metadata that wasn't accounted for
+ex_data <- readxl::read_xlsx(synGet('syn68731261')$path)|>
+  mutate(RNASeq=FALSE,Mutation=FALSE) |>
+dplyr::select(labId='Accession',consensus_sex='Sex',reportedRace,reportedEthnicity,inferred_ethnicity='inferredEthnicity',RNASeq, Mutation) |>
+  distinct()
+
+ba_pats <- rbind(ba_pats,ex_data)
 
 #syn25796769 contains only metadata for the 210 samples with proteomics
 ba_meta <- readxl::read_xlsx(synapser::synGet('syn25796769')$path) |>
@@ -62,13 +71,36 @@ ba_met <- readxl::read_xlsx(synapser::synGet('syn53678273')$path) |>
   dplyr::select('m/z','Name','Standardized name','Super class','Main class','SampleID',
                 'Accession')
 
+
+#rnaseq
+
+##acetyl - what do we do with this data?
+ba_ac <- read.table(synGet('syn53484040')$path,sep='\t',fill=TRUE,header=TRUE)
+res<-apply(ba_ac,1,function(x) length(which(is.na(x))))
+
+##filter for 50% present
+less_missing <- ba_ac[which(res<110),]
+
+mpats<- apply(less_missing,2,function(x) length(which(is.na(x))))
+
+#filter patient for 50% ac sites
+apats<-which(mpats<nrow(less_missing)/2)
+
+##now get accession
+acetyl_long<-less_missing[,apats] |>
+  as.data.frame() |>
+  tibble::rownames_to_column('acetylSite') |>
+  tidyr::pivot_longer(cols=dplyr::starts_with("PTRC"),names_to='sId',values_to = 'value')|>
+  tidyr::separate(sId,into=c('PTRC','exp','SampleID'),sep='_')|>
+  mutate(SampleID=as.numeric(SampleID))|>
+  left_join(ba_meta)
+
+
 ##let's collect all BA metadata
 ba_meta <- ba_meta |>
   #mutate(Proteomics=labId%in%ba_meta$Accession, Phospho=labId%in%ba_meta$Accession) |>
-  mutate(Metabolomics = Accession%in%ba_met$Accession, Lipidomics = Accession%in%ba_lipids$Accession) |>
+  mutate(Metabolomics = Accession%in%ba_met$Accession, Lipidomics = Accession%in%ba_lipids$Accession,Acetylomics = Accession%in%acetyl_long$Accession) |>
   mutate(source='BeatAML', study="BeatAML")
-#rnaseq
-
 ```
 
 ## Pull new metadata
@@ -102,7 +134,7 @@ full_meta_pilot <- rbind(comb,ba) |>
 full_meta_pilot |> ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) + geom_bar(position='dodge') +scale_y_log10() +scale_fill_manual(values=rcolors)
 ggsave('pilotStudySamples.png',height=3)
 
-plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Metabolomics'),function(x)
+plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Acetylomics','Metabolomics'),function(x)
   ba_meta |> 
     subset(get(x)) |> ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) +  geom_bar(position='dodge') + scale_y_log10() + ggtitle(paste('Samples with',x,'data'))+scale_fill_manual(values=rcolors)
 )
