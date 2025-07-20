@@ -241,7 +241,8 @@ This figure shows the enrichment analysis using GSEA, GO ORA, KEGG, KEGG ORA, an
 library(WebGestaltR)
 
 enrichlist<-c("Early resistant_Gilteritinib+Venetoclax_vs_All_Parental",
-              "Late resistant_Gilteritinib+Venetoclax_vs_All_Parental","All_Gilteritinib+Venetoclax_vs_All_Parental")
+              "Late resistant_Gilteritinib+Venetoclax_vs_All_Parental","All_Gilteritinib+Venetoclax_vs_All_Parental",
+              "All_Gilteritinib+Venetoclax_vs_All_Gilteritinib")
 all_global_enrich<-do.call(rbind,lapply(enrichlist,function(x){
   
   gprots<-subset(all_global_de,condition==x)|>
@@ -615,7 +616,8 @@ to_plot<-all_kinase_enrich|>
   tidyr::separate(Control,into=c('Control state','Control'),sep='_')
 
 ggplot(to_plot,aes(x=Kinase,y=`Treated state`,
-                   col=z.score,size=log10p))+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+ theme(axis.text.x=element_text(angle=90, hjust=1))
+                   col=z.score,size=log10p))+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+ theme(axis.text.x=element_text(angle=90, hjust=1))+
+  facet_grid(~Control)
 ggsave('sigKinaseSummary.pdf',width=3)
 
 apply(all_kinase_enrich,2,unlist)|>
