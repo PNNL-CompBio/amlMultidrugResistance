@@ -20,9 +20,11 @@ synapser::synLogin()
 We have the initial beatAML data, including metabolomics and lipidomics, for beatAML samples to see what we have from there. 
 
 ```{r beataml data}
+#all data
+all_ba_data <- readxl::read_xlsx(synapser::synGet('syn68710501')$path) 
 
 #patient data without proteomics sample numbers
-ba_pats <- readxl::read_xlsx(synapser::synGet('syn68710501')$path) |>
+ba_pats <- all_ba_data |>
   mutate(RNASeq=ifelse(is.na(dbgap_rnaseq_sample),FALSE,TRUE), Mutation = ifelse(is.na(dbgap_dnaseq_sample),FALSE,TRUE)) |>
   dplyr::select(labId,consensus_sex,reportedRace,reportedEthnicity,inferred_ethnicity,RNASeq, Mutation) |>
   distinct()
@@ -31,14 +33,29 @@ ba_pats <- readxl::read_xlsx(synapser::synGet('syn68710501')$path) |>
 ##now we have extra metadata that wasn't accounted for
 ex_data <- readxl::read_xlsx(synGet('syn68731261')$path)|>
   mutate(RNASeq=FALSE,Mutation=FALSE) |>
-dplyr::select(labId='Accession',consensus_sex='Sex',reportedRace,reportedEthnicity,inferred_ethnicity='inferredEthnicity',RNASeq, Mutation) |>
+dplyr::select(labId='Accession',consensus_sex='Sex',reportedRace,reportedEthnicity,
+              inferred_ethnicity='inferredEthnicity',RNASeq, Mutation) |>
   distinct()
 
 ba_pats <- rbind(ba_pats,ex_data)
 
+
 #syn25796769 contains only metadata for the 210 samples with proteomics
-ba_meta <- readxl::read_xlsx(synapser::synGet('syn25796769')$path) |>
-  left_join(ba_pats,by = 'labId') |>
+all_ba_meta <- readxl::read_xlsx(synapser::synGet('syn25796769')$path)|>
+  left_join(ba_pats,by = 'labId')|>
+  dplyr::rename(CALR='Calreticulin',NPM1='NPM1calls')
+
+##reformat BeatAML mutations to single gene name and categorical call. 
+muts <- all_ba_meta[,c(3,6,7,75:207)]|>
+  tidyr::pivot_longer(cols=c(-1),names_to='mutation',values_to='call')|> ##pull out all mutations into long table
+  tidyr::separate(mutation,into=c('gene','rest'),sep='_')|> ##separate out method of calling mutation
+  mutate(gene=ifelse(gene=='FLT3-ITDcalls','FLT3_ITD',gene))|> ##rename FLT3 ITD
+  mutate(newcall=ifelse(is.na(call),NA,ifelse(tolower(call)=='negative',0,1))) |> ##now move to numeric
+  group_by(labId,gene)|>summarize(mutation=max(newcall,na.rm=T))|>
+  mutate(mutation=ifelse(is.finite(mutation),ifelse(mutation==0,'WT','Mutant'),'Not measured'))
+
+
+ba_meta <- all_ba_meta |>
   #mutate(Accession = labId) |>
   tidyr::separate(`SampleID(full)`, into = c("PTRC",'exp10','SampleID'),sep = '_') |>
   mutate(SampleID=as.numeric(SampleID))|>
@@ -46,6 +63,8 @@ ba_meta <- readxl::read_xlsx(synapser::synGet('syn25796769')$path) |>
   mutate(Race = stringr::str_remove(Race,'Admixed')) |> ##remove the admixed 
   dplyr::select(Accession='labId', SampleID,'FLT3-ITDcalls',Sex='gender',Age='ageAtDiagnosis',Race,RNASeq, Mutation)|>
   mutate(Proteomics=TRUE,Phospho=TRUE)  ##all these patients have proteomics
+
+ ba_mutation <- dplyr::select(ba_meta,c(labId='Accession',Sex,Race,source,study))|>left_join(muts)
 
 
 #proteomics
@@ -62,7 +81,7 @@ ba_lipids <- readxl::read_xlsx(synapser::synGet('syn52121001')$path) |>
   dplyr::select('Average Mz','Metabolite name','Adduct type','Ontology','SampleID',
                 'Accession')
 #metabolomics
-ba_met <- readxl::read_xlsx(synapser::synGet('syn53678273')$path) |>
+ba_metab <- readxl::read_xlsx(synapser::synGet('syn53678273')$path) |>
   tidyr::pivot_longer(cols = starts_with('BEAT_AML'), names_to = 'sample', values_to = 'value') |>
   tidyr::separate(sample, into = c('Beat','AML','PNL','SampleID.abbrev', 'm','hilic','posneg'), 
                   sep = '_') |>
@@ -103,21 +122,35 @@ ba_meta <- ba_meta |>
   mutate(source='BeatAML', study="BeatAML")
 ```
 
-## Pull new metadata
+## Pull new metadata for pilot cohort
 
 While we might not have the data yet, we have the manifests for additional samples we are collecting.
 
 ```{r new data}
 library(ggplot2)
 
-rcolors <- c(Black='orchid4',White='goldenrod',Unknown='ivory',HispNative='darkgreen',Asian='darkorange',Multiracial='darkred')
+#lets get the colors straight
+rcolors <- c(Black='orchid4',White='goldenrod',Unknown='ivory',
+             HispNative='darkgreen',Asian='darkorange',Multiracial='darkred')
 
-sample_exp_metadata <- readxl::read_xlsx(synGet('syn68522106')$path)
 
+##new pilot metaadata
+sample_exp_metadata <- readxl::read_xlsx(synGet('syn68522106')$path) |>
+  dplyr::rename(CEBPA = 'CEBPA_BZIP',FLT3 = 'FLT3_TKD',Race='Race_label')|>
+    mutate(Sex = ifelse(`Sex (1-male, 0-female)` == 1,'Male','Female'))|>
+  tidyr::pivot_longer(cols=c(11:40),names_to='gene',values_to='mutation')|>
+  mutate(mutation=ifelse(is.na(mutation),'Not measured',ifelse(mutation==0,'WT','Mutant')))
+
+#mutaitons for genes
+mutations <- unique(sample_exp_metadata$gene)#names(sample_exp_metadata)[11:40]
+#mutations[which(mutations=='CEBPA_BZIP')]='CEBPA'
+
+##filter so that we only have new samples, no beatAML
 new_samp <- subset(sample_exp_metadata, !Accession %in% ba_meta$Accession)  |>
-  dplyr::select(Accession,Age,`Sex (1-male, 0-female)`,Race = 'Race_label') |>
-  mutate(Sex = ifelse(`Sex (1-male, 0-female)` == 1,'Male','Female'))
+  dplyr::select(c('Accession','Age','Sex',Race,gene,mutation)) |>
+  distinct()
 
+#filter for betaaml data that is in the new cohort
 ba <- subset(ba_meta,Accession %in% sample_exp_metadata$Accession)  |>
   dplyr::select(Accession, Age,Sex, Race,source) |>
   mutate(Race = ifelse(is.na(Race),'White',Race)) 
@@ -131,7 +164,7 @@ comb <- new_samp |>
 full_meta_pilot <- rbind(comb,ba) |>
   mutate(Study = 'pilotStudy')
 
-full_meta_pilot |> ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) + geom_bar(position='dodge') +scale_y_log10() +scale_fill_manual(values=rcolors)
+full_meta_pilot |> ggplot(aes(x=source,fill=Race)) + facet_grid(~Sex) + geom_bar(position='dodge') + scale_y_log10() + scale_fill_manual(values=rcolors)
 ggsave('pilotStudySamples.png',height=3)
 
 plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Acetylomics','Metabolomics'),function(x)
@@ -165,10 +198,42 @@ cowplot::plot_grid(pilot_age,ba_age,nrow=2)
 ggsave('combinedAgeDistribution.png',height=6)
 
 ```
+## Mutation profiles
+We also want to compare patients by mutational profile. Above we have pulled and harmonized mutation data for both cohorts, so now we just want to align and see what we can find for each cohort.
 
+```{r mutations}
+
+##now we can subset out just the mutation and race data and plot that...
+
+#BA meta
+
+ba_muts = ba_mutation|>
+  dplyr::rename(Accession='labId')
+
+#new meta
+pilot_muts <- sample_exp_metadata|>
+  dplyr::select(Accession,Sex,Race,gene,mutation)|>
+  subset(!Accession%in%ba_muts$Accession)|>
+  mutate(study='Pilot',source='Pilot')
+
+
+full_muts <- rbind(ba_muts,pilot_muts)
+full_mut
+
+##we have a lot~
+
+full_muts|>
+  group_by(Race,gene,mutation)|>
+  summarize(count=n())|>
+  subset(gene%in%c("DNMT3A",'FLT3','FLT3_ITD',"IDH1","IDH2","KRAS","TP53","NPM1",'ATM')) |> ##what other genes do we want?
+  ggplot(aes(x=mutation,y=count,fill=Race))+
+  geom_bar(stat='identity',position='dodge')+facet_grid(~gene)+scale_fill_manual(values=rcolors)+theme(axis.text.x = element_text(angle = 90))
+
+ggsave('mutationalProfiles.png',width=10,height=4)
+```
 
 ## Pull/process metabolomics
-We have the metabolomics meaurements in five tabs of this spreadsheet
+We have the metabolomics meaurements in five tabs of this spreadsheet. this is for the pilot study analysis. 
 
 ```{r met}
 
