@@ -253,7 +253,8 @@ meta_with_muts <- full_meta|>
   left_join(rmuts)
 
 readr::write_csv(meta_with_muts,file='combinedBeatAML_pilotMetaData.csv')
-
+f <- synapser::File('combinedBeatAML_pilotMetadata.csv',parentId='syn62750464')
+synapser::synStore(f)
 ##store on synapse
 ```
 
