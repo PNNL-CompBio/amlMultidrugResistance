@@ -1,0 +1,39 @@
+---
+title: "Clinical Sample Metadata"
+author: "Sara Gosline"
+date: "2025-09-16"
+output: html_document
+---
+
+Here we'll create some small summary statistics of the new clinical samples.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(synapser)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+
+```
+
+## Grab and parse metadata
+Metadata is currently on synapse in an excel file under syn68733653. 
+
+
+```{r cars}
+synLogin()
+
+mfile <- readxl::read_xlsx(synapser::synGet('syn69058992')$path)
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
