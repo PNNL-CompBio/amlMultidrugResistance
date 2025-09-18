@@ -31,9 +31,22 @@ mfile |>
 ggplot(aes(x=`sub-cohort PNNL`,
                   y=`Days of remission`,
                   fill=vitalStatus))+
-          geom_boxplot()
+          geom_boxplot()+
+   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ggsave('clinMetaSumm.png')
+
+mfile |>
+  mutate(`Days of remission`=as.numeric(`duration of remission post hma-ven (days)`))|>
+  subset(`sub-cohort PNNL`%in%c('Relapse','Refractory','Response - no relapse'))|>
+  ggplot(aes(x=`sub-cohort PNNL`,
+                  y=`Days of remission`,
+           size=`overallSurvival(days)`,
+                  col=vitalStatus))+
+          geom_jitter()+
+   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave('clinMetaSummSurv.png')
+
 ```
 
 ## Including Plots
