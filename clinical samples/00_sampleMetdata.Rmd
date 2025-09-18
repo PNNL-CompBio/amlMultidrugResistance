@@ -25,7 +25,15 @@ synLogin()
 
 mfile <- readxl::read_xlsx(synapser::synGet('syn69058992')$path)
 
+mfile |>
+  mutate(`Days of remission`=as.numeric(`duration of remission post hma-ven (days)`))|>
+  subset(`sub-cohort PNNL`%in%c('Relapse','Refractory','Response - no relapse'))|>
+ggplot(aes(x=`sub-cohort PNNL`,
+                  y=`Days of remission`,
+                  fill=vitalStatus))+
+          geom_boxplot()
 
+ggsave('clinMetaSumm.png')
 ```
 
 ## Including Plots
