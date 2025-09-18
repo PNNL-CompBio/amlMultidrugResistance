@@ -27,7 +27,7 @@ synLogin()
 
 ##come up with a common color scheme for all cells
 #https://coolors.co/palette/edae49-d1495b-00798c
-colors=c(`Early resistant`='#EDAE49',Parental='#D1495B',`Late resistant`='#00798C')
+colors=c(`Early resistant`='#EDAE49',Parental='#00798C',`Late resistant`='#D1495B')
 dcolors=c(none='#CCCAAA',Gilteritinib='#EEDD55',`Gilteritinib+Venetoclax`='#0072B2')
 
 ```
@@ -232,7 +232,7 @@ The two columns represent the control dataset - the left side are samples compar
 
 ## Enrichment analysis
 
-This figure shows the enrichment analysis using GSEA, GO ORA, KEGG, KEGG ORA, and KSEA. These four analyses quantify, using different methods, how many pathways are enriched in each condition. We use WebGestalt to analyze all the data. 
+This figure shows the enrichment analysis using GSEA, GO ORA, Reactome, Reactome ORA, and KSEA. These four analyses quantify, using different methods, how many pathways are enriched in each condition. We use WebGestalt to analyze all the data. 
 
 ```{r Enrichment analysis,warning=FALSE,message=FALSE, echo=FALSE}
 
@@ -241,8 +241,12 @@ This figure shows the enrichment analysis using GSEA, GO ORA, KEGG, KEGG ORA, an
 library(WebGestaltR)
 
 enrichlist<-c("Early resistant_Gilteritinib+Venetoclax_vs_All_Parental",
-              "Late resistant_Gilteritinib+Venetoclax_vs_All_Parental","All_Gilteritinib+Venetoclax_vs_All_Parental",
-              "All_Gilteritinib+Venetoclax_vs_All_Gilteritinib")
+              "Late resistant_Gilteritinib+Venetoclax_vs_All_Parental",
+              "Early resistant_Gilteritinib_vs_All_Parental",
+              "Late resistant_Gilteritinib_vs_All_Parental",
+              "All_Gilteritinib+Venetoclax_vs_All_Parental",
+              "All_Gilteritinib+Venetoclax_vs_All_Gilteritinib",
+              'All_Gilteritinib_vs_All_Parental')
 all_global_enrich<-do.call(rbind,lapply(enrichlist,function(x){
   
   gprots<-subset(all_global_de,condition==x)|>
@@ -311,7 +315,8 @@ sigORA<-all_global_ora|>
   summarize(sigTerms=n_distinct(geneSet))|>
   tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
   tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
-  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
 
 
 fig<-ggplot(sigORA,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
@@ -323,7 +328,6 @@ ggsave('enrichedGO_ORA_fdr01.pdf',fig)
 synStore(File('enrichedGO_ORA_fdr01.pdf',parentId='syn66504213'))
 fig
 }
-##now KEGG GSEA
 
 all_global_kegg<-do.call(rbind,lapply(enrichlist,function(x){
   
@@ -338,30 +342,47 @@ all_global_kegg<-do.call(rbind,lapply(enrichlist,function(x){
     mutate(condition=x))
   res
 }))
+##now Reactome GSEA
+
+all_global_Reactome<-do.call(rbind,lapply(enrichlist,function(x){
+  
+  gprots<-subset(all_global_de,condition==x)|>
+#        tibble::rownames_to_column('Feature')|>
+    arrange(desc(logFC))|>
+    dplyr::select(genes='Feature',scores='logFC')
+  print(x)
+  res<-NULL
+  try(res<-WebGestaltR(enrichMethod='GSEA',enrichDatabase='pathway_Reactome',fdrThr=1.0,
+              interestGene=gprots,minNum=3,organism='hsapiens',interestGeneType='genesymbol',isOutput=FALSE)|>
+    mutate(condition=x))
+  res
+}))
 
 
 ##summarize enriched terms
-sigPaths<-all_global_kegg|>
+sigPaths<-all_global_Reactome|>
   subset(FDR<0.05)|>
   group_by(condition)|>
   summarize(sigTerms=n_distinct(geneSet))|>
   tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
   tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
-  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
+
 
 
 fig<-ggplot(sigPaths,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   geom_bar(stat='identity',position='dodge')+
   coord_flip()+scale_fill_manual(values=dcolors)+
-  facet_grid(.~Control)+ggtitle('GSEA Enriched KEGG Pathways')
+  ggtitle('GSEA Enriched Reactome Pathways')
 
-ggsave('enrichedKEGG_fdr05.pdf',fig)
-synStore(File('enrichedKEGG_fdr05.pdf',parentId='syn66504213'))
+ggsave('enrichedReactome_fdr05.pdf',fig)
+synStore(File('enrichedReactome_fdr05.pdf',parentId='syn66504213'))
 fig
 
 
-##now do KEGG ORA
-all_kegg_ora<-do.call(rbind,lapply(enrichlist,function(x){
+##now do Reactome ORA
+all_Reactome_ora<-do.call(rbind,lapply(enrichlist,function(x){
   
   gprots<-subset(all_global_de,condition==x)|>
     #    tibble::rownames_to_column('Feature')|>
@@ -378,35 +399,38 @@ all_kegg_ora<-do.call(rbind,lapply(enrichlist,function(x){
   down<-NULL
   
   try(up<-WebGestaltR(enrichMethod='ORA',minNum=3,
-                      enrichDatabase='pathway_KEGG',fdrThr=1.0,
+                      enrichDatabase='pathway_Reactome',fdrThr=1.0,
               interestGene=up_enriched,referenceGene=bg,organism='hsapiens',
               interestGeneType='genesymbol',referenceGeneType='genesymbol',isOutput=FALSE)|>
     mutate(condition=x,direction='up'))
   
   try(down<-WebGestaltR(enrichMethod='ORA',minNum=3,
-                        enrichDatabase='pathway_KEGG',fdrThr=1.0,
+                        enrichDatabase='pathway_Reactome',fdrThr=1.0,
               interestGene=down_enriched,referenceGene=bg,organism='hsapiens',
               interestGeneType='genesymbol',referenceGeneType='genesymbol',isOutput=FALSE)|>
     mutate(condition=x,direction='down'))
 rbind(up,down)
 }))
 
-sigKeggORA<-all_kegg_ora|>
+sigReactomeORA<-all_Reactome_ora|>
   subset(FDR<0.1)|>
   group_by(condition,direction)|>
   summarize(sigTerms=n_distinct(geneSet))|>
   tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
   tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
-  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
 
 
-fig<-ggplot(sigKeggORA,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
+
+fig<-ggplot(sigReactomeORA,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   geom_bar(stat='identity',position='dodge')+
   coord_flip()+scale_fill_manual(values=dcolors)+
-  facet_grid(direction~Control)+ggtitle('ORA Enriched KEGG ORA Terms')
+  facet_grid(direction~.)+
+  ggtitle('ORA Enriched Reactome ORA Terms')
 
-ggsave('enrichedKEGG_ORA_fdr1.pdf',fig)
-synStore(File('enrichedKEGG_ORA_fdr1.pdf',parentId='syn66504213'))
+ggsave('enrichedReactome_ORA_fdr1.pdf',fig)
+synStore(File('enrichedReactome_ORA_fdr1.pdf',parentId='syn66504213'))
 fig
 
 
@@ -467,12 +491,14 @@ sigKins<-all_kinase_enrich|>
   summarize(sigTerms=n_distinct(Kinase.Gene))|>
   tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
   tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
-  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
 
 fig<-ggplot(sigKins,aes(x=`Treated state`,y=sigTerms,fill=Treatment))+
   geom_bar(stat='identity',position='dodge')+
   coord_flip()+scale_fill_manual(values=dcolors)+
-  facet_grid(.~Control)+ggtitle('Enriched Kinases')
+  #facet_grid(.~Control)+
+  ggtitle('Enriched Kinases')
 
 ggsave('enrichedKinase_fdr05.pdf',fig)
 synStore(File('enrichedKinase_fdr05.pdf',parentId='syn66504213'))
@@ -493,7 +519,7 @@ sigTerms<-all_global_enrich|>subset(FDR<0.05)|>
   group_by(description)|>summarize(n_distinct(condition))
 
 go_plot<-all_global_enrich|>
-  subset(FDR<0.05)|>
+  subset(FDR<0.01)|>
 #  subset(description%in%sigTerms$description)|>
   mutate(log10p= -1*log10(as.numeric(FDR)))|>
   dplyr::select(description,normalizedEnrichmentScore,log10p,condition)|>
@@ -510,13 +536,13 @@ go_plot|>
 #  mutate(description=factor(description,levels=description))|>
   ggplot(aes(x=description,y=`Treated state`,#fill=`Treated state`
                    col=normalizedEnrichmentScore,size=log10p))+
-  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+ theme(axis.text.x=element_text(angle=90, hjust=1))
+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+ theme(axis.text.x=element_text(angle=90, hjust=1))+facet_grid(~Treatment)
 #(stat='identity',position='dodge')
 
 readr::write_csv(all_global_enrich,'go_gsea.csv')
 synStore(File('go_gsea.csv',parentId='syn66504213'))
-ggsave('gvGoTerms_05.pdf',width=11,height=10)
-synStore(File('gvGoTerms_05.pdf',parentId='syn66504213'))
+ggsave('gvGoTerms_01.pdf',width=7,height=4)
+synStore(File('gvGoTerms_01.pdf',parentId='syn66504213'))
 ```
 
 ### GO ORA analysis
@@ -548,15 +574,53 @@ go_plot|>
   ggplot(aes(x=description,y=`Treated state`,
                    size=log10p,col=score))+
   geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+
-  ggtitle("GO BP ORA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))
-ggsave('gvORAGoTerms_FDR01.pdf',width=8,height=8)
+  ggtitle("GO BP ORA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))+
+  facet_grid(~Treatment)
+ggsave('gvORAGoTerms_FDR01.pdf',width=10,height=9)
 synStore(File('gvORAGoTerms_FDR01.pdf',parentId='syn66504213'))
 
 ```
 
-### KEGG GSEA analysis
-```{r kegg gsea}
-##kegg terms
+### Reactome GSEA analysis
+```{r Reactome gsea}
+##Reactome terms
+
+sigPaths<-all_global_Reactome|>subset(FDR<0.05)|>
+  group_by(description)|>summarize(n_distinct(condition))
+
+Reactome_plot<-all_global_Reactome|>
+  subset(FDR<0.05)|>
+  #subset(description%in%sigPaths$description)|>
+  mutate(log10p= -1*log10(as.numeric(FDR)))|>
+  mutate(normalizedEnrichmentScore=as.numeric(normalizedEnrichmentScore))|>
+  arrange(desc(normalizedEnrichmentScore))|>
+  #mutate(description=factor(description,levels=description))|>
+  dplyr::select(description,normalizedEnrichmentScore,log10p,condition)|>
+  distinct()|>
+  tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
+  tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
+
+
+ggplot(Reactome_plot,aes(x=description,y=`Treated state`,
+                   size=log10p,col=normalizedEnrichmentScore))+
+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+
+  ggtitle("Reactome GSEA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))+
+  facet_grid(~Treatment)
+
+ggsave('gvReactomePaths_FDR05.pdf',width=15)
+synStore(File('gvReactomePaths_FDR05.pdf',parentId='syn66504213'))
+readr::write_csv(all_global_Reactome,file='Reactome_GSEA.csv')
+synStore(File("Reactome_GSEA.csv",parentId='syn66504213'))
+
+```
+Now that we have all these conditions we can focus on those of interest
+
+
+### Back to kegg
+
+```{r kegg}
 
 sigPaths<-all_global_kegg|>subset(FDR<0.05)|>
   group_by(description)|>summarize(n_distinct(condition))
@@ -579,32 +643,26 @@ kegg_plot<-all_global_kegg|>
 ggplot(kegg_plot,aes(x=description,y=`Treated state`,
                    size=log10p,col=normalizedEnrichmentScore))+
   geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+
-  ggtitle("KEGG GSEA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))
+  ggtitle("Kegg GSEA Terms")+ theme(axis.text.x=element_text(angle=90, hjust=1))+
+  facet_grid(~Treatment)
 
-ggsave('gvKeggPaths_FDR05.pdf',width=6)
+ggsave('gvKeggPaths_FDR05.pdf',width=10,height=8)
 synStore(File('gvKeggPaths_FDR05.pdf',parentId='syn66504213'))
 readr::write_csv(all_global_kegg,file='kegg_GSEA.csv')
-synStore(File("kegg_GSEA.csv",parentId='syn66504213'))
-
+synStore(File("Kegg_GSEA.csv",parentId='syn66504213'))
 ```
-Now that we have all these conditions we can focus on those of interest
-
-
-### GV and G vs. Parental
-
-### GV vs G alone
 
 
 ## Visualize Kinase enrichment
 
 ```{r kinase summary}
 
-kin_counts<-subset(all_kinase_enrich,FDR<0.1)|>
+kin_counts<-subset(all_kinase_enrich,FDR<0.05)|>
   group_by(Kinase.Gene)|>
   summarize(n_distinct(condition))
 
 to_plot<-all_kinase_enrich|>
-  subset(FDR<0.1)|>
+  subset(FDR<0.05)|>
   #subset(Kinase.Gene%in%kin_counts$Kinase.Gene)|>
   arrange(desc(z.score))|>
   mutate(Kinase=Kinase.Gene)|>#factor(Kinase.Gene,levels=Kinase.Gene))|>
@@ -613,11 +671,12 @@ to_plot<-all_kinase_enrich|>
   distinct()|>
   tidyr::separate(condition,into=c('Treatment','Control'),sep='_vs_')|>
   tidyr::separate(Treatment,into=c('Treated state','Treatment'),sep='_')|>
-  tidyr::separate(Control,into=c('Control state','Control'),sep='_')
+  tidyr::separate(Control,into=c('Control state','Control'),sep='_')|>
+  subset(Control=='Parental')
 
 ggplot(to_plot,aes(x=Kinase,y=`Treated state`,
                    col=z.score,size=log10p))+  geom_point()+coord_flip()+scale_color_gradient2(low='darkblue',mid='grey',high='firebrick4')+ theme(axis.text.x=element_text(angle=90, hjust=1))+
-  facet_grid(~Control)
+  facet_grid(~Treatment)
 ggsave('sigKinaseSummary.pdf',width=3)
 
 apply(all_kinase_enrich,2,unlist)|>
@@ -628,10 +687,6 @@ synStore(File('kinase_enrichment.csv',parentId='syn66504213'))
 
 Now that we have all these conditions we can focus on those of interest
 
-
-### GV and G vs. Parental
-
-### GV vs G alone
 
 ## MTOR/AURKA targets show change upon drug resistance
 
@@ -814,9 +869,9 @@ kegg_hem_exp<-subset(global, Gene%in%kegg_genes$userId)|>
   dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
   left_join(meta)|>
   subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
-ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("KEGG:hematopoetic Cell Lineage")
+ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("kegg:hematopoetic Cell Lineage")
 
-ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("KEGG:Hematopoetic Cell Lineage")
+ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("kegg:Hematopoetic Cell Lineage")
 
 ggsave('hemLineage.pdf',width=6,height=3)
 
@@ -831,9 +886,9 @@ kegg_hem_exp<-subset(global, Gene%in%kegg_genes$userId)|>
   dplyr::select(-c(State,Plex,Ligand,Exp,Treatment))|>
   left_join(meta)|>
   subset(Drug%in%c('none','Gilteritinib+Venetoclax'))
-ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("KEGG:cell adhesion")
+ggplot(kegg_hem_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(values=colors)+ggtitle("kegg:cell adhesion")
 
-ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("KEGG:cell adhesion")
+ggplot(kegg_hem_exp,aes(x=value,y=Gene,fill=State,alpha=0.5))+geom_density_ridges()+scale_fill_manual(values=colors)+ggtitle("kegg:cell adhesion")
 
 ggsave('kegg_cellAdhesion.pdf',width=6,height=5)
 
@@ -867,10 +922,6 @@ ggplot(cd4_exp,aes(x=Drug,y=value,fill=State))+geom_boxplot()+scale_fill_manual(
 ```
 
 
-## GO Pathway level changes in detail
-```{r go pathway changes}
-
-```
 ## Deconvolution results
 Camilo previously ran tumor deconvolution on the samples, which is plotted here. This also shows the change in t-cell activity
 
@@ -880,9 +931,11 @@ tab<-readr::read_tsv(synGet('syn54488257')$path)
 tab<-tab|>
   mutate(MOLM14=ifelse(is.na(State),'Parental',ifelse(State=='Early','Early resistant','Late resistant')))
 
-p<-ggplot(tab,aes(x=`Cell type`,fill=MOLM14,y=value))+
+p<-ggplot(tab,aes(x=`Cell type`,fill=MOLM14,y=value,color=MOLM14))+
   geom_boxplot()+
   scale_fill_manual(values=colors)+
+  scale_color_manual(values=colors)+
+  theme_minimal()+
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5))
 
 p
