@@ -25,12 +25,18 @@ synLogin()
 
 mfile <- readxl::read_xlsx(synapser::synGet('syn69058992')$path)
 
+#cohort <- list(Relapse='darkblue',Refractory='darkgreen',`Response - no relapse`='goldenrod')
+vstats <- list(Alive='orange3',Dead='plum4',LTFU='darkgrey')
+```
+
+```{r plots}
 mfile |>
   mutate(`Days of remission`=as.numeric(`duration of remission post hma-ven (days)`))|>
   subset(`sub-cohort PNNL`%in%c('Relapse','Refractory','Response - no relapse'))|>
 ggplot(aes(x=`sub-cohort PNNL`,
                   y=`Days of remission`,
                   fill=vitalStatus))+
+  scale_fill_manual(values=vstats)+
           geom_boxplot()+
    theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -44,6 +50,7 @@ mfile |>
            size=`overallSurvival(days)`,
                   col=vitalStatus))+
           geom_jitter()+
+  scale_color_manual(values=vstats)+
    theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ggsave('clinMetaSummSurv.png')
 

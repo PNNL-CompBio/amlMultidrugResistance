@@ -1,5 +1,5 @@
 ---
-title: "patient outcomes cohort Data Summary"
+title: "patient outcomes cohort Data collection"
 author: "Sara Gosline"
 date: "2025-06-25"
 output: html_document
@@ -159,23 +159,38 @@ ba <- subset(ba_meta,Accession %in% sample_exp_metadata$Accession)  |>
 ##how many samples by race and sex are there in each experiment? 
 comb <- new_samp |>
   dplyr::select(Accession,Age,Sex,Race) |>
-  mutate(source = 'newSamples')
+  mutate(source = 'Pilot')
 ##what is the age distribution of each experiment?
 
-full_meta_pilot <- rbind(comb,ba) |>
-  mutate(Study = 'pilotStudy')
 
-full_meta_pilot |> ggplot(aes(x=source,fill=Race)) + facet_grid(~Sex) + geom_bar(position='dodge') + scale_y_log10() + scale_fill_manual(values=rcolors)
+##all the data in the pilot study, including beatAML samples (bridge samples)
+full_meta_pilot <- rbind(comb,ba) |>
+  mutate(study = 'Pilot')|>
+      mutate(Proteomics=TRUE,Phospho=TRUE,Mutation=TRUE,RNASeq=TRUE,Lipidomics=TRUE,Acetylomics=TRUE,Metabolomics=TRUE)|>
+  unique()
+
+full_meta_pilot |> ggplot(aes(x=source,fill=Race)) + facet_grid(~Sex) + geom_bar(position='dodge') + scale_fill_manual(values=rcolors)
 ggsave('pilotStudySamples.png',height=3)
 
 plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Acetylomics','Metabolomics'),function(x)
   ba_meta |> 
-    subset(get(x)) |> ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) +  geom_bar(position='dodge') + scale_y_log10() + ggtitle(paste('Samples with',x,'data'))+scale_fill_manual(values=rcolors)
+    subset(get(x)) |> 
+    ggplot(aes(x=source,fill=Race)) +facet_grid(~Sex) +  geom_bar(position='dodge') + scale_y_log10() + ggtitle(paste('Samples with',x,'data'))+scale_fill_manual(values=rcolors)
 )
 
 cowplot::plot_grid(plotlist=plotlist,nrow=2)
 ggsave('beatAMLSamples.png',height=6,width=16)
 
+
+combined_study_meta <- rbind(select(ba_meta,-c(SampleID,`FLT3-ITDcalls`)),full_meta_pilot)
+plotlist <- lapply(c('Proteomics','Phospho',"RNASeq",'Lipidomics','Acetylomics','Metabolomics'),function(x)
+  combined_study_meta |> 
+    subset(get(x)) |> 
+    subset(!is.na(Sex))|>
+    subset(!is.na(Race))|>
+    ggplot(aes(x=study,fill=Race)) +facet_grid(~Sex) +  geom_bar(position='dodge') +  ggtitle(paste('Samples with',x,'data'))+scale_fill_manual(values=rcolors))
+cowplot::plot_grid(plotlist=plotlist,nrow=2)
+ggsave('allSampleData.png',height=6,width=12)
 ##samples with data in both cohorts
 
 plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Metabolomics'),function(x)
@@ -186,7 +201,7 @@ plotlist <- lapply(c('Proteomics','Phospho',"Mutation","RNASeq",'Lipidomics','Me
 )
 
 cowplot::plot_grid(plotlist=plotlist,nrow=2)
-ggsave('beatAMLAndPilotSamples.png',height=6,width=16)
+ggsave('bridgingSamples',height=6,width=16)
 
 
 ##now lets compare ages
@@ -231,6 +246,15 @@ full_muts|>
   ggplot(aes(x=mutation,y=count,fill=Race))+
   geom_bar(stat='identity',position='dodge')+facet_grid(~gene)+scale_fill_manual(values=rcolors)+theme(axis.text.x = element_text(angle = 90))
 
+full_muts|>
+    subset(mutation!='Not measured')|>
+  subset(Race!='Unknown')|>
+  subset(!is.na(Race))|>
+  group_by(Race,gene,mutation)|>
+  summarize(count=n_distinct(Accession))|>
+  subset(gene%in%c("DNMT3A",'FLT3','FLT3_ITD',"IDH1","IDH2","KRAS","TP53","NPM1",'ATM')) |> ##what other genes do we want?
+  ggplot(aes(x=mutation,y=count,fill=Race))+
+  geom_bar(stat='identity',position='dodge')+facet_grid(~gene)+scale_fill_manual(values=rcolors)+theme(axis.text.x = element_text(angle = 90))
 ggsave('mutationalProfiles.png',width=10,height=4)
 ```
 ## create new metadata
@@ -240,8 +264,7 @@ now we need to combine the data so that we can access the values in an easy fash
 ```{r metadata}
 
 full_meta <- ba_meta|>
-  dplyr::select(Accession, Age, Sex, Race)|>
-  mutate(source='BeatAML',Study='BeatAML')|>
+  dplyr::select(-c(`FLT3-ITDcalls`,SampleID))|>
   rbind(full_meta_pilot)
   
 rmuts <- full_muts |>
@@ -250,7 +273,8 @@ rmuts <- full_muts |>
 
 
 meta_with_muts <- full_meta|>
-  left_join(rmuts)
+  left_join(rmuts)|>
+  unique()
 
 readr::write_csv(meta_with_muts,file='combinedBeatAML_pilotMetaData.csv')
 f <- synapser::File('combinedBeatAML_pilotMetadata.csv',parentId='syn62750464')
