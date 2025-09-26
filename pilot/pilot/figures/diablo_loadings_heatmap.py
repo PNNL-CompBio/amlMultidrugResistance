@@ -1,3 +1,6 @@
+"""
+Plots heatmap of loadings for DIABLO components.
+"""
 from os.path import abspath, dirname, join
 
 import matplotlib.pyplot as plt

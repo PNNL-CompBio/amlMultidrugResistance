@@ -1,3 +1,6 @@
+"""
+Loads and saves Synapse datasets for DIABLO implementation
+"""
 import pandas as pd
 
 from pilot.data_import import (import_global, import_meta, import_phospho,

@@ -1,3 +1,6 @@
+"""
+Builds KSEA table to analyze substrates associated with DIABLO components.
+"""
 import numpy as np
 import pandas as pd
 

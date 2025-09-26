@@ -1,3 +1,6 @@
+"""
+Plots genes targeted by phosphorylation.
+"""
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
