@@ -1,49 +1,37 @@
-# AML Multidrug resistance studies
-This repository contains the analysis and processing for multiple projects focusing on multidrug resistance for the CPTAC funded OHSU/PNNL PTRC. 
-
-## Basic data processing
-We focus on three drugs: gilteritinib (gilt), decitabine (dec), and
-venetoclax (ven).  We used single resistance models of gilt and dec,
-plus dual resistance models of gilt/ven, gilt/dec, and finally
-gilt/ven/dec. Enrichment analysis was performed with enrichR through
-MAGINE. Current data processing and notebooks to do general analysis
-are in the [data](./data) and [notebooks](./notebooks) directories respectively.
-
-### Data location
-All data are located on Synapse at
-[http://synapse.org/ptrc2](http://synapse.org/ptrc2) and can only be
-accessed with permission at the moment. 
-
-
-## Manuscript-specific analysis code
-Our current plan is to contribute to three individual manuscripts,
-each one describing a new set of combination cell lines. 
-
-### Gilteritinib/Venetoclax combination resistance
-Here we explore the phenotypes that emerge during early and late
-resistance to Gilteritinib and Venetoclax in combination. Current
-analyses are located in [venGiltResistance](./venGiltResistance).
-
-
-### Gilteritinib/Decitabine combination resistances
-Here we explore the phenotype that emerges upon treatment with
-Decitabine and Gilteritinib. Analyses are located in
-[decGiltResistance](./decGiltResistance). 
-
-### Triple resistance
-The last manuscript explores resistance to Gilteritinib, Decitabine,
-and Venetoclax in combination. Analyses are located in
-[tripleResistance](./tripleResistnace). 
-
-## Other manuscripts
-Other manuscripts related to resistance to gilteritinib or venetoclax:
-
-### NRAS
+# NRAS
 Investigates changes (proteomic or transcriptomic) upon NRAS knockdown since
-NRAS mutations arise with acquired resistance to gilteritinib. Proteomic 
-analyses are located in [NRAS](./NRAS).
+NRAS mutations arise with acquired resistance to gilteritinib. Includes PTRC2
+experiments 20, 21, and 22.
 
-### Sorted proteomics
-Investigates proteomic differences between CD14+ and CD34+ AML cells since
-CD14+ AML tend to be resistant to venetoclax. Analyses are located in 
-[sortedProteomics](./sortedProteomics).
+## Initial processing: for each experiment in its respective subfolder (exp20, exp21, or exp22)
+### Create study design tables
+0-create_study_design_tables.Rmd
+
+### Initial TMT global proteomics processing
+1-process_global_data.Rmd
+
+### Initial TMT phospho proteomics processing
+2-process_phospho_data.Rmd
+
+### Prep KSTAR input
+2.5-process_KSTAR_input.Rmd
+Not currently used but available in case of future need.
+
+### Normalization and batch correction
+3-normalize_and_batch_correction.Rmd
+
+### Upload crosstabs to Synapse
+4-push_to_synapse.Rmd
+
+## Analysis
+### Differential expression and GSEA
+4-panSEA_global,phospho_20250xxx.R
+Uses functions available in the helperFunctions subfolder.
+
+### Deconvolution (figure 4)
+2025-01-20_v2_MonoSigComparison_cellFrac.R
+
+### Other figure generation
+Figure 3: exp20/Figure3_20250528.R
+Figure 6: exp21/Figure6_20250430.R
+Other figures for experiment 22: exp22/suppFigExp22_20250430.R
