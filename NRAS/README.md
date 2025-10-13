@@ -32,6 +32,6 @@ Uses functions available in the helperFunctions subfolder.
 2025-01-20_v2_MonoSigComparison_cellFrac.R
 
 ### Other figure generation
-Figure 3: exp20/Figure3_20250528.R
-Figure 6: exp21/Figure6_20250430.R
-Other figures for experiment 22: exp22/suppFigExp22_20250430.R
+- Figure 3: exp20/Figure3_20250528.R
+- Figure 6: exp21/Figure6_20250430.R
+- Other figures for experiment 22: exp22/suppFigExp22_20250430.R
