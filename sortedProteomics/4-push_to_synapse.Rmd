@@ -1,5 +1,5 @@
 ---
-title: "Chr8 Push to synapse"
+title: "exp 24 Push to synapse"
 output: html_document
 ---
 
