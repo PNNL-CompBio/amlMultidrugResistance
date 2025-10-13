@@ -1,6 +1,7 @@
 # Sorted proteomics
 Investigates proteomic differences between CD14+ and CD34+ AML cells since
-CD14+ AML tend to be resistant to venetoclax.
+CD14+ AML tend to be resistant to venetoclax. Includes PTRC2 experiments 
+24 (DIA & TMT proteomics) and 27 (DIA proteomics).
 
 ## Initial processing: TMT (experiment 24)
 ### Create study design tables
