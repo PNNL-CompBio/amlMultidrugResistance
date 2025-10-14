@@ -1,6 +1,7 @@
 # figure 3 for NRAS manuscript: cell line KO (exp 20)
 library(plyr);library(dplyr); library(stringr); library(tidyr); library(readxl); library(scales);
 library(synapser); library(ggplot2); library(MSnSet.utils); library(patchwork);library(data.table)
+library(PCSF)
 synapser::synLogin()
 base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
 setwd(base.path)
@@ -207,7 +208,6 @@ all.de <- readRDS("diffexp.rds")
 #### GSEA/KSEA dot plots of combo over time ####
 # synIDs.mix <- list("Global" = list("NRAS KO" = "syn64735103"),
 #                    "Phospho" = list("NRAS KO" = "syn64735208"))
-library(PCSF)
 data("STRINGv12")
 kegg.info <- msigdbr::msigdbr(collection="C2",subcollection="CP:KEGG_LEGACY")
 cellCycle <- na.omit(unique(kegg.info[kegg.info$gs_name=="KEGG_CELL_CYCLE",]$gene_symbol)) #125

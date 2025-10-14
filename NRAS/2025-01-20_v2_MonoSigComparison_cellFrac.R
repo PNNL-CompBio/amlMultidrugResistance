@@ -1,12 +1,6 @@
 # score samples using various mono vs. prog signatures
-
-library(synapser)
-library(DMEA)
-library(tidyr)
-library(tibble)
-library(reshape2)
-library(plyr)
-library(dplyr)
+library(synapser);library(DMEA);library(tidyr);library(tibble);
+library(reshape2);library(plyr);library(dplyr);library(ggplot2)
 synapser::synLogin()
 
 evalOneMonoSig <- function(global.df100, temp.sig) {
@@ -119,7 +113,6 @@ phospho.inputs <- list("Patient ASO" = "syn66726980",
                        "Cell Line ASO 6HR" = "syn66729468",
                        "Cell Line ASO 24HR" = "syn66730918")
 all.inputs <- list("Global" = global.inputs, "Phospho" = phospho.inputs)
-library(ggplot2)
 for (omics in names(all.inputs)) {
   inputs <- all.inputs[[omics]]
   setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
@@ -727,7 +720,6 @@ names(meta.sheet) <- names(inputs)
 synIDs <- c("syn66726942","syn66726775","syn66705127")
 names(synIDs) <- names(inputs)
 exp.p.df <- data.frame()
-library(ggplot2)
 for (i in names(inputs)) {
   cat("Running",i,"\n")
   
@@ -1072,7 +1064,6 @@ names(meta.sheet) <- names(inputs)
 synIDs <- c("syn66726942","syn66726775","syn66705127")
 names(synIDs) <- names(inputs)
 exp.p.df <- data.frame()
-library(ggplot2)
 for (i in names(inputs)) {
   cat("Running",i,"\n")
   

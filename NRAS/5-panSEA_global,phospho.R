@@ -7,9 +7,9 @@
 library(readxl); library(panSEA); library(synapser); library(plotly);
 library(stringr); library(tidyr); library(ggplot2); library(MSnSet.utils)
 source("https://raw.githubusercontent.com/PNNL-CompBio/MPNST_Chr8/refs/heads/main/proteomics/panSEA_helper_20240913.R")
-source("https://raw.githubusercontent.com/PNNL-CompBio/amlMultidrugResistance/refs/heads/master/NRAS/helperFunctions/panSEA_helper_20240508_updated20250131.R?token=GHSAT0AAAAAADKMBE2BDL5TIZVFFSFM33262HN3LPQ")
-source("https://raw.githubusercontent.com/PNNL-CompBio/amlMultidrugResistance/refs/heads/master/NRAS/helperFunctions/customPCA.R?token=GHSAT0AAAAAADKMBE2BWL5MADN2JL6ZUHW62HN3KZA")
-source("https://raw.githubusercontent.com/PNNL-CompBio/amlMultidrugResistance/refs/heads/master/NRAS/helperFunctions/PCA3D.R?token=GHSAT0AAAAAADKMBE2BTDAIOZHVGKMFUCOU2HN3LEA")
+source("helperFunctions/panSEA_helper_20240508_updated20250131.R")
+source("helperFunctions/customPCA.R")
+source("helperFunctions/PCA3D.R")
 synapser::synLogin()
 
 rasPlots <- function(temp.expr, long.temp.expr, cc.df, meta.df.nras) {
