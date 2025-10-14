@@ -25,7 +25,7 @@ Not currently used but available in case of future need.
 
 ## Analysis
 ### Differential expression and GSEA
-4-panSEA_global,phospho_20250xxx.R
+4-panSEA_global,phospho.R
 Uses functions available in the helperFunctions subfolder.
 
 ### Deconvolution (figure 4)

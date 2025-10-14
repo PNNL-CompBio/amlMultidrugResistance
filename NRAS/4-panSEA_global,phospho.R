@@ -6,12 +6,10 @@
 
 library(readxl); library(panSEA); library(synapser); library(plotly);
 library(stringr); library(tidyr); library(ggplot2); library(MSnSet.utils)
-#source("https://raw.githubusercontent.com/PNNL-CompBio/MPNST_Chr8/refs/heads/main/panSEA_helper_20240913.R")
-#source("https://raw.githubusercontent.com/PNNL-CompBio/Exp21_NRAS_ASO_treated_patients/refs/heads/main/panSEA_helper_20240508_updated20250131.R")
-source("~/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Chr8/panSEA_helper_20240913.R")
-source("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/panSEA_helper_20240508_updated20250131.R")
-source("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/customPCA.R")
-source("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/PCA3D.R")
+source("https://raw.githubusercontent.com/PNNL-CompBio/MPNST_Chr8/refs/heads/main/proteomics/panSEA_helper_20240913.R")
+source("https://raw.githubusercontent.com/PNNL-CompBio/amlMultidrugResistance/refs/heads/master/NRAS/helperFunctions/panSEA_helper_20240508_updated20250131.R?token=GHSAT0AAAAAADKMBE2BDL5TIZVFFSFM33262HN3LPQ")
+source("https://raw.githubusercontent.com/PNNL-CompBio/amlMultidrugResistance/refs/heads/master/NRAS/helperFunctions/customPCA.R?token=GHSAT0AAAAAADKMBE2BWL5MADN2JL6ZUHW62HN3KZA")
+source("https://raw.githubusercontent.com/PNNL-CompBio/amlMultidrugResistance/refs/heads/master/NRAS/helperFunctions/PCA3D.R?token=GHSAT0AAAAAADKMBE2BTDAIOZHVGKMFUCOU2HN3LEA")
 synapser::synLogin()
 
 rasPlots <- function(temp.expr, long.temp.expr, cc.df, meta.df.nras) {
@@ -133,6 +131,7 @@ rasPlots <- function(temp.expr, long.temp.expr, cc.df, meta.df.nras) {
                     "Heatmaps" = all.heatmaps)
   save_to_synapse(poi.files)
 }
+
 #### 1. Import BeatAML data for DMEA ####
 setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/data")
 # load data from Synapse and store locally
@@ -544,170 +543,170 @@ for (i in names(inputs)) {
   }
 }
 
-#### 3. Compile results across exp 20-22 for each omics, contrast ####
-base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
-setwd(base.path)
-synapser::synLogin()
-source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/helperScripts/compile_mCorr.R")
-source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/helperScripts/compile_mGSEA.R")
-source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/helperScripts/compile_mDMEA.R")
-library(plyr);library(dplyr)
-# compile results for:
-all.files <- list()
-contrasts <- c("NRAS", "NRAS_w_Gilt_ctl", "Gilt", "Gilt_w_NRAS_ctl", "Gilt_w_NRAS")
-contrasts <- c("NRAS", "NRAS_w_Gilt_ctl")
-omics.types <- c("Global", "Phospho")
-for (k in contrasts) { # each contrast
-  contrast.files <- list()
-  for (i in omics.types) { # each omics type
-    temp.degs <- list()
-    temp.gsea <- list()
-    temp.gsea.kegg <- list()
-    temp.drug <- list()
-    temp.dmea <- list()
-    omics.files <- list()
-    for (j in names(synIDs)) { # each exp
-      synFolders <- unlist(as.list(synapser::synGetChildren(synIDs[[j]], list("folder"), sortBy = 'NAME')))
-      if (paste0(k,"_Treated_vs_Untreated") %in% synFolders) {
-        # locate contrast folder
-        contrastSyn <- synapser::synStore(synapser::Folder(paste0(k,"_Treated_vs_Untreated"), parent = synIDs[[j]])) 
-        
-        # locate omics folder
-        omicsSyn <- synapser::synStore(synapser::Folder(i, parent = contrastSyn)) 
-        
-        # locate differential expression
-        degSyn <- synapser::synStore(synapser::Folder("Differential_expression", parent = omicsSyn))
-        degSynFiles <- unlist(as.list(synapser::synGetChildren(degSyn, list("file"), sortBy = 'NAME')))
-        degSynResultFile <- degSynFiles[grep("Differential_expression_results.csv", degSynFiles)+1] # synapse ID is immediately after file name
-        temp.degs[[j]] <- read.csv(synapser::synGet(degSynResultFile)$path)
-
-        # locate GSEA hallmark or KSEA
-        if (grepl("phospho", i, ignore.case = TRUE)) {
-          kseaSyn <- synapser::synStore(synapser::Folder("KSEA", parent = omicsSyn))
-          kseaSynFiles <- unlist(as.list(synapser::synGetChildren(kseaSyn, list("file"), sortBy = 'NAME')))
-          kseaSynResultFile <- kseaSynFiles[grep("KSEA_results.csv", kseaSynFiles)+1] # synapse ID is immediately after file name
-          temp.gsea[[j]] <- read.csv(synapser::synGet(kseaSynResultFile)$path)
-        } else {
-          gseaSyn <- synapser::synStore(synapser::Folder("GSEA", parent = omicsSyn)) 
-          hallSyn <- synapser::synStore(synapser::Folder("GSEA_Hallmark", parent = gseaSyn))
-          hallSynFiles <- unlist(as.list(synapser::synGetChildren(hallSyn, list("file"), sortBy = 'NAME')))
-          if (!is.null(hallSynFiles)) {
-            hallSynResultFile <- hallSynFiles[grep("GSEA_results.csv", hallSynFiles)+1] # synapse ID is immediately after file name
-            temp.gsea[[j]] <- read.csv(synapser::synGet(hallSynResultFile)$path)
-          }
-          
-          keggSyn <- synapser::synStore(synapser::Folder("GSEA_KEGG", parent = gseaSyn)) 
-          keggSynFiles <- unlist(as.list(synapser::synGetChildren(keggSyn, list("file"), sortBy = 'NAME')))
-          if (!is.null(keggSynFiles)) {
-            keggSynResultFile <- keggSynFiles[grep("GSEA_results.csv", keggSynFiles)+1] # synapse ID is immediately after file name
-            temp.gsea.kegg[[j]] <- read.csv(synapser::synGet(keggSynResultFile)$path) 
-          }
-        }
-        
-        # locate DMEA
-        dmeaSyn <- synapser::synStore(synapser::Folder("DMEA", parent = omicsSyn))
-        dmeaSynFiles <- unlist(as.list(synapser::synGetChildren(dmeaSyn, list("file"), sortBy = 'NAME')))
-        dmeaSynResultFile <- dmeaSynFiles[grep("DMEA_results.csv", dmeaSynFiles)+1] # synapse ID is immediately after file name
-        temp.dmea[[j]] <- read.csv(synapser::synGet(dmeaSynResultFile)$path)
-        drugSynResultFile <- dmeaSynFiles[grep("DMEA_correlation_results.csv", dmeaSynFiles)+1] # synapse ID is immediately after file name
-        temp.drug[[j]] <- read.csv(synapser::synGet(drugSynResultFile)$path)
-      }
-    }
-    
-    # compile DEGs
-    if (length(temp.degs) > 1) {
-      degResults <- panSEA::compile_mDEG(temp.degs)
-      omics.files[["Differential_expression"]] <- list("Differential_expression_results.csv" =
-                                                         degResults$results,
-                                                       "Differential_expression_mean_results.csv" =
-                                                         degResults$mean.results,
-                                                       "Differential_expression_venn_diagram.pdf" =
-                                                         degResults$venn.diagram,
-                                                       "Differential_expression_correlation_matrix.pdf" =
-                                                         degResults$corr.matrix,
-                                                       "Differential_expression_dot_plot.pdf" =
-                                                         degResults$dot.plot)
-    }
-
-    # compile GSEA results
-    if (length(temp.gsea) > 1) {
-      gseaResults <- compile_mGSEA(temp.gsea)
-      if (grepl("phospho", i, ignore.case=TRUE)) {
-        omics.files[["KSEA"]] <- list("KSEA_results.csv" =
-                                        gseaResults$results,
-                                      "KSEA_mean_results.csv" =
-                                        gseaResults$mean.results,
-                                      "KSEA_venn_diagram.pdf" =
-                                        gseaResults$venn.diagram,
-                                      "KSEA_correlation_matrix.pdf" =
-                                        gseaResults$corr.matrix,
-                                      "KSEA_dot_plot.pdf" =
-                                        gseaResults$dot.plot)
-      } else {
-        omics.files[["GSEA"]] <- list("GSEA_results.csv" =
-                                        gseaResults$results,
-                                      "GSEA_mean_results.csv" =
-                                        gseaResults$mean.results,
-                                      "GSEA_venn_diagram.pdf" =
-                                        gseaResults$venn.diagram,
-                                      "GSEA_correlation_matrix.pdf" =
-                                        gseaResults$corr.matrix,
-                                      "GSEA_dot_plot.pdf" =
-                                        gseaResults$dot.plot)
-      }
-    }
-    
-    if (length(temp.gsea.kegg) > 1) {
-      gseaResults <- compile_mGSEA(temp.gsea.kegg)
-      omics.files[["GSEA_KEGG"]] <- list("GSEA_results.csv" =
-                                      gseaResults$results,
-                                    "GSEA_mean_results.csv" =
-                                      gseaResults$mean.results,
-                                    "GSEA_venn_diagram.pdf" =
-                                      gseaResults$venn.diagram,
-                                    "GSEA_correlation_matrix.pdf" =
-                                      gseaResults$corr.matrix,
-                                    "GSEA_dot_plot.pdf" =
-                                      gseaResults$dot.plot) 
-    }
-    
-    # compile DMEA results
-    if (length(temp.drug) > 1 & length(temp.dmea) > 1) {
-      drugResults <- compile_mCorr(temp.drug)
-      drug.files <- list("DMEA_correlation_results.csv" =
-                           drugResults$results,
-                         "DMEA_mean_correlation_results.csv" =
-                           drugResults$mean.results,
-                         "DMEA_correlation_venn_diagram.pdf" =
-                           drugResults$venn.diagram,
-                         "DMEA_correlation_correlation_matrix.pdf" =
-                           drugResults$corr.matrix,
-                         "DMEA_correlation_dot_plot.pdf" =
-                           drugResults$dot.plot)
-      dmeaResults <- compile_mDMEA(temp.dmea)
-      omics.files[["DMEA"]] <- list("DMEA_results.csv" =
-                                      dmeaResults$results,
-                                    "DMEA_mean_results.csv" =
-                                      dmeaResults$mean.results,
-                                    "DMEA_venn_diagram.pdf" =
-                                      dmeaResults$venn.diagram,
-                                    "DMEA_correlation_matrix.pdf" =
-                                      dmeaResults$corr.matrix,
-                                    "DMEA_dot_plot.pdf" =
-                                      dmeaResults$dot.plot,
-                                    "Drug_correlations" = drug.files)
-    }
-    
-    # save results
-    contrast.files[[i]] <- omics.files
-  } 
-  all.files[[k]] <- contrast.files
-}
-dir.create("Compiled_results_exp20-22")
-setwd("Compiled_results_exp20-22")
-compiledSyn <- synapser::synStore(synapser::Folder("Compiled_results_exp20-22",
-                                                   parent = synIDs[["Patient ASO"]])) 
-save_to_synapse(all.files, compiledSyn)
+# #### 3. Compile results across exp 20-22 for each omics, contrast ####
+# base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
+# setwd(base.path)
+# synapser::synLogin()
+# source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/helperScripts/compile_mCorr.R")
+# source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/helperScripts/compile_mGSEA.R")
+# source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/helperScripts/compile_mDMEA.R")
+# library(plyr);library(dplyr)
+# # compile results for:
+# all.files <- list()
+# contrasts <- c("NRAS", "NRAS_w_Gilt_ctl", "Gilt", "Gilt_w_NRAS_ctl", "Gilt_w_NRAS")
+# contrasts <- c("NRAS", "NRAS_w_Gilt_ctl")
+# omics.types <- c("Global", "Phospho")
+# for (k in contrasts) { # each contrast
+#   contrast.files <- list()
+#   for (i in omics.types) { # each omics type
+#     temp.degs <- list()
+#     temp.gsea <- list()
+#     temp.gsea.kegg <- list()
+#     temp.drug <- list()
+#     temp.dmea <- list()
+#     omics.files <- list()
+#     for (j in names(synIDs)) { # each exp
+#       synFolders <- unlist(as.list(synapser::synGetChildren(synIDs[[j]], list("folder"), sortBy = 'NAME')))
+#       if (paste0(k,"_Treated_vs_Untreated") %in% synFolders) {
+#         # locate contrast folder
+#         contrastSyn <- synapser::synStore(synapser::Folder(paste0(k,"_Treated_vs_Untreated"), parent = synIDs[[j]])) 
+#         
+#         # locate omics folder
+#         omicsSyn <- synapser::synStore(synapser::Folder(i, parent = contrastSyn)) 
+#         
+#         # locate differential expression
+#         degSyn <- synapser::synStore(synapser::Folder("Differential_expression", parent = omicsSyn))
+#         degSynFiles <- unlist(as.list(synapser::synGetChildren(degSyn, list("file"), sortBy = 'NAME')))
+#         degSynResultFile <- degSynFiles[grep("Differential_expression_results.csv", degSynFiles)+1] # synapse ID is immediately after file name
+#         temp.degs[[j]] <- read.csv(synapser::synGet(degSynResultFile)$path)
+# 
+#         # locate GSEA hallmark or KSEA
+#         if (grepl("phospho", i, ignore.case = TRUE)) {
+#           kseaSyn <- synapser::synStore(synapser::Folder("KSEA", parent = omicsSyn))
+#           kseaSynFiles <- unlist(as.list(synapser::synGetChildren(kseaSyn, list("file"), sortBy = 'NAME')))
+#           kseaSynResultFile <- kseaSynFiles[grep("KSEA_results.csv", kseaSynFiles)+1] # synapse ID is immediately after file name
+#           temp.gsea[[j]] <- read.csv(synapser::synGet(kseaSynResultFile)$path)
+#         } else {
+#           gseaSyn <- synapser::synStore(synapser::Folder("GSEA", parent = omicsSyn)) 
+#           hallSyn <- synapser::synStore(synapser::Folder("GSEA_Hallmark", parent = gseaSyn))
+#           hallSynFiles <- unlist(as.list(synapser::synGetChildren(hallSyn, list("file"), sortBy = 'NAME')))
+#           if (!is.null(hallSynFiles)) {
+#             hallSynResultFile <- hallSynFiles[grep("GSEA_results.csv", hallSynFiles)+1] # synapse ID is immediately after file name
+#             temp.gsea[[j]] <- read.csv(synapser::synGet(hallSynResultFile)$path)
+#           }
+#           
+#           keggSyn <- synapser::synStore(synapser::Folder("GSEA_KEGG", parent = gseaSyn)) 
+#           keggSynFiles <- unlist(as.list(synapser::synGetChildren(keggSyn, list("file"), sortBy = 'NAME')))
+#           if (!is.null(keggSynFiles)) {
+#             keggSynResultFile <- keggSynFiles[grep("GSEA_results.csv", keggSynFiles)+1] # synapse ID is immediately after file name
+#             temp.gsea.kegg[[j]] <- read.csv(synapser::synGet(keggSynResultFile)$path) 
+#           }
+#         }
+#         
+#         # locate DMEA
+#         dmeaSyn <- synapser::synStore(synapser::Folder("DMEA", parent = omicsSyn))
+#         dmeaSynFiles <- unlist(as.list(synapser::synGetChildren(dmeaSyn, list("file"), sortBy = 'NAME')))
+#         dmeaSynResultFile <- dmeaSynFiles[grep("DMEA_results.csv", dmeaSynFiles)+1] # synapse ID is immediately after file name
+#         temp.dmea[[j]] <- read.csv(synapser::synGet(dmeaSynResultFile)$path)
+#         drugSynResultFile <- dmeaSynFiles[grep("DMEA_correlation_results.csv", dmeaSynFiles)+1] # synapse ID is immediately after file name
+#         temp.drug[[j]] <- read.csv(synapser::synGet(drugSynResultFile)$path)
+#       }
+#     }
+#     
+#     # compile DEGs
+#     if (length(temp.degs) > 1) {
+#       degResults <- panSEA::compile_mDEG(temp.degs)
+#       omics.files[["Differential_expression"]] <- list("Differential_expression_results.csv" =
+#                                                          degResults$results,
+#                                                        "Differential_expression_mean_results.csv" =
+#                                                          degResults$mean.results,
+#                                                        "Differential_expression_venn_diagram.pdf" =
+#                                                          degResults$venn.diagram,
+#                                                        "Differential_expression_correlation_matrix.pdf" =
+#                                                          degResults$corr.matrix,
+#                                                        "Differential_expression_dot_plot.pdf" =
+#                                                          degResults$dot.plot)
+#     }
+# 
+#     # compile GSEA results
+#     if (length(temp.gsea) > 1) {
+#       gseaResults <- compile_mGSEA(temp.gsea)
+#       if (grepl("phospho", i, ignore.case=TRUE)) {
+#         omics.files[["KSEA"]] <- list("KSEA_results.csv" =
+#                                         gseaResults$results,
+#                                       "KSEA_mean_results.csv" =
+#                                         gseaResults$mean.results,
+#                                       "KSEA_venn_diagram.pdf" =
+#                                         gseaResults$venn.diagram,
+#                                       "KSEA_correlation_matrix.pdf" =
+#                                         gseaResults$corr.matrix,
+#                                       "KSEA_dot_plot.pdf" =
+#                                         gseaResults$dot.plot)
+#       } else {
+#         omics.files[["GSEA"]] <- list("GSEA_results.csv" =
+#                                         gseaResults$results,
+#                                       "GSEA_mean_results.csv" =
+#                                         gseaResults$mean.results,
+#                                       "GSEA_venn_diagram.pdf" =
+#                                         gseaResults$venn.diagram,
+#                                       "GSEA_correlation_matrix.pdf" =
+#                                         gseaResults$corr.matrix,
+#                                       "GSEA_dot_plot.pdf" =
+#                                         gseaResults$dot.plot)
+#       }
+#     }
+#     
+#     if (length(temp.gsea.kegg) > 1) {
+#       gseaResults <- compile_mGSEA(temp.gsea.kegg)
+#       omics.files[["GSEA_KEGG"]] <- list("GSEA_results.csv" =
+#                                       gseaResults$results,
+#                                     "GSEA_mean_results.csv" =
+#                                       gseaResults$mean.results,
+#                                     "GSEA_venn_diagram.pdf" =
+#                                       gseaResults$venn.diagram,
+#                                     "GSEA_correlation_matrix.pdf" =
+#                                       gseaResults$corr.matrix,
+#                                     "GSEA_dot_plot.pdf" =
+#                                       gseaResults$dot.plot) 
+#     }
+#     
+#     # compile DMEA results
+#     if (length(temp.drug) > 1 & length(temp.dmea) > 1) {
+#       drugResults <- compile_mCorr(temp.drug)
+#       drug.files <- list("DMEA_correlation_results.csv" =
+#                            drugResults$results,
+#                          "DMEA_mean_correlation_results.csv" =
+#                            drugResults$mean.results,
+#                          "DMEA_correlation_venn_diagram.pdf" =
+#                            drugResults$venn.diagram,
+#                          "DMEA_correlation_correlation_matrix.pdf" =
+#                            drugResults$corr.matrix,
+#                          "DMEA_correlation_dot_plot.pdf" =
+#                            drugResults$dot.plot)
+#       dmeaResults <- compile_mDMEA(temp.dmea)
+#       omics.files[["DMEA"]] <- list("DMEA_results.csv" =
+#                                       dmeaResults$results,
+#                                     "DMEA_mean_results.csv" =
+#                                       dmeaResults$mean.results,
+#                                     "DMEA_venn_diagram.pdf" =
+#                                       dmeaResults$venn.diagram,
+#                                     "DMEA_correlation_matrix.pdf" =
+#                                       dmeaResults$corr.matrix,
+#                                     "DMEA_dot_plot.pdf" =
+#                                       dmeaResults$dot.plot,
+#                                     "Drug_correlations" = drug.files)
+#     }
+#     
+#     # save results
+#     contrast.files[[i]] <- omics.files
+#   } 
+#   all.files[[k]] <- contrast.files
+# }
+# dir.create("Compiled_results_exp20-22")
+# setwd("Compiled_results_exp20-22")
+# compiledSyn <- synapser::synStore(synapser::Folder("Compiled_results_exp20-22",
+#                                                    parent = synIDs[["Patient ASO"]])) 
+# save_to_synapse(all.files, compiledSyn)
 
 #### 4. redo panSEA for exp 20 for each timepoint ####
 setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
@@ -981,276 +980,3 @@ setwd("Compiled_exp20_results_over_time")
 compiledSyn <- synapser::synStore(synapser::Folder("Compiled_results_over_time",
                                                    parent = synIDs[["Cell Line ASO by Time"]])) 
 save_to_synapse(all.files, compiledSyn)
-
-#### plot drugs for NRAS KO ####
-# load data
-base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
-setwd(base.path)
-dir.create("Compiled_exp20_results_over_time")
-setwd("Compiled_exp20_results_over_time")
-setwd("NRAS/Global/DMEA/Drug_correlations")
-drug.corr.df <- read.csv("DMEA_correlation_results.csv")
-colnames(drug.corr.df)[2] <- "Drug"
-drug.info <- read.csv("~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa.csv",
-                      stringsAsFactors = FALSE, fileEncoding = "latin1")
-drug.info <- drug.info[,c("Drug","moa")]
-drug.info[drug.info$Drug == "Ralimetinib (LY2228820)",]$moa <- "p38 MAPK inhibitor"
-drug.info[drug.info$Drug == "Nilotinib",]$moa <- "Abl kinase inhibitor"
-drug.info[drug.info$Drug == "AT-101",]$moa <- "BCL inhibitor"
-drug.info[is.na(drug.info$Drug),]$moa <- "Other"
-library(patchwork); library(ggplot2)
-dir.create("negativelyCorr")
-setwd("negativelyCorr")
-pearson.plots <- NULL
-spearman.plots <- NULL
-#MOAsInTop50 <- names(gmt.drug$genesets)
-#moaColors <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(12, "Set3"))(length(MOAsInTop50))
-pearson.venn <- list()
-spearman.venn <- list()
-for (i in unique(drug.corr.df$type)) {
-  p.df <- drug.corr.df[drug.corr.df$type == i,]
-  p.df$Pearson.q <- qvalue::qvalue(p = p.df$Pearson.p, pi0 = 1)$qvalues
-  p.df$Spearman.q <- qvalue::qvalue(p = p.df$Spearman.p, pi0 = 1)$qvalues
-  plot.df <- merge(p.df, drug.info, by="Drug", all.x = TRUE)
-  plot.df$Mechanism <- "Other"
-  #plot.df[plot.df$moa %in% MOAsInTop50,]$Mechanism <- plot.df[plot.df$moa %in% MOAsInTop50,]$moa
-  plot.df[grepl("Venetoclax",plot.df$Drug),]$Mechanism <- "BCL inhibitor"
-  plot.df$Drug <- sub(" [(].*", "", plot.df$Drug) # shorten drug names for plot
-  plot.df[plot.df$Drug == "NF-kB Activation Inhibitor",]$Drug <- "NFkB Inhibitor"
-  
-  rank.metrics <- c("Pearson.est", "Spearman.est")
-  for (j in rank.metrics) {
-    descr <- stringr::str_split_1(j, "[.]")[1]
-    if ("Drug" %in% colnames(plot.df)) {
-      if (j == "Pearson.est") {
-        plot.df <- plot.df[plot.df$Pearson.est < 0 & plot.df$Pearson.q <= 0.05,]
-        ylab <- paste0(descr," r")
-        pearson.venn[[i]] <- unique(plot.df$Drug)
-      } else {
-        plot.df <- plot.df[plot.df$Spearman.est < 0 & plot.df$Spearman.q <= 0.05,]
-        ylab <- paste0(descr," rho")
-        spearman.venn[[i]] <- unique(plot.df$Drug)
-      }
-      plot.df$rank <- plot.df[,j]
-      sigOrder <- na.omit(unique(plot.df[order(plot.df$rank, decreasing=TRUE),]$Drug))
-      plot.annot <- paste0(i, "\n(", nrow(plot.df), " / ", nrow(p.df), " Drugs Negatively Correlated)")
-      corr.plot <- ggplot(plot.df, aes(x=Drug, y=rank, fill = Mechanism)) + 
-        geom_col() + theme_minimal(base_size = 12) + ylab(ylab) + 
-        ggplot2::scale_x_discrete(limits = sigOrder) +
-        theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1),
-              axis.title.x=element_blank()) +
-        #scale_fill_manual(breaks=MOAsInTop50, values = moaColors) +
-        ggtitle(plot.annot) + 
-        theme(plot.title = element_text(hjust = 0.5, face="bold", size=16), legend.position="bottom")
-      ggsave(paste0("Drug_DIA_WV_moaFill_",descr,"_", i, ".pdf"), corr.plot, width = 10, height = 5)
-      if (is.null(pearson.plots) & j == "Pearson.est") {
-        pearson.plots <- (corr.plot + theme(legend.position = "none"))
-      } else if (j == "Pearson.est") {
-        pearson.plots <- pearson.plots / (corr.plot + theme(legend.position = "none"))
-      } else if (is.null(spearman.plots) & j == "Spearman.est") {
-        spearman.plots <- (corr.plot + theme(legend.position = "none"))
-      } else if (j == "Spearman.est") {
-        spearman.plots <- spearman.plots / (corr.plot + theme(legend.position = "none"))
-      }
-    }
-  }
-}
-#source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/MPNST/Chr8/MPNST_Chr8_manuscript/Figure_3_Kinase/guides_build_mod.R")
-#pearson.plots <- (pearson.plots / plot_spacer()) + plot_layout(guides='collect')
-#pearson.plots <- pearson.plots + theme(legend.position = "none")
-ggplot2::ggsave("Drug_DIA_WV_moaFill_Pearson_allSigs.pdf", pearson.plots, width=10, height=8)
-ggplot2::ggsave("Drug_DIA_WV_moaFill_Spearman_allSigs.pdf", spearman.plots, width=10, height=8)
-ggvenn::ggvenn(pearson.venn, show_percentage=FALSE, set_name_size=5, text_size=5)
-ggsave("Drug_DIA_WV_Pearson_sigOverlap.pdf", width=5, height=5)
-ggvenn::ggvenn(spearman.venn, show_percentage=FALSE, set_name_size=5, text_size=5)
-ggsave("Drug_DIA_WV_Spearman_sigOverlap.pdf", width=5, height=5)
-
-# load data
-base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
-setwd(base.path)
-dir.create("Compiled_results_exp20-22")
-setwd("Compiled_results_exp20-22")
-setwd("NRAS/Global/DMEA/Drug_correlations")
-drug.corr.df <- read.csv("DMEA_correlation_results.csv")
-colnames(drug.corr.df)[2] <- "Drug"
-drug.info <- read.csv("~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa.csv",
-                      stringsAsFactors = FALSE, fileEncoding = "latin1")
-drug.info <- drug.info[,c("Drug","moa")]
-drug.info[drug.info$Drug == "Ralimetinib (LY2228820)",]$moa <- "p38 MAPK inhibitor"
-drug.info[drug.info$Drug == "Nilotinib",]$moa <- "Abl kinase inhibitor"
-drug.info[drug.info$Drug == "AT-101",]$moa <- "BCL inhibitor"
-drug.info[is.na(drug.info$Drug),]$moa <- "Other"
-library(patchwork); library(ggplot2)
-dir.create("negativelyCorr")
-setwd("negativelyCorr")
-pearson.plots <- NULL
-spearman.plots <- NULL
-#MOAsInTop50 <- names(gmt.drug$genesets)
-#moaColors <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(12, "Set3"))(length(MOAsInTop50))
-pearson.venn <- list()
-spearman.venn <- list()
-for (i in unique(drug.corr.df$type)) {
-  p.df <- drug.corr.df[drug.corr.df$type == i,]
-  p.df$Pearson.q <- qvalue::qvalue(p = p.df$Pearson.p, pi0 = 1)$qvalues
-  p.df$Spearman.q <- qvalue::qvalue(p = p.df$Spearman.p, pi0 = 1)$qvalues
-  plot.df <- merge(p.df, drug.info, by="Drug", all.x = TRUE)
-  plot.df$Mechanism <- "Other"
-  #plot.df[plot.df$moa %in% MOAsInTop50,]$Mechanism <- plot.df[plot.df$moa %in% MOAsInTop50,]$moa
-  plot.df[grepl("Venetoclax",plot.df$Drug),]$Mechanism <- "BCL inhibitor"
-  plot.df$Drug <- sub(" [(].*", "", plot.df$Drug) # shorten drug names for plot
-  plot.df[plot.df$Drug == "NF-kB Activation Inhibitor",]$Drug <- "NFkB Inhibitor"
-  
-  rank.metrics <- c("Pearson.est", "Spearman.est")
-  for (j in rank.metrics) {
-    descr <- stringr::str_split_1(j, "[.]")[1]
-    if ("Drug" %in% colnames(plot.df)) {
-      if (j == "Pearson.est") {
-        plot.df <- plot.df[plot.df$Pearson.est < 0 & plot.df$Pearson.q <= 0.05,]
-        ylab <- paste0(descr," r")
-        pearson.venn[[i]] <- unique(plot.df$Drug)
-      } else {
-        plot.df <- plot.df[plot.df$Spearman.est < 0 & plot.df$Spearman.q <= 0.05,]
-        ylab <- paste0(descr," rho")
-        spearman.venn[[i]] <- unique(plot.df$Drug)
-      }
-      plot.df$rank <- plot.df[,j]
-      sigOrder <- na.omit(unique(plot.df[order(plot.df$rank, decreasing=TRUE),]$Drug))
-      plot.annot <- paste0(i, "\n(", nrow(plot.df), " / ", nrow(p.df), " Drugs Negatively Correlated)")
-      corr.plot <- ggplot(plot.df, aes(x=Drug, y=rank, fill = Mechanism)) + 
-        geom_col() + theme_minimal(base_size = 12) + ylab(ylab) + 
-        ggplot2::scale_x_discrete(limits = sigOrder) +
-        theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1),
-              axis.title.x=element_blank()) +
-        #scale_fill_manual(breaks=MOAsInTop50, values = moaColors) +
-        ggtitle(plot.annot) + 
-        theme(plot.title = element_text(hjust = 0.5, face="bold", size=16), legend.position="bottom")
-      ggsave(paste0("Drug_DIA_WV_moaFill_",descr,"_", i, ".pdf"), corr.plot, width = 10, height = 5)
-      if (is.null(pearson.plots) & j == "Pearson.est") {
-        pearson.plots <- (corr.plot + theme(legend.position = "none"))
-      } else if (j == "Pearson.est") {
-        pearson.plots <- pearson.plots / (corr.plot + theme(legend.position = "none"))
-      } else if (is.null(spearman.plots) & j == "Spearman.est") {
-        spearman.plots <- (corr.plot + theme(legend.position = "none"))
-      } else if (j == "Spearman.est") {
-        spearman.plots <- spearman.plots / (corr.plot + theme(legend.position = "none"))
-      }
-    }
-  }
-}
-#source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/MPNST/Chr8/MPNST_Chr8_manuscript/Figure_3_Kinase/guides_build_mod.R")
-#pearson.plots <- (pearson.plots / plot_spacer()) + plot_layout(guides='collect')
-#pearson.plots <- pearson.plots + theme(legend.position = "none")
-ggplot2::ggsave("Drug_DIA_WV_moaFill_Pearson_allSigs.pdf", pearson.plots, width=12, height=8)
-ggplot2::ggsave("Drug_DIA_WV_moaFill_Spearman_allSigs.pdf", spearman.plots, width=12, height=8)
-ggvenn::ggvenn(pearson.venn, show_percentage=FALSE, set_name_size=5, text_size=5)
-ggsave("Drug_DIA_WV_Pearson_sigOverlap.pdf", width=5, height=5)
-ggvenn::ggvenn(spearman.venn, show_percentage=FALSE, set_name_size=5, text_size=5)
-ggsave("Drug_DIA_WV_Spearman_sigOverlap.pdf", width=5, height=5)
-
-##### plot drugs for NRAS KO - highlight BCL2, FLT3i ####
-# load data
-base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
-setwd(base.path)
-dir.create("Compiled_results_exp20-22")
-setwd("Compiled_results_exp20-22")
-setwd("NRAS/Global/DMEA/Drug_correlations")
-drug.corr.df <- read.csv("DMEA_correlation_results.csv")
-colnames(drug.corr.df)[2] <- "Drug"
-drug.corr.df[drug.corr.df$Drug == "NF-kB Activation Inhibitor",]$Drug <- "NFkB Inhibitor"
-drug.corr.df$Drug <- sub(" [(].*", "", drug.corr.df$Drug) # shorten drug names for plot
-drug.info <- read.csv("~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa.csv",
-                      stringsAsFactors = FALSE, fileEncoding = "latin1")
-drug.info[drug.info$Drug == "NF-kB Activation Inhibitor",]$Drug <- "NFkB Inhibitor"
-drug.info$Drug <- sub(" [(].*", "", drug.info$Drug) # shorten drug names for plot
-BCL2i <- unique(drug.info[grepl("BCL", drug.info$moa),]$Drug)
-FLT3i <- unique(drug.info[grepl("FLT", drug.info$moa),]$Drug)
-drug.info <- drug.info[,c("Drug","moa")]
-library(patchwork); library(ggplot2); library(plyr); library(dplyr)
-dir.create("negativelyCorr")
-setwd("negativelyCorr")
-pearson.plots <- NULL
-spearman.plots <- NULL
-pearson.venn <- list()
-spearman.venn <- list()
-for (i in unique(drug.corr.df$type)) {
-  p.df <- drug.corr.df[drug.corr.df$type == i,]
-  p.df$Pearson.q <- qvalue::qvalue(p = p.df$Pearson.p, pi0 = 1)$qvalues
-  p.df$Spearman.q <- qvalue::qvalue(p = p.df$Spearman.p, pi0 = 1)$qvalues
-  p.df <- merge(p.df, drug.info, by="Drug", all.x = TRUE)
-  p.df$Mechanism <- "Other"
-  for (j in 1:nrow(p.df)) {
-    temp.drugs <- strsplit(p.df$Drug[j], " - ")[[1]]
-    if (any(temp.drugs %in% BCL2i) & any(temp.drugs %in% FLT3i)) {
-      p.df$Mechanism[j] <- "BCL2 & FLT3 inhibitor"
-    } else if (any(temp.drugs %in% BCL2i)) {
-      p.df$Mechanism[j] <- "BCL2 inhibitor"
-    } else if (any(temp.drugs %in% FLT3i)) {
-      p.df$Mechanism[j] <- "FLT3 inhibitor"
-    }
-  }
-  
-  rank.metrics <- c("Pearson.est", "Spearman.est")
-  for (j in rank.metrics) {
-    descr <- stringr::str_split_1(j, "[.]")[1]
-    if ("Drug" %in% colnames(p.df)) {
-      if (j == "Pearson.est") {
-        plot.df <- p.df[p.df$Pearson.est < 0 & p.df$Pearson.q <= 0.05,]
-        ylab <- paste0(descr," r")
-        pearson.venn[[i]] <- unique(plot.df$Drug)
-      } else {
-        plot.df <- p.df[p.df$Spearman.est < 0 & p.df$Spearman.q <= 0.05,]
-        ylab <- paste0(descr," rho")
-        spearman.venn[[i]] <- unique(plot.df$Drug)
-      }
-      plot.df$rank <- plot.df[,j]
-      sigOrder <- unique(plot.df[order(plot.df$rank),]$Drug)
-      plot.annot <- paste0(i, "\n(", nrow(plot.df), " / ", nrow(p.df), " Drugs Negatively Correlated)")
-      corr.plot <- ggplot(plot.df, aes(x=Drug, y=rank, fill = Mechanism)) + 
-        geom_col() + theme_minimal(base_size = 12) + ylab(ylab) + 
-        ggplot2::scale_x_discrete(limits = sigOrder) +
-        theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1),
-              axis.title.x=element_blank()) +
-        ggtitle(plot.annot) + 
-        theme(plot.title = element_text(hjust = 0.5, face="bold", size=16), legend.position="bottom")
-      ggsave(paste0("Drug_DIA_WV_moaFill_",descr,"_", i, "_BCL2-FTL3i.pdf"), corr.plot, width = 12, height = 3.25)
-      
-      top20.df <- plot.df %>% slice_min(Pearson.est, n=20)
-      corr.plot <- ggplot(top20.df, aes(x=Drug, y=rank, fill = Mechanism)) + 
-        geom_col() + theme_minimal(base_size = 12) + ylab(ylab) + 
-        ggplot2::scale_x_discrete(limits = sigOrder[sigOrder %in% top20.df$Drug]) +
-        theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1),
-              axis.title.x=element_blank()) +
-        ggtitle(plot.annot) + 
-        theme(plot.title = element_text(hjust = 0.5, face="bold", size=16), legend.position="bottom")
-      ggsave(paste0("Drug_DIA_WV_moaFill_",descr,"_", i, "_BCL2-FTL3i_top20.pdf"), corr.plot, width = 5, height = 3.25)
-      
-      top20.df <- plot.df %>% slice_min(Pearson.est, n=10)
-      corr.plot <- ggplot(top20.df, aes(x=Drug, y=rank, fill = Mechanism)) + 
-        geom_col() + theme_minimal(base_size = 12) + ylab(ylab) + 
-        ggplot2::scale_x_discrete(limits = sigOrder[sigOrder %in% top20.df$Drug]) +
-        theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1),
-              axis.title.x=element_blank()) +
-        ggtitle(plot.annot) + 
-        theme(plot.title = element_text(hjust = 0.5, face="bold", size=16), legend.position="bottom")
-      ggsave(paste0("Drug_DIA_WV_moaFill_",descr,"_", i, "_BCL2-FTL3i_top10.pdf"), corr.plot, width = 3, height = 3.25)
-      if (is.null(pearson.plots) & j == "Pearson.est") {
-        pearson.plots <- (corr.plot + theme(legend.position = "none"))
-      } else if (j == "Pearson.est") {
-        pearson.plots <- pearson.plots / (corr.plot + theme(legend.position = "none"))
-      } else if (is.null(spearman.plots) & j == "Spearman.est") {
-        spearman.plots <- (corr.plot + theme(legend.position = "none"))
-      } else if (j == "Spearman.est") {
-        spearman.plots <- spearman.plots / (corr.plot + theme(legend.position = "none"))
-      }
-    }
-  }
-}
-#source("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/MPNST/Chr8/MPNST_Chr8_manuscript/Figure_3_Kinase/guides_build_mod.R")
-#pearson.plots <- (pearson.plots / plot_spacer()) + plot_layout(guides='collect')
-#pearson.plots <- pearson.plots + theme(legend.position = "none")
-ggplot2::ggsave("Drug_DIA_WV_moaFill_Pearson_allSigs_BCL2-FTL3i.pdf", pearson.plots, width=12, height=8)
-ggplot2::ggsave("Drug_DIA_WV_moaFill_Spearman_allSigs_BCL2-FTL3i.pdf", spearman.plots, width=12, height=8)
-ggvenn::ggvenn(pearson.venn, show_percentage=FALSE, set_name_size=5, text_size=5)
-ggsave("Drug_DIA_WV_Pearson_sigOverlap_BCL2-FTL3i.pdf", width=5, height=5)
-ggvenn::ggvenn(spearman.venn, show_percentage=FALSE, set_name_size=5, text_size=5)
-ggsave("Drug_DIA_WV_Spearman_sigOverlap_BCL2-FTL3i.pdf", width=5, height=5)
