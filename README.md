@@ -10,7 +10,7 @@ need to navigate to the site nad request access.
 
 The repository is currently laid out as follows.
 
-- [./prelimAnalysis](./prelimAnalysis): Here we have exploratory work
+- [./prelim_analysis](./prelim_analysis): Here we have exploratory work
   from early projects and data, mainly for historic purposes.
 - [./combination_cell_line_proteomics](./combination_cell_line_proteomics):
   Here we have data analysis from MOLM14 cells treated with
