@@ -20,7 +20,7 @@ The repository is currently laid out as follows.
   gilt in combination. Currently going into a manuscript.
 - [./NRAS_ASO](./NRAS_ASO): This is analysis for a study focusing on
   the impacs of NRAS ASO on gilteritinib resistance. 
-- [./cd14_cd34_protemics](./cd14_cd34_proteomics): This is analysis
+- [./cd14_cd34_proteomics](./cd14_cd34_proteomics): This is analysis
   comparing expression of AML patient samples sorted by CD14+ and
   CD34+ markers. 
 - [./aml_outcome_disparities](./aml_outcome_disparities): This
