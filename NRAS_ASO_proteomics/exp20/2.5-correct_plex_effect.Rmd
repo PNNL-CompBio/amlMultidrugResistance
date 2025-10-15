@@ -1,0 +1,134 @@
+---
+title: "Ex20 Batch Correction"
+output: html_document
+---
+
+Preliminary summary
+
+
+
+
+```{r include=FALSE}
+library(MSnSet.utils)
+library(clusterProfiler)
+library(dplyr)
+library(ggplot2)
+library(readxl)
+library(pheatmap)
+library(msigdbr)
+library(stringr)
+
+source("../../synapseUtil.R")
+
+global_crosstab <- read.table(syn$get("syn70198035")$path, sep = "\t")
+phospho_crosstab <- read.table(syn$get("syn52623908")$path, sep = "\t")
+
+meta <- read.table("data/samples.txt", sep = "\t", header = T) %>%
+  select(Sample = ReporterAlias, MeasurementName, PlexID) %>%
+  mutate(Time = sub("^([0-9]+ HR): MOLM14 Late Gilteritinib Resistant Flask .*$", "\\1", Sample),
+         Volume = sub("MOLM14 Late Gilteritinib Resistant Flask ([0-9]L)", "\\1", Sample),
+         Volume = sub(" Tube_.*$", "", Volume),
+         Time = case_when(grepl("baseline", Volume) ~ Volume,
+                          TRUE ~ Time),
+         Group = sub("^[0-9]+ HR\\: [0-9]+L \\+ 5 µM (.*)", "\\1", Volume),
+         Group = sub("100 nM ", "", Group),
+         Group = sub("[0-9]+L ", "", Group),
+         Volume = sub("^[0-9]+ HR\\: ([0-9]+L) .*$", "\\1", Volume),
+         PlexID = as.character(PlexID)) %>%
+  mutate(Time = case_when(grepl("baseline", Time) ~ "baseline", 
+                          TRUE ~ Time),
+         Volume = case_when(grepl("baseline", Volume) ~ "baseline", 
+                            TRUE ~ Volume)) %>%
+  filter(!grepl("ref", Sample))
+rownames(meta) <- meta$MeasurementName
+
+meta <- meta %>%
+  mutate(Group = gsub(" ", "_", Group),
+         Group = gsub("_\\+", "", Group),
+         bgd_ = paste(Group, Time),
+         bgd_ = case_when(bgd_ == "(baseline) baseline" ~ "baseline",
+                          TRUE ~ bgd_),
+         bgd_ = gsub(" ", "_", bgd_)) 
+
+```
+
+
+```{r}
+global_missing <- rowSums(is.na(global_crosstab))
+phospho_missing <- rowSums(is.na(phospho_crosstab))
+
+hist(global_missing)
+hist(phospho_missing)
+
+## 50 % missingness filter, lose 178 global features and 27205 phosphosites
+global_crosstab <- global_crosstab[global_missing < ncol(global_crosstab)/2, ]
+phospho_crosstab <- phospho_crosstab[phospho_missing < ncol(phospho_crosstab)/2, ]
+
+hist(rowSums(is.na(global_crosstab)))
+hist(rowSums(is.na(phospho_crosstab)))
+
+```
+
+
+
+
+```{r}
+m_global <- MSnSet(exprs = global_crosstab %>% as.matrix(), 
+                   pData = meta[colnames(global_crosstab), ])
+
+m_phospho <- MSnSet(exprs = phospho_crosstab %>% as.matrix(), 
+                    pData = meta[colnames(phospho_crosstab), ])
+
+# plot_pca(m_global, "bio_group", label = "Sample")
+plot_pca(m_global, "Group") + ggtitle("Global data uncorrected")
+# plot_pca(m_global, "bio_group_detailed")
+plot_pca(m_global, "PlexID") + ggtitle("Global data uncorrected")
+plot_pca(m_global, "Time") + ggtitle("Global data uncorrected")
+plot_pca(m_global, "Group", shape = "Time") + ggtitle("Global data uncorrected")
+
+# plot_pca(m_phospho, "bio_group", label = "Sample")
+plot_pca(m_phospho, "Group") + ggtitle("Phospho data uncorrected")
+# plot_pca(m_phospho, "bio_group_detailed")
+plot_pca(m_phospho, "PlexID") + ggtitle("Phospho data uncorrected")
+plot_pca(m_phospho, "Time") + ggtitle("Phospho data uncorrected")
+plot_pca(m_phospho, "Group", shape = "Time") + ggtitle("Phospho data uncorrected")
+
+```
+
+
+```{r}
+m_global_c <- correct_batch_effect_NA(m_global, "PlexID", par.prior = T)
+m_phospho_c <- correct_batch_effect_NA(m_phospho, "PlexID", par.prior = T)
+
+
+batch_effect_g <- limma_gen(m_global, "~PlexID", "PlexID")
+batch_effect_p <- limma_gen(m_phospho, "~PlexID", "PlexID")
+batch_effect_gc <- limma_gen(m_global_c, "~PlexID", "PlexID")
+batch_effect_pc <- limma_gen(m_phospho_c, "~PlexID", "PlexID")
+
+hist(batch_effect_g$adj.P.Val, main = "Global batch effect, uncorrected", xlab = "adj.p.val")
+hist(batch_effect_p$adj.P.Val, main = "Phospho batch effect, uncorrected", xlab = "adj.p.val")
+hist(batch_effect_gc$adj.P.Val, main = "Global batch effect, corrected", xlab = "adj.p.val")
+hist(batch_effect_pc$adj.P.Val, main = "Phospho batch effect, corrected", xlab = "adj.p.val")
+
+# write.table(exprs(m_global_c), "data/global_data/ptrc_ex20_crosstab_global_gene_median_centered_corrected.txt", sep = "\t", quote = F)
+# write.table(exprs(m_phospho_c), "data/phospho_data/ptrc_ex20_crosstab_phospho_SiteID_median_centered_corrected.txt", sep = "\t", quote = F)
+
+```
+
+```{r}
+# plot_pca(m_global, "bio_group", label = "Sample")
+plot_pca(m_global_c, "Group") + ggtitle("Global data corrected")
+# plot_pca(m_global, "bio_group_detailed")
+plot_pca(m_global_c, "PlexID") + ggtitle("Global data corrected")
+plot_pca(m_global_c, "Time") + ggtitle("Global data corrected")
+plot_pca(m_global_c, "Group", shape = "Time") + ggtitle("Global data corrected")
+
+# plot_pca(m_phospho, "bio_group", label = "Sample")
+plot_pca(m_phospho_c, "Group") + ggtitle("Phospho data corrected")
+# plot_pca(m_phospho, "bio_group_detailed")
+plot_pca(m_phospho_c, "PlexID") + ggtitle("Phospho data corrected")
+plot_pca(m_phospho_c, "Time") + ggtitle("Phospho data corrected")
+plot_pca(m_phospho_c, "Group", shape = "Time") + ggtitle("Phospho data corrected")
+
+```
