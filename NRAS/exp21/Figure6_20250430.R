@@ -829,7 +829,7 @@ synIDs.mix <- list("Global" = "syn66726959", # only want to look at "0" aka NRAS
                    "Phospho" = "syn66726973")
 all.synIDs <- list("Mix" = synIDs.mix)
 
-drug.info <- read.csv("~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa.csv",
+drug.info <- read.csv(synapser::synGet("syn70195332")$path,
                       stringsAsFactors = FALSE, fileEncoding = "latin1")
 drug.info <- drug.info[,c("Drug","moa")]
 drug.info[drug.info$Drug == "Ralimetinib (LY2228820)",]$moa <- "p38 MAPK inhibitor"

@@ -213,8 +213,8 @@ ggsave(paste0("DMEA_top_",n.top,"_MOAs_forCD14PosSamples_barPlot_",Sys.Date(),".
 #### 3. Drug correlation bar plot ####
 sig.moas <- unique(sig.moa.results$Drug_set)
 drug.corr <- read.csv(synapser::synGet("syn69928450")$path) # was syn64606618  before considering cell type, sort type, patient factors in differential expression
-drug.info <- read.csv("~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa.csv",
-                      stringsAsFactors = FALSE, fileEncoding = "latin1")
+drug.info <- read.csv(synapser::synGet("syn70195332")$path,
+                      stringsAsFactors = FALSE, fileEncoding = "latin1") # "~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa.csv"
 drug.info <- drug.info[,c("Drug","moa")]
 drug.corr <- drug.corr[drug.corr$Drug %in% drug.info$Drug,]
 

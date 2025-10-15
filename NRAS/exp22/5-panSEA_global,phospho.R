@@ -33,7 +33,7 @@ meta.df[grep("NRAS", meta.df$`Sample Name`), ]$Treatment <- substr(
 #### 2. Import BeatAML data ####
 # import drug MOA annotations
 moa.BeatAML <- utils::read.csv(
-  "~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa.csv",
+  synapser::synGet("syn70195332")$path,
   stringsAsFactors = FALSE, fileEncoding = "latin1")
 
 # login to Synapse

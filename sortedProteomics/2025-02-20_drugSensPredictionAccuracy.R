@@ -376,10 +376,10 @@ load_not_norm_BeatAML_for_DMEA3 <- function(BeatAML.path = "BeatAML_DMEA_inputs_
 setwd("~/OneDrive - PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/")
 setwd("data")
 
-# drug.info <- read.csv("~/OneDrive - PNNL/Documents/PTRC2/BeatAML_single_drug_moa_2025-01-20.csv",
-#                       stringsAsFactors=FALSE, fileEncoding="latin1")
-# gmt.drug <- DMEA::as_gmt(drug.info, sep=", ")
-# saveRDS(gmt.drug, "gmt_BeatAML_drug_MOA_2025-01-20.rds")
+drug.info <- read.csv(synapser::synGet("syn70195332")$path,
+                      stringsAsFactors=FALSE, fileEncoding="latin1")
+gmt.drug <- DMEA::as_gmt(drug.info, sep=", ")
+saveRDS(gmt.drug, "gmt_BeatAML_drug_MOA_2025-01-20.rds")
 gmt.drug <- readRDS("gmt_BeatAML_drug_MOA_2025-01-20.rds")
 
 # load sorted proteomics signature
