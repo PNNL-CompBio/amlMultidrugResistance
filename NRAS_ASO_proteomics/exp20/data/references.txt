@@ -1,4 +1,0 @@
-PlexID	QuantBlock	Reference
-1	1	ref
-2	1	ref
-3	1	ref
