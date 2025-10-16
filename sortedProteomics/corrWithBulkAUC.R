@@ -4,12 +4,10 @@ library(plyr);library(dplyr)
 setwd("~/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/analysis")
 synapser::synLogin()
 base.path <- getwd()
-dir.create("correlations")
-setwd("correlations")
 
 #### prep data ####
 # get sorted data
-dia.wo.out <- readRDS("DIA_2batches_noOutliers.rds")
+dia.wo.out <- readRDS(synapser::synGet("syn70198439")$path) # DIA_2batches_noOutliers.rds
 
 # get bulk drug sensitivity data
 drug.BeatAML <- read.csv(synapser::synGet("syn65677650")$path) # other drug sensitivity data: syn51674470
@@ -20,8 +18,6 @@ azaVen <- drug.BeatAML[drug.BeatAML$Specimen..Lab.ID %in% dia.wo.out$meta$patien
                       drug.BeatAML$Inhibitor.Panel.Definition..Drug=="Azacitidine - Venetoclax",
                     c("Specimen..Lab.ID","Probit.Interpretation..Area.Under.Curve")] # 20 / 23
 # any samples lost?
-lost.samples <- unique(dia.wo.out$meta$patient[!(dia.wo.out$meta$patient %in% sorted.drug$Specimen..Lab.ID)])
-# 3 / 23 patients lost: "16-01184" "21-00839" "22-00251"
 lost.samples.ven <- unique(dia.wo.out$meta$patient[!(dia.wo.out$meta$patient %in% ven$Specimen..Lab.ID)])
 # 3 / 23 patients lost: "16-01184" "21-00839" "22-00251"
 lost.samples.av <- unique(dia.wo.out$meta$patient[!(dia.wo.out$meta$patient %in% azaVen$Specimen..Lab.ID)])
@@ -31,8 +27,8 @@ lost.samples.av <- unique(dia.wo.out$meta$patient[!(dia.wo.out$meta$patient %in%
 other.pts <- read.csv(synapser::synGet("syn53627410")$path)
 colnames(ven) <- c("sample_id","auc")
 colnames(azaVen) <- c("sample_id","auc")
-other.ven <- other.pts[other.pts$patient %in% lost.samples,c("patient","Ven_AUC")]
-other.av <- other.pts[other.pts$patient %in% lost.samples,c("patient","Aza.Ven_AUC")]
+other.ven <- other.pts[other.pts$patient %in% lost.samples.ven,c("patient","Ven_AUC")]
+other.av <- other.pts[other.pts$patient %in% lost.samples.av,c("patient","Aza.Ven_AUC")]
 colnames(other.ven) <- colnames(ven)
 colnames(other.av) <- colnames(ven)
 ven <- rbind(ven, other.ven)
@@ -66,6 +62,8 @@ prot.cd34.flow <- prot.flow[grepl("cd34",rownames(prot.flow),ignore.case=TRUE),]
 prot.msc.flow <- prot.flow[grepl("msc",row.names(prot.flow),ignore.case=TRUE),]
 
 #### run correlations ####
+dir.create("correlations")
+setwd("correlations")
 inputs <- list("Overall" = prot, "Bead" = prot.bead, "Flow" = prot.flow,
                "CD14" = prot.cd14, "CD14_Bead" = prot.cd14.bead,
                "CD14_Flow" = prot.cd14.flow, "CD34" = prot.cd34,
