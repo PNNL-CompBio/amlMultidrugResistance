@@ -1,49 +1,52 @@
 # AML Multidrug resistance studies
-This repository contains the analysis and processing for multiple projects focusing on multidrug resistance for the CPTAC funded OHSU/PNNL PTRC. 
-
-## Basic data processing
-We focus on three drugs: gilteritinib (gilt), decitabine (dec), and
-venetoclax (ven).  We used single resistance models of gilt and dec,
-plus dual resistance models of gilt/ven, gilt/dec, and finally
-gilt/ven/dec. Enrichment analysis was performed with enrichR through
-MAGINE. Current data processing and notebooks to do general analysis
-are in the [data](./data) and [notebooks](./notebooks) directories respectively.
-
-### Data location
-All data are located on Synapse at
-[http://synapse.org/ptrc2](http://synapse.org/ptrc2) and can only be
-accessed with permission at the moment. 
+This repository contains the analysis and processing for multiple
+projects focusing on multidrug resistance for the CPTAC funded
+OHSU/PNNL PTRC. 
 
 
-## Manuscript-specific analysis code
-Our current plan is to contribute to three individual manuscripts,
-each one describing a new set of combination cell lines. 
 
-### Gilteritinib/Venetoclax combination resistance
-Here we explore the phenotypes that emerge during early and late
-resistance to Gilteritinib and Venetoclax in combination. Current
-analyses are located in [venGiltResistance](./venGiltResistance).
+All data for this project resides on the Synapse at
+[http://synapse.org/ptrc2]. To run the code for each project, you will
+need to navigate to the site nad request access. 
 
 
-### Gilteritinib/Decitabine combination resistances
-Here we explore the phenotype that emerges upon treatment with
-Decitabine and Gilteritinib. Analyses are located in
-[decGiltResistance](./decGiltResistance). 
+## Directory structure
 
-### Triple resistance
-The last manuscript explores resistance to Gilteritinib, Decitabine,
-and Venetoclax in combination. Analyses are located in
-[tripleResistance](./tripleResistnace). 
+The repository is currently laid out as follows, with folders divided roughly according to
+dataset or experiment that was analyzed
 
-## Other manuscripts
-Other manuscripts related to resistance to gilteritinib or venetoclax:
+### Cell line work
 
-### NRAS
-Investigates changes (proteomic or transcriptomic) upon NRAS knockdown since
-NRAS mutations arise with acquired resistance to gilteritinib. Proteomic 
-analyses are located in [NRAS](./NRAS).
+In this project we developed a number of drug resistant cell lines (MOLM14) that were
+cultured in combination with Gilteritinib, Venetoclax, Decitabine, or some combination 
+there of. These data can be found here.
 
-### Sorted proteomics
-Investigates proteomic differences between CD14+ and CD34+ AML cells since
-CD14+ AML tend to be resistant to venetoclax. Analyses are located in 
-[sortedProteomics](./sortedProteomics).
+- [./prelim_analysis](./prelim_analysis): Here we have exploratory work
+  from early projects and data, mainly for historic purposes.
+- [./combination_cell_line_proteomics](./combination_cell_line_proteomics):
+  Here we have data analysis from MOLM14 cells treated with
+  combiantions of venetoclax, gilteritinib and HMA
+- [./venetoclax_gilteritinib_resistance](./venetoclax_gilteritinib_resistance):
+  This is analysis of MOLM14 cell lines that are resistant to ven +
+  gilt in combination. Currently going into a manuscript.
+- [./NRAS_ASO](./NRAS_ASO): This is analysis for a study focusing on
+  the impacs of NRAS ASO on gilteritinib resistance. 
+
+### Ex vivo cultures
+We have also measured proteins expressed in ex vivo culture from patient samples. 
+This analysis can be found below.
+
+- [./drug_treated_samples](./drug_treated_samples): analysis of patient samples cultured for
+months of treatment with single agents or combinations of drugs. 
+
+### Patient samples
+We also measured proteomics measurements of patient samples, all analysis for these is in the 
+following directories.
+- [./cd14_cd34_proteomics](./cd14_cd34_proteomics): This is analysis
+  comparing expression of AML patient samples sorted by CD14+ and
+  CD34+ markers. 
+- [./aml_outcome_disparities](./aml_outcome_disparities): This
+  analysis focuses on the identification of multiomic mechanisms of
+  outcome disparities in Black AML patients. 
+- [./ven_hma_samples](./ven_hma_samples): Here we have new analysis
+  of data from patient samples before treatemnt with ven+HMA. 

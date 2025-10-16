@@ -1,0 +1,223 @@
+---
+title: "Ex20 Global proteomics"
+output: html_document
+---
+
+The global proteomics pipeline uses the R package [PlexedPiper](https://github.com/vladpetyuk/PlexedPiper). It also requires a connection to the DMS to access data packages.
+
+
+```{r, echo=F}
+library(knitr)
+knitr::opts_chunk$set(message=F, warning=F)
+t0 <- Sys.time(); print(t0)
+```
+
+
+```{r setup}
+library(PlexedPiper)
+library(dplyr)
+library(PNNL.DMS.utils)
+library(Biostrings)
+library(tidyverse)
+
+source("../../synapseUtil.R")
+
+data_package_num <- 4901
+data_folder <- "data/global_data"
+crosstab_prefix <- "ptrc_ex20"
+
+# dir.create(data_folder)
+
+```
+
+
+# Study design
+
+Study design information in PlexedPiper is encoded in three tables: fractions, samples, and references. 
+These tables can be made using metadata and should be stored on the DMS before processing.
+
+```{r read_study_design}
+# samples <- readxl::read_xlsx("data/Exp20 Plex Design_04112023.xlsx", sheet = "Sheet2") %>%
+samples <- readxl::read_xlsx(syn$get("syn51412857")$path, sheet = "Sheet2") %>%
+  mutate(QuantBlock = 1, PlexID = as.character(Plex),
+         Sample = case_when(`Sample Name` == "PNNL REFERENCE Sample" ~ "ref",
+                            TRUE ~ `Sample Name`),
+         Tube = paste0("Tube_", `Tube #`),
+         Sample = case_when(grepl("baseline", Sample) ~ paste(Sample, Tube),
+                            TRUE ~ Sample)) %>%
+  select(ReporterName = Channel, PlexID, QuantBlock, ReporterAlias = Sample, MeasurementName = Tube)
+
+samples$MeasurementName[samples$ReporterAlias == "ref"] <- NA
+
+references <- data.frame(PlexID = c("1", "2", "3"), QuantBlock = 1, Reference = "ref")
+
+write.table(samples,"data/samples.txt", sep = "\t", quote = F, row.names = F)
+write.table(references,"data/references.txt", sep = "\t", quote = F, row.names = F)
+```
+
+# Process MS-GF+ data
+
+MS-GF+ data is processed in several steps. First, read MS-GF+ output from the DMS. (This step can take a while).
+
+```{r read_msgf}
+msgf_data_path <- file.path(data_folder, "msgfData_original.RData")
+if (file.exists(msgf_data_path)) {
+  load(msgf_data_path)
+} else {
+  msnid <- read_msgf_data_from_DMS(data_package_num)
+  # save(msnid, file=msgf_data_path)
+}
+show(msnid)
+
+fractions <- psms(msnid) %>%
+  select(Dataset) %>% unique() %>%
+  mutate(PlexID = sub("^PTRC_Exp20_Plex_0([123]+)_.*$", "\\1", Dataset))
+write.table(fractions, "data/global_data/fractions.txt", sep = "\t", quote = F)
+
+```
+
+
+## Correct peak selection and peptide FDR
+We use the target-decoy search strategy method described in [(Elias 2010)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2922680/). 
+Filtering is done first at peptide level, then at protein level, both with max FDR of 1%.
+
+```{r}
+## peak selection & Peptide filter
+msnid <- correct_peak_selection(msnid)   ## optional for phospho
+msnid <- filter_msgf_data_peptide_level(msnid, 0.01)
+show(msnid)
+
+```
+
+
+## Remap accessions
+
+This function remaps UniProt protein accessions to gene symbol.
+
+```{r remap_accessions}
+fst_dms_pth <- path_to_FASTA_used_by_DMS(data_package_num)
+fst <- readAAStringSet(fst_dms_pth)
+
+conv <- data.frame(NAME = names(fst)) %>%
+  mutate(UNIPROT = str_extract(names(fst), "^(\\S)+"),
+         SYMBOL = str_extract(names(fst), "GN=(\\S)+")) %>%
+  dplyr::select(-NAME) %>%
+  mutate(UNIPROT = sub(".*\\|(.*)\\|.*", "\\1", UNIPROT),
+         SYMBOL = sub("GN=", "", SYMBOL))
+
+msnid <- remap_accessions_uniprot_to_gene(msnid,
+                                          organism_name="Homo sapiens",
+                                          conversion_table = conv)
+
+show(msnid)
+table(is.na(msnid$accession))
+msnid <- apply_filter(msnid, "!is.na(accession)")
+show(msnid)
+
+```
+
+
+## Accession FDR
+
+
+```{r protein_level_filter }
+fst_dms_pth_2 <- remap_fasta_entry_names(fst_dms_pth, conv, "^.*\\|(.+?)(-\\d+)?\\|.*")
+
+## peptide density and accession filter
+msnid <- compute_num_peptides_per_1000aa(msnid, fst_dms_pth_2)
+msnid <- filter_msgf_data_protein_level(msnid, 0.01)
+show(msnid)
+
+```
+
+
+## Parsimonious inference
+
+To reduce number of protein identifications, we use a parsimonious inference algorithm described in 
+[(Zhang et al. 2007)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2810678/).
+
+```{r parsimonious_inference}
+msnid <- infer_parsimonious_accessions(msnid, unique_only=FALSE)
+show(msnid)
+
+```
+
+
+## Remove Decoys
+
+```{r}
+msnid <- apply_filter(msnid, "!isDecoy")
+show(msnid)
+
+# saveRDS(msnid, file=file.path(data_folder, "msgfData_filtered.RDS"))
+
+```
+
+
+## Process MASIC data
+
+Output from the MASIC software is read from DMS, then filtered by interference score.
+
+
+```{r read_masic}
+masic_data_path <- file.path(data_folder, "masicData_original.RData")
+
+if (file.exists(masic_data_path)) {
+  load(masic_data_path)
+} else {
+  masic_data <- read_masic_data_from_DMS(data_package_num,
+                                       interference_score = TRUE)
+  # save(masic_data, file=masic_data_path)
+}
+
+nrow(masic_data)
+```
+
+
+```{r filter_masic}
+masic_data <- filter_masic_data(masic_data,
+                                interference_score_threshold = 0.5,
+                                s2n_threshold = 0)
+# saveRDS(masic_data, file=file.path(data_folder, "masicData_filtered.RDS"))
+
+nrow(masic_data)
+```
+
+
+## Create crosstab
+
+The quantitative crosstab combines MS/MS identifications with reporter ion intensities. 
+Abundances are taken relative to the reference channel and then log-transformed.
+
+
+```{r create_global_gene_crosstab}
+aggregation_level <- c("accession")
+quant_cross_tab <- create_crosstab(msnid, 
+                                   masic_data, 
+                                   aggregation_level, 
+                                   fractions, samples, references)
+dim(quant_cross_tab)
+
+write.table(quant_cross_tab, file=file.path(data_folder, paste(crosstab_prefix, "crosstab_global_gene_original.txt", sep="_")),
+            quote=F, sep="\t")
+```
+
+
+
+```{r}
+quant_cross_tab <- sweep(quant_cross_tab, 2, apply(quant_cross_tab, 2, mean, na.rm = T), FUN = '-')
+quant_cross_tab <- sweep(quant_cross_tab, 1, apply(quant_cross_tab, 1, mean, na.rm = T), FUN = '-')
+
+write.table(quant_cross_tab, file=file.path(data_folder, paste(crosstab_prefix, "crosstab_global_gene_median_centered.txt", sep="_")),
+            quote=F, sep="\t")
+```
+
+
+
+
+```{r}
+
+
+```
+
+
