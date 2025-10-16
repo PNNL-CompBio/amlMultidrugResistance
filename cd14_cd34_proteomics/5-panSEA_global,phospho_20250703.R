@@ -20,7 +20,7 @@ source("https://raw.githubusercontent.com/PNNL-CompBio/Exp21_NRAS_ASO_treated_pa
 #### 1. Import metadata & crosstabs ####
 ### TMT
 setwd("data")
-meta.df <- readxl::read_excel("Exp24metadataTable_TMT.xlsx") 
+meta.df <- as.data.frame(readxl::read_excel("Exp24metadataTable_TMT.xlsx")) 
 meta.df$MeasurementName <- as.character(rownames(meta.df))
 rownames(meta.df) <- paste0("X", rownames(meta.df))
 meta.df$row.name <- rownames(meta.df)
@@ -59,6 +59,14 @@ phospho.pep.TMT <- read.table(
   sep = "\t") # 831 peptides
 
 # fix column names to match DIA
+meta.df$cellType <- meta.df$SampleType
+meta.df[meta.df$cellType == "CD14+ Flow",]$cellType <- "CD14plusFlow"
+meta.df[meta.df$cellType == "CD34+ Flow",]$cellType <- "CD34plusFlow"
+meta.df[meta.df$cellType == "CD14+",]$cellType <- "CD14plus"
+meta.df[meta.df$cellType == "CD34+",]$cellType <- "CD34plus"
+meta.df[meta.df$cellType == "MSC Flow",]$cellType <- "MSC"
+meta.df$shortPatientID <- sub("-","",sub(".*-","",meta.df$patient))
+meta.df$DIA_id <- paste0("X",meta.df$shortPatientID,"_",meta.df$cellType)
 sample.names <- meta.df[colnames(phospho.pep.TMT)[1:(ncol(phospho.pep.TMT)-1)],]$DIA_id
 colnames(phospho.pep.TMT)[1:(ncol(phospho.pep.TMT)-1)] <- sample.names
 
@@ -102,8 +110,12 @@ ratio.df <- plyr::ddply(val.df, .(variable, `Cell Type`, Patient, `Sorting Metho
                         marker = ifelse(value[Gene=="CD14"] > value[Gene=="CD34"],"CD14","CD34"))
 ratio.df <- na.omit(ratio.df)
 ratio.df$outlier <- FALSE
-ratio.df[ratio.df$`Cell Type` == "CD14+" & ratio.df$marker == "CD34",]$outlier <- TRUE
-ratio.df[ratio.df$`Cell Type` == "CD34+" & ratio.df$marker == "CD14",]$outlier <- TRUE
+if (any(ratio.df$`Cell Type` == "CD14+" & ratio.df$marker == "CD34")) {
+  ratio.df[ratio.df$`Cell Type` == "CD14+" & ratio.df$marker == "CD34",]$outlier <- TRUE
+}
+if (any(ratio.df$`Cell Type` == "CD34+" & ratio.df$marker == "CD14")) {
+  ratio.df[ratio.df$`Cell Type` == "CD34+" & ratio.df$marker == "CD14",]$outlier <- TRUE
+}
 outliers <- ratio.df[ratio.df$outlier,]$variable
 length(outliers) # 3
 outliers # X00839_CD34plus     X00839_CD34plusFlow X00117_CD34plus
@@ -143,8 +155,24 @@ tmt.wo.out <- list("meta" = tmt.wo.out$meta,
 saveRDS(tmt.wo.out,"TMT_noOutliers_2025-07-07.rds")
 tmt.wo.out <- readRDS("data/TMT_noOutliers_2025-07-07.rds")
 
+meta.df$outlier <- FALSE
+meta.df[meta.df$DIA_id %in% outliers,]$outlier <- TRUE
+meta.df$lessThan75PercentCoverageGlobal <- FALSE
+meta.df[!(meta.df$DIA_id %in% colnames(tmt.wo.out$global)),
+        ]$lessThan75PercentCoverageGlobal <- TRUE
+meta.df$lessThan75PercentCoveragePhospho <- FALSE
+meta.df[!(meta.df$DIA_id %in% colnames(tmt.wo.out$phospho)),
+]$lessThan75PercentCoveragePhospho <- TRUE
+meta.df$removedGlobal <- FALSE
+meta.df[meta.df$outlier | meta.df$lessThan75PercentCoverageGlobal,
+        ]$removedGlobal <- TRUE
+meta.df$removedPhospho <- FALSE
+meta.df[meta.df$outlier | meta.df$lessThan75PercentCoveragePhospho,
+]$removedPhospho <- TRUE
+write.csv(meta.df,"Exp24metadataTable_TMT_labeledOutliersAndLowCoverage.csv", row.names=FALSE)
+
 ### DIA
-meta.df <- readxl::read_excel("Exp24metadataTable_DIA.xlsx") 
+meta.df <- as.data.frame(readxl::read_excel("Exp24metadataTable_DIA.xlsx")) 
 meta.df$id <- stringr::str_split_i(meta.df$patient, "-", -1)
 meta.df$id <- paste0("X", meta.df$id)
 meta.df[meta.df$`sample type` == "CD14+", ]$id <- paste0(meta.df[meta.df$`sample type` == "CD14+", ]$id, "_CD14plus")
@@ -201,11 +229,14 @@ dia <- list("meta" = meta.df[meta.df$id %in% colnames(global.df), ],
 dia75 <- list("meta" = meta.df[meta.df$id %in% colnames(global.df75), ],
             "global" = global.df75)
 
+meta.df$lessThan75PercentCoverageGlobal <- FALSE
+meta.df[!(meta.df$id %in% colnames(dia75$global)),
+]$lessThan75PercentCoverageGlobal <- TRUE
+
 phospho.pep.DIA <- read.table("phospho_data/Exp24_DIA_crosstab_phospho_peptide_corrected.txt",sep = "\t") # 2331 peptides
 pep <- list("meta" = meta.df,
             "TMT" = phospho.pep.TMT,
             "DIA" = phospho.pep.DIA)
-
 
 ### combine DIA & TMT
 # #dia$meta$method <- "DIA"
@@ -226,14 +257,14 @@ method.data <- list("TMT" = tmt,
                     "DIA_75PercentCoverage" = dia75)
 
 ### new batch of DIA ###
-meta.df <- readxl::read_excel("CPTAC Samples 03_25_25_long.xlsx") 
+meta.df <- as.data.frame(readxl::read_excel("CPTAC Samples 03_25_25_long.xlsx")) 
 meta.df <- meta.df[meta.df$`run or not run?`=="run",]
 meta.df$patient <- gsub("-",".",meta.df$Sample)
 meta.df$id <- paste0("PTRC_",meta.df$patient,"_",meta.df$`cell type`,"_",
                      substring(meta.df$`sorting method`,1,1),"_",round(as.numeric(meta.df$cells)/1000,0),"K")
 rownames(meta.df) <- meta.df$id
 
-dia.meta.df <- readxl::read_excel("Exp24metadataTable_DIA.xlsx") 
+dia.meta.df <- as.data.frame(readxl::read_excel("Exp24metadataTable_DIA.xlsx")) 
 dia.meta.df$id <- stringr::str_split_i(dia.meta.df$patient, "-", -1)
 dia.meta.df$id <- paste0("X", dia.meta.df$id)
 dia.meta.df[dia.meta.df$`sample type` == "CD14+", ]$id <- paste0(dia.meta.df[dia.meta.df$`sample type` == "CD14+", ]$id, "_CD14plus")
@@ -285,6 +316,13 @@ global.df75$Gene <- rownames(global.df75)
 dia2 <- list("meta" = meta.df,
              "global" = global.df75)
 
+# meta.df$lessThan50PercentCoverageGlobal <- FALSE
+# meta.df[!(meta.df$id %in% colnames(global.df)),
+# ]$lessThan50PercentCoverageGlobal <- TRUE
+# meta.df$lessThan75PercentCoverageGlobal <- FALSE
+# meta.df[!(meta.df$id %in% colnames(dia75$global)),
+# ]$lessThan75PercentCoverageGlobal <- TRUE
+
 ## combine DIA batches
 meta.df$Aza.Ven <- NA
 meta.df$`Aza-Ven AUC` <- as.numeric(meta.df$`Aza-Ven AUC`)
@@ -323,116 +361,17 @@ gCombo <- gCombo[which(rowSums(is.na(gCombo)) < ncol(gCombo)/2),] # 7009 protein
 mCombo$cellType <- "CD34"
 mCombo[mCombo$CD14=="Pos",]$cellType <- "CD14"
 mCombo[mCombo$MSC=="MSC",]$cellType <- "MSC"
+
+meta.df <- mCombo
+meta.df$outlier <- FALSE
+meta.df$lessThan75PercentCoverageGlobal <- FALSE
+
 mCombo <- mCombo[colnames(gCombo)[colnames(gCombo) != "Gene"],]
 diaCombo <- list("meta" = mCombo,
                  "global" = gCombo)
 saveRDS(diaCombo, "DIA_2batches.rds")
 
-#### 2. Histograms and PCA ####
-base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/analysis"
-setwd(base.path)
-
-phenos <- c("Plex", "id", "patient", "Sample Type", "Aza", "Ven", "Aza.Ven", "Flow","batch","cellType")
-#phenos <- "cellType"
-library(MSnSet.utils)
-write.csv(mCombo,"Exp24-27_metadata.csv")
-
-dir.create("histograms_and_PCA")
-setwd("histograms_and_PCA")
-dir.create("20250707")
-setwd("20250707")
-#dir.create("20241001")
-#setwd("20241001")
-#dir.create("rmOutliers")
-#setwd("rmOutliers")
-#dir.create("rmMoreOutliers")
-#setwd("rmMoreOutliers")
-method.data <- list("DIA_2batches" = diaCombo)
-method.data <- list("DIA_2batches_noOutliers" = dia.wo.out)
-method.data <- list("TMT_noOutliers" = tmt.wo.out, "TMT" = tmt)
-saveRDS(dia.wo.out,"DIA_2batches_noOutliers.rds")
-for (k in 1:length(method.data)) {
-  if (grepl("DIA", names(method.data)[k])) {
-    omics <- list("Global" = method.data[[k]]$global)
-  } else {
-    omics <- list("Global" = method.data[[k]]$global,
-                  "Phospho" = method.data[[k]]$phospho)
-  }
-  temp.meta <- method.data[[k]]$meta
-  temp.phenos <- phenos[phenos %in% colnames(temp.meta)]
-  
-  for (i in 1:length(omics)) {
-    # histogram
-    melted.df <- reshape2::melt(omics[[i]])
-    xlab <- paste("Normalized", names(omics)[i], "Expression")
-    title <- names(method.data)[k]
-    pdf(file.path(paste0(names(method.data)[k], "_", names(omics)[i], "_histogram_", Sys.Date(), ".pdf")))
-    hist(melted.df$value, xlab = xlab, main = title)
-    dev.off()
-    
-    # pca
-    if (names(method.data)[k] != "DIA_&_TMT") {
-      #sample.names <- temp.meta$id[temp.meta$id %in% colnames(omics[[i]])]
-      if ("DIA_id" %in% colnames(temp.meta)) {
-        sample.names <- colnames(omics[[i]])[colnames(omics[[i]]) %in% temp.meta$DIA_id]
-      } else {
-        sample.names <- colnames(omics[[i]])[colnames(omics[[i]]) %in% temp.meta$id]
-      }
-      pca.data <- MSnSet(exprs = omics[[i]][, sample.names] %>% as.matrix(),
-                         pData = temp.meta[sample.names,])
-      # write.table(exprs(pca.data),
-      #             file = "~/OneDrive - PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/data/global_data/Exp24-27_crosstab_global_DIA_gene.txt",
-      #             quote=F, sep="\t")
-      for (j in 1:length(temp.phenos)) {
-        MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "patient") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-        ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), ".pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%), 3975 TMT w or wo outliers (77%), 415 TMT phospho (2%) wo outliers or 14 w outliers
-        
-        if ("batch" %in% temp.phenos) {
-          MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "batch") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-          ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), "_batchLabel.pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%)
-        }
-      
-        MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "Sort Type") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-        ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), "_flowLabel.pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%), 3975 TMT w or wo outliers (77%), 415 TMT phospho (2%) wo outliers or 14 w outliers
-        
-        if ("cellType" %in% temp.phenos) {
-        MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "cellType") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-        ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), "_cellLabel.pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%)
-        } else {
-          MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "Sample Type") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-          ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), "_cellLabel.pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%), 3975 TMT w or wo outliers (77%), 415 TMT phospho (2%) wo outliers or 14 w outliers
-          
-        }
-      } 
-      
-      # try to resolve batch effect
-      if ("batch" %in% temp.phenos){
-        pca.data <- correct_batch_effect_NA(pca.data, "batch", "cellType", par.prior = T)
-        # write.table(exprs(pca.data),
-        #             file = "~/OneDrive - PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/data/global_data/Exp24-27_crosstab_global_DIA_gene_correctedConsideringCellType.txt",
-        #             quote=F, sep="\t")
-        
-        for (j in 1:length(temp.phenos)) {
-          MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "patient") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-          ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), "_batchCorrectedTypeCov.pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%), 3986 TMT (77%), 17 TMT phospho (2%)
-          
-          MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "batch") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-          ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), "_batchCorrectedTypeCov_batchLabel.pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%), 3986 TMT (77%), 17 TMT phospho (2%)
-          
-          MSnSet.utils::plot_pca(pca.data, phenotype = temp.phenos[j], label = "Sort Type") + ggtitle(paste(names(method.data)[k], names(omics)[i], "PCA"))
-          ggsave(paste0(names(method.data)[k], "_", names(omics)[i], "_PCA_", temp.phenos[j], "_", Sys.Date(), "_batchCorrectedTypeCov_flowLabel.pdf"),width=5,height=5) # 3018 DIA (49%), 3975 (77%) TMT; wo outliers1: 3261 DIA (53%), 3986 TMT (77%), 17 TMT phospho (2%)
-          
-        } 
-      }
-    }
-  }
-}
-# wo outliers2: 3368 DIA (55%), 4793 TMT (93%), 85 TMT phospho (11%)
-# wo outliers2a: 3408 DIA (56%), 4860 TMT (94%), 122 TMT phospho (15%)
-# not sample centered DIA, no outliers removed: 3018 DIA (49%), 3975 (77%) TMT, 14 TMT phospho (2%)
-# 1917 complete rows for DIA, 3975 complete rows for TMT
-# 4249 complete rows for DIA 2 batches after redoing coverage filters after combining
-# 4314 complete rows after removing outliers based on CD14, CD34 and then redoing coverage filters again
+meta.df[!(meta.df$id %in% colnames(diaCombo$global)),]$lessThan75PercentCoverageGlobal <- TRUE
 
 # why are there some outliers?
 cov.df <- reshape2::melt(gCombo)
@@ -499,6 +438,11 @@ outliers
 # outliers are: PTRC_18.00390_cd14_b_20K PTRC_20.00450_cd34_b_20K 
 #PTRC_20.00083_cd14_b_20K PTRC_18.00290_cd14_b_20K PTRC_21.00176_cd14_b_15K 
 # PTRC_21.00034_cd34_b_20K X00103_CD14plus X00432_CD14plus X00839_CD34plusFlow
+
+meta.df[meta.df$id %in% outliers,]$outlier <- TRUE
+meta.df$removedGlobal <- FALSE
+meta.df[meta.df$outlier | meta.df$lessThan75PercentCoverageGlobal,]$removedGlobal <- TRUE
+write.csv(meta.df,"Exps24-27metadataTable_DIA_labeledOutliersAndLowCoverage.csv", row.names=FALSE)
 
 #outliers <- unique(c(cd14.fail, cd34.fail, cd14.fail.med))
 
@@ -588,13 +532,6 @@ for (k in 1:length(method.data)) {
     }
   }
 }
-
-outliers <- c("X00839_CD34plusFlow", "X00117_CD34plus", 
-              "X00432_CD14plus", "X00251_CD14plus", "X00105_CD14plusFlow")
-outlier.ids <- c("X11", "X17", "X7", "X23", "X26")
-tmt.wo.out <- list("meta" = tmt$meta[!(tmt$meta$id %in% outlier.ids),],
-                   "global" = tmt$global[,colnames(tmt$global)[!(colnames(tmt$global) %in% outlier.ids)]],
-                   "phospho" = tmt$phospho[,colnames(tmt$phospho)[!(colnames(tmt$phospho) %in% outlier.ids)]]) #5169 proteins (same), 794 phospho sites (same), 24 samples down from 28
 
 method.data <- list("DIA" = dia.wo.out,
                     "TMT" = tmt.wo.out)
