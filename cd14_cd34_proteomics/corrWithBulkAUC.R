@@ -8,6 +8,7 @@ base.path <- getwd()
 #### prep data ####
 # get sorted data
 dia.wo.out <- readRDS(synapser::synGet("syn70198439")$path) # DIA_2batches_noOutliers.rds
+# if you want to use the TMT data instead, that RDS file is here: syn70198440
 
 # get bulk drug sensitivity data
 drug.BeatAML <- read.csv(synapser::synGet("syn65677650")$path) # other drug sensitivity data: syn51674470
