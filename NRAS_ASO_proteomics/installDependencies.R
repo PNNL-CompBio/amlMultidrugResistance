@@ -2,7 +2,8 @@
 # from CRAN
 install.packages(c("plyr","dplyr","readxl","plotly","stringr","tidyr","knitr",
                    "pheatmap","ggplot2","tidyverse","reticulate","patchwork",
-                   "data.table","scales","tibble","reshape2"))
+                   "data.table","scales","tibble","reshape2","ggrepel",
+                   "RColorBrewer","ggcorrplot","fmsb"))
 
 # from Bioconductor
 if (!require("BiocManager", quietly = TRUE)) {
