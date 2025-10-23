@@ -179,7 +179,7 @@ for (N_markers in 3:15){
             ## Run LOOCV using the given parameters.
             # all_features_df <- data.frame()
             yy10 <- logistic_model(m_corrected[complete_DV_UT_features, ], "Treatment", 
-                                   pred_group = "DV", control_group = "UT", combine_markers = TRUE,
+                                   pred_group = "DV", control_group = "UT", #combine_markers = TRUE,
                                    ## Tune-able parameters
                                    N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
             
