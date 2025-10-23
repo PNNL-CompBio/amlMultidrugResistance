@@ -125,7 +125,7 @@ for (N_markers in 3:15){
          for (method in c("simple", "kmeans")){
             ## Run LOOCV using the given parameters.
             yy10 <- logistic_model(m_corrected[complete_V_UT_features, ], "Treatment", 
-                                   pred_group = "V", control_group = "UT", combine_markers = TRUE,
+                                   pred_group = "V", control_group = "UT", ##SG COMMENTED ARGUMENT combine_markers = TRUE,
                                    ## Tune-able parameters
                                    N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
             
