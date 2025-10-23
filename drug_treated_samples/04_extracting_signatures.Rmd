@@ -1,0 +1,382 @@
+
+
+Load the data, including BeatAML 210 cohort and its drug (AUC) response data
+
+```{r}
+library(dplyr)
+library(MSnSet.utils)
+library(ggplot2)
+# library(msigdbr)
+
+source("s2n_model.R")
+source("helper_scripts.R")
+source("synapseUtil.R")
+# source("plotting enrichment.R")
+
+syn <- synapseLogin()
+
+## Load corrected exp25 dataset
+# m_corrected <- readRDS("../msnset_4patients_corrected.RDS")
+m_corrected <- readRDS(syn$get("syn64605135")$path)
+# m_210 <- readRDS("../210_cohort_global.RDS")
+m_210 <- readRDS(syn$get("syn64605141")$path)
+m_210 <- m_210[complete.cases(exprs(m_210)), ]
+m_corrected <- m_corrected[featureNames(m_corrected) %in% featureNames(m_210), ]
+complete_DV_UT_features <- complete.cases(exprs(m_corrected[, m_corrected$Treatment %in% c("UT", "DV")]))
+complete_V_UT_features <- complete.cases(exprs(m_corrected[, m_corrected$Treatment %in% c("UT", "V")]))
+# drug_data <- read.csv("../210_cohort_drug_auc_syn51674470.csv")
+drug_data <- read.csv(syn$get("syn51674470")$path)
+
+# zz = read.csv("../210_cohort_drug_auc_syn51674470.csv")
+# table(zz$inhibitor)
+
+## Inhibitors of interest
+drug_data_df <- rbind(drug_data %>% filter(inhibitor == "Venetoclax"),   ## 127 samples)
+                      drug_data %>% filter(inhibitor == "Azacytidine - Venetoclax"),  ## 20 samples
+                      drug_data %>% filter(inhibitor == "Bortezomib - Venetoclax"),  ## 19 samples
+                      drug_data %>% filter(inhibitor == "Dasatinib - Venetoclax"),  ## 92 samples
+                      drug_data %>% filter(inhibitor == "Doramapimod - Venetoclax"),  ## 110 samples
+                      drug_data %>% filter(inhibitor == "GW-2580 - Venetoclax"),  ## 20 samples
+                      drug_data %>% filter(inhibitor == "Idelalisib - Venetoclax"),  ## 107 samples
+                      drug_data %>% filter(inhibitor == "Olaparib - Venetoclax"),  ## 18 samples
+                      drug_data %>% filter(inhibitor == "Quizartinib - Venetoclax"),  ## 80 samples
+                      drug_data %>% filter(inhibitor == "Ruxolitinib - Venetoclax"),  ## 111 samples
+                      drug_data %>% filter(inhibitor == "Sorafenib - Venetoclax"),  ## 92 samples
+                      drug_data %>% filter(inhibitor == "Trametinib - Venetoclax"),  ## 84 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Artemisinin"),  ## 76 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Ibrutinib"),  ## 119 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - JQ1"),  ## 85 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Palbociclib"),  ## 85 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Panobinostat"),  ## 82 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - PH797804")  ## 11 samples
+)
+
+plots <- list()
+for (c_inhibitor in drug_data_df$inhibitor %>% unique()){
+   plot_df = drug_data_df %>% filter(inhibitor == c_inhibitor)
+   p <- ggplot(plot_df, aes(x = auc)) + geom_density(fill = "#639584", color = "grey15") + 
+      ggtitle(paste(c_inhibitor, nrow(plot_df), "samples"))
+   plots <- append(plots, list(p))
+}
+plots
+```
+
+
+```{r}
+V_markers = diffexp_helper(m_corrected, "Treatment", "V-UT")
+DV_markers = diffexp_helper(m_corrected, "Treatment", "DV-UT")
+
+# write.table(V_markers, "4patients_V_UT_diffexp.txt", sep = "\t", quote = F)
+# write.table(DV_markers, "4patients_DV_UT_diffexp.txt", sep = "\t", quote = F)
+
+```
+
+
+Function to compute signal on NEW data using a trained model.
+
+
+```{r}
+predict_helper <- function(new_msnset, full_model, case_group, control_group){
+   case_marker = full_model$features %>% filter(group_ == case_group) %>% pull(feature)
+   control_marker = full_model$features %>% filter(group_ == control_group) %>% pull(feature)
+   
+   case_mat = t(exprs(new_msnset)[case_marker, , drop = FALSE]) %>% as.data.frame()
+   control_mat = t(exprs(new_msnset)[control_marker, , drop = FALSE]) %>% as.data.frame()
+   if (ncol(control_mat) > 0){
+      control_mat$control_avg = rowSums(control_mat)/ncol(control_mat)
+      control_mat <- control_mat %>% select(control_avg)
+   }
+   if (ncol(case_mat) > 0){
+      case_mat$case_avg = rowSums(case_mat)/ncol(case_mat)
+      case_mat <- case_mat %>% select(case_avg)
+   }
+   
+   logistic_df <- data.frame(sample = sampleNames(new_msnset)) %>% 
+      cbind(case_mat, control_mat) 
+   logistic_pred = predict.glm(full_model$model, logistic_df, type = "response")
+   coefs = full_model$model$coefficients
+   logistic_df <- logistic_df %>%
+      mutate(logistic_signal = coefs[['(Intercept)']] + coefs[['case_avg']]*case_avg + coefs[['control_avg']]*control_avg,
+             logistic_signal2 = case_avg - control_avg,
+             prob = logistic_pred,
+             prob2 = 1/(1+exp(-logistic_signal)))
+   return(logistic_df)
+}
+
+
+
+```
+
+
+Running through different paramaters to test performance of the 's2n_model' logistic_model function.
+This one is for the Venetoclax - Untreated signal.
+
+
+```{r}
+
+### Make for loop for Venetoclax - UT
+# drug_data_df = drug_data_ven
+stats_df <- data.frame()
+all_features_df <- data.frame()
+## Tune-able parameters
+for (N_markers in 3:15){
+   for (pval_cutoff in c(0.001, 0.01)){
+      for (var.equal in c(TRUE)){
+         for (method in c("simple", "kmeans")){
+            ## Run LOOCV using the given parameters.
+            yy10 <- logistic_model(m_corrected[complete_V_UT_features, ], "Treatment", 
+                                   pred_group = "V", control_group = "UT", ##SG COMMENTED ARGUMENT combine_markers = TRUE,
+                                   ## Tune-able parameters
+                                   N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
+            
+            ## Use full model to predict response in beat AML 210 dataset
+            all_features_df_ <- yy10$full_model$features
+            all_features_df_$pred_group = "V"
+            all_features_df_$N_markers = N_markers
+            all_features_df_$pval_cutoff = pval_cutoff
+            all_features_df_$method = method
+            all_features_df <- rbind(all_features_df, all_features_df_)
+            xx = predict_helper(m_210, yy10$full_model, case_group = "V", control_group = "UT")
+            rownames(xx) <- xx$sample
+            new_stats <- data.frame(pred_group = "V", control_group = "UT", N_markers = N_markers, 
+                                    pval_cutoff = pval_cutoff, var.equal = var.equal, method = method, 
+                                    loocv_auc = yy10$auc)
+            for (c_inhibitor in (drug_data_df$inhibitor %>% unique())){
+               inhib_df = drug_data_df %>% filter(inhibitor == c_inhibitor)
+               xx[inhib_df$sample_id, c_inhibitor] = inhib_df$auc
+               
+               cor_spear = cor(xx$logistic_signal2, xx[[c_inhibitor]], use = "complete.obs", method = "spearman")
+               pval_spear = cor.test(xx$logistic_signal2, xx[[c_inhibitor]], use = "complete.obs", method = "spearman")[[3]]
+               new_stats_ = data.frame(cor_spear, pval_spear)
+               colnames(new_stats_) <- c(paste(c_inhibitor, "spearman"), paste(c_inhibitor, "pval"))
+               new_stats = cbind(new_stats, new_stats_)
+            }
+            stats_df <- rbind(stats_df, new_stats) 
+            print(new_stats)
+         }
+      }
+   }
+}
+saveRDS(stats_df, "V_UT_model_stats_715.RDS")
+saveRDS(all_features_df, "V_UT_model_features.RDS")
+
+```
+
+
+Running through different paramaters to test performance of the 's2n_model' logistic_model function.
+This one is for the Decitabine Venetoclax - Untreated signal.
+
+
+```{r}
+### Make for loop for Decitabine Venetoclax - UT
+stats_df <- data.frame()
+all_features_df <- data.frame()
+## Tune-able parameters
+for (N_markers in 3:15){
+   for (pval_cutoff in c(0.001, 0.01)){
+      for (var.equal in c(TRUE)){
+         for (method in c("simple", "kmeans")){
+            ## Run LOOCV using the given parameters.
+            # all_features_df <- data.frame()
+            yy10 <- logistic_model(m_corrected[complete_DV_UT_features, ], "Treatment", 
+                                   pred_group = "DV", control_group = "UT", #combine_markers = TRUE,
+                                   ## Tune-able parameters
+                                   N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
+            
+            ## Use full model to predict response in beat AML 210 dataset
+            all_features_df_ <- yy10$full_model$features
+            all_features_df_$pred_group = "DV"
+            all_features_df_$N_markers = N_markers
+            all_features_df_$pval_cutoff = pval_cutoff
+            all_features_df_$method = method
+            all_features_df <- rbind(all_features_df, all_features_df_)
+            xx = predict_helper(m_210, yy10$full_model, case_group = "DV", control_group = "UT")
+            rownames(xx) <- xx$sample
+            new_stats <- data.frame(pred_group = "DV", control_group = "UT", N_markers = N_markers, 
+                                    pval_cutoff = pval_cutoff, var.equal = var.equal, method = method, 
+                                    loocv_auc = yy10$auc)
+            for (c_inhibitor in (drug_data_df$inhibitor %>% unique())){
+               inhib_df = drug_data_df %>% filter(inhibitor == c_inhibitor)
+               xx[inhib_df$sample_id, c_inhibitor] = inhib_df$auc
+               
+               cor_spear = cor(xx$logistic_signal2, xx[[c_inhibitor]], use = "complete.obs", method = "spearman")
+               pval_spear = cor.test(xx$logistic_signal2, xx[[c_inhibitor]], use = "complete.obs", method = "spearman")[[3]]
+               new_stats_ = data.frame(cor_spear, pval_spear)
+               colnames(new_stats_) <- c(paste(c_inhibitor, "spearman"), paste(c_inhibitor, "pval"))
+               new_stats = cbind(new_stats, new_stats_)
+            }
+            stats_df <- rbind(stats_df, new_stats) 
+            print(new_stats)
+         }
+      }
+   }
+}
+saveRDS(stats_df, "DV_UT_model_stats_715.RDS")
+saveRDS(all_features_df, "DV_UT_model_features.RDS")
+
+
+```
+
+
+plots of performance metrics for the Ven models
+
+
+```{r}
+# features_df <- readRDS("V_UT_model_features.RDS")
+# stats_df <- readRDS("V_UT_model_stats_715.RDS") 
+## Changed 's2n_max_v2' to 'kmeans'
+stats_df <- readRDS("V_UT_model_stats_715.RDS") %>%
+   filter(pval_cutoff %in% c(0.01, 0.001), var.equal == TRUE, method %in% c("simple", "s2n_max_v2", "kmeans")) %>%
+   mutate(method = sub("s2n_max_v2", "kmeans", method),
+          pval_cutoff = case_when(pval_cutoff == 0.01 ~ ", pval_cutoff = 0.01",
+                                  TRUE ~ ", pval_cutoff = 0.001"),
+          signal = paste0(method, pval_cutoff)) 
+
+bar_colors = c("#19647E", "#28AFB0", "#843B62", "#B8336A")
+
+p1 <- ggplot(stats_df, aes(x = N_markers, y = `Venetoclax spearman`, fill = signal)) + 
+   geom_bar(width = 0.7, position = position_dodge(), stat = 'identity') +
+   scale_fill_manual(values = bar_colors) + ggtitle("Correlation with Venetoclax AUC in BeatAML 210 cohort (N = 127)") + 
+   theme(text = element_text(size = 13.5))
+ggsave(plot = p1, filename = "V_UT_signature_performance_Ven.pdf", width = 10, height = 6)
+
+p1 <- ggplot(stats_df, aes(x = N_markers, y = `Azacytidine - Venetoclax spearman`, fill = signal)) + 
+   geom_bar(width = 0.7, position = position_dodge(), stat = 'identity') +
+   scale_fill_manual(values = bar_colors) + ggtitle("Correlation with Azacytidine - Venetoclax AUC in BeatAML 210 cohort (N = 20)") + 
+   theme(text = element_text(size = 13.5))
+ggsave(plot = p1, filename = "V_UT_signature_performance_AzaVen.pdf", width = 10, height = 6)
+
+p2 <- ggplot(stats_df, aes(x = N_markers, y = loocv_auc, fill = signal)) + 
+   geom_bar(width = 0.7, position = position_dodge(), stat = 'identity') +
+   scale_fill_manual(values = bar_colors) + ggtitle("LOOCV ROC AUC in 4-patient dataset") + 
+   theme(text = element_text(size = 13.5))
+ggsave(plot = p2, filename = "V_UT_signature_performance_LOOCV_AUC.pdf", width = 10, height = 6)
+
+```
+
+
+plots of performance metrics for the Dec Ven models
+
+
+```{r}
+## Changed 's2n_max_v2' to 'kmeans'
+stats_df <- readRDS("DV_UT_model_stats_715.RDS") %>%
+   filter(pval_cutoff %in% c(0.01, 0.001), var.equal == TRUE, method %in% c("simple", "s2n_max_v2", "kmeans")) %>%
+   mutate(method = sub("s2n_max_v2", "kmeans", method),
+          pval_cutoff = case_when(pval_cutoff == 0.01 ~ ", pval_cutoff = 0.01",
+                                  TRUE ~ ", pval_cutoff = 0.001"),
+          signal = paste0(method, pval_cutoff)) 
+
+bar_colors = c("#19647E", "#28AFB0", "#843B62", "#B8336A")
+
+p1 <- ggplot(stats_df, aes(x = N_markers, y = `Venetoclax spearman`, fill = signal)) + 
+   geom_bar(width = 0.7, position = position_dodge(), stat = 'identity') +
+   scale_fill_manual(values = bar_colors) + ggtitle("Correlation with Venetoclax AUC in BeatAML 210 cohort (N = 127)") + 
+   theme(text = element_text(size = 13.5))
+ggsave(plot = p1, filename = "DV_UT_signature_performance_Ven.pdf", width = 10, height = 6)
+
+p1 <- ggplot(stats_df, aes(x = N_markers, y = `Azacytidine - Venetoclax spearman`, fill = signal)) + 
+   geom_bar(width = 0.7, position = position_dodge(), stat = 'identity') +
+   scale_fill_manual(values = bar_colors) + ggtitle("Correlation with Azacytidine - Venetoclax AUC in BeatAML 210 cohort (N = 20)") + 
+   theme(text = element_text(size = 13.5))
+ggsave(plot = p1, filename = "DV_UT_signature_performance_AzaVen.pdf", width = 10, height = 6)
+
+p2 <- ggplot(stats_df, aes(x = N_markers, y = loocv_auc, fill = signal)) + 
+   geom_bar(width = 0.7, position = position_dodge(), stat = 'identity') +
+   scale_fill_manual(values = bar_colors) + ggtitle("LOOCV ROC AUC in 4-patient dataset") + 
+   theme(text = element_text(size = 13.5))
+ggsave(plot = p2, filename = "DV_UT_signature_performance_LOOCV_AUC.pdf", width = 10, height = 6)
+
+```
+
+
+Intersecting Ven signature with Belinda's signature from the sorted cells.
+
+
+```{r}
+library(VennDiagram)
+features_df <- readRDS("V_UT_model_features.RDS") %>% 
+   filter(pval_cutoff == 0.001, method == "simple",
+          N_markers == 8)
+
+ ##2232 differentially expressed features. This is the same info as shows in the latest (As of 9/24/2025) copy of Belinda's poster.
+# belinda_features <- read.csv("Differential_expression_results.csv")
+belinda_features <- read.csv(syn$get("syn69336657")$path)
+belinda_sig_25 = c("NCF2", "FCGRT", "KCTD12", "CD93", "TLR8", "NCF1", "MEFV", "PPP1R18", "THEMIS2", 
+                   "ARAP1", "LRRC25", "IFI30", "AP1B1", "MYO1F", "MTA1", "TNFAIP2", "LRP1", "NADK", 
+                   "HCK", "UNC119", "EHBP1L1", "GTF2I", "LDB1", "ATP6V1C1", "GIMAP8")
+
+diffexp_V_UT = diffexp_helper(m_corrected, "Treatment", "V-UT")
+
+features_df <- features_df %>%
+   mutate(in_sig = feature %in% belinda_features$Gene,
+          in_sig_25 = feature %in% belinda_sig_25)
+
+x = list("4-patient features" = featureNames(m_corrected),
+         "Sorted cells features" = belinda_features$Gene)
+v = venn.diagram(x, filename = NULL, main = "Feature overlap",
+                 main.cex = 2.5,
+                 lwd = 2,
+                 fill = c("red", "blue"), # Modified
+                 alpha = 0.4, # Modified
+                 cat.cex = 1.5,
+                 cex = 1.5,
+                 cat.just = list(c(0.5,4),c(0.5,-16)),
+                 main.pos = c(0.5, 1.2),
+)
+grid.newpage()
+pushViewport(viewport(width=unit(0.8, "npc"), height = unit(0.8, "npc")))
+grid.draw(v)
+
+x = list("4-patient features" = featureNames(m_corrected),
+         "Sorted cells \n unrefined signature" = belinda_features %>% filter(adj.P.Val < 0.05) %>% pull(Gene))
+v = venn.diagram(x, filename = NULL, main = "Feature overlap",
+                 main.cex = 2.5,
+                 lwd = 2,
+                 fill = c("red", "blue"), # Modified
+                 alpha = 0.4, # Modified
+                 cat.cex = 1.5,
+                 cex = 1.5,
+                 cat.just = list(c(0.5,-2.5),c(0.4,-0.5)),
+                 main.pos = c(0.5, 1.2),
+)
+grid.newpage()
+pushViewport(viewport(width=unit(0.7, "npc"), height = unit(0.8, "npc")))
+grid.draw(v)
+
+x = list("4-patient signature \n 16 markers" = features_df$feature,
+         "Sorted cells - unrefined signature" = belinda_features %>% filter(adj.P.Val < 0.05) %>% pull(Gene) %>% 
+             intersect(., featureNames(m_corrected)))
+v = venn.diagram(x, filename = NULL, main = "Feature overlap",
+                 main.cex = 2.5,
+                 lwd = 2,
+                 fill = c("red", "blue"), # Modified
+                 alpha = 0.4, # Modified
+                 cat.cex = 1.5,
+                 cex = 1.5,
+                 cat.just = list(c(0.25,2),c(0.4,-16)),
+                 main.pos = c(0.5, 1.2), ext.pos = c(90, 45), ext.dist = c(-0.1, 0.04),
+)
+grid.newpage()
+pushViewport(viewport(width=unit(0.7, "npc"), height = unit(0.8, "npc")))
+grid.draw(v)
+
+x = list("4-patient signature" = features_df$feature, 
+         "Sorted cells - refined signature" = belinda_sig_25)
+v = venn.diagram(x, filename = NULL, main = "Feature overlap",
+                 main.cex = 2.5,
+                 lwd = 2,
+                 fill = c("red", "blue"), # Modified
+                 alpha = 0.4, # Modified
+                 cat.cex = 1.5,
+                 cex = 1.5,
+                 cat.just = list(c(0.25,2),c(0.4,-16)),
+                 main.pos = c(0.5, 1.2), ext.pos = c(90, 45), ext.dist = c(-0.1, 0.04),
+)
+grid.newpage()
+pushViewport(viewport(width=unit(0.7, "npc"), height = unit(0.8, "npc")))
+grid.draw(v)
+
+```
+
+
