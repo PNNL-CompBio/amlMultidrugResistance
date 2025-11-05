@@ -63,7 +63,12 @@ ba_meta <- all_ba_meta |>
   mutate(Race = ifelse(is.na(reportedRace),inferred_ethnicity,reportedRace))|> ##focus on reported RACE first
   mutate(Race = stringr::str_remove(Race,'Admixed')) |> ##remove the admixed 
   dplyr::select(Accession='labId', SampleID,'FLT3-ITDcalls',Sex='gender',Age='ageAtDiagnosis',Race,RNASeq, Mutation)|>
-  mutate(Proteomics=TRUE,Phospho=TRUE)  ##all these patients have proteomics
+  mutate(Proteomics=TRUE,Phospho=TRUE) |> ##all these patients have proteomics
+  mutate(study='BeatAML', source='BeatAML') # Note (8/6/2025): defined based on guidance from SG
+
+
+# ba_mutation <- dplyr::select(ba_meta,c(labId='Accession',Sex,Race, source, study # Note (8/6/2025): source and study columns did not originally exist, but their defs were added above
+                                        ))|>left_join(muts)
 
  ba_mutation <- dplyr::select(ba_meta,c(labId='Accession',Sex,Race))|>left_join(muts)
 
@@ -119,7 +124,11 @@ acetyl_long<-less_missing[,apats] |>
 ##let's collect all BA metadata
 ba_meta <- ba_meta |>
   #mutate(Proteomics=labId%in%ba_meta$Accession, Phospho=labId%in%ba_meta$Accession) |>
+
+#  mutate(Metabolomics = Accession%in%ba_meta$Accession, Lipidomics = Accession%in%ba_lipids$Accession,Acetylomics = Accession%in%acetyl_long$Accession) |>
+
   mutate(Metabolomics = Accession%in%ba_metab$Accession, Lipidomics = Accession%in%ba_lipids$Accession,Acetylomics = Accession%in%acetyl_long$Accession) |>
+
   mutate(source='BeatAML', study="BeatAML")
 ```
 
