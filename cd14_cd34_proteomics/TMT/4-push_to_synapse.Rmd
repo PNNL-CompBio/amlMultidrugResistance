@@ -1,0 +1,29 @@
+---
+title: "exp 24 Push to synapse"
+output: html_document
+---
+
+```{r login}
+if (!require("amlresistancenetworks", quietly = TRUE))
+  remotes::install_github("https://github.com/PNNL-CompBio/amlresistancenetworks")
+library(amlresistancenetworks); library(reticulate); library(synapser)
+
+#synLogin()
+
+```
+
+
+```{r upload}
+synapse_id_map <- c("syn53493072" = "data/global_data", 
+                    "syn53493072" = "data/phospho_data")
+
+for (i in 1:length(synapse_id_map)) {
+  crosstabs <- list.files(path = synapse_id_map[i],
+                          pattern = "crosstab.*.txt",
+                          full.names = TRUE)
+  files <- lapply(crosstabs, synapser::File,
+         parent = names(synapse_id_map)[i])
+  lapply(files, synapser::synStore)
+}
+```
+

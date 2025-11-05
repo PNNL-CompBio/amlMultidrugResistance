@@ -1,0 +1,122 @@
+---
+title: "Exp24 Study design tables"
+output: html_document
+---
+
+```{r setup}
+library(PNNL.DMS.utils)
+library(stringr)
+library(dplyr)
+setwd("~/OneDrive - PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/")
+```
+
+
+
+```{r}
+path_to_global_study_design <- "study_design/global_study_design/"
+path_to_phospho_study_design <- "study_design/phospho_study_design/"
+
+dir.create(path_to_global_study_design)
+dir.create(path_to_phospho_study_design)
+
+global_data_package_num <- 5391
+phospho_data_package_num <- 5392
+
+```
+
+
+Samples, references and fractions table must be created from study-specific metadata. 
+
+See `r help(read_study_design)` for more information.
+
+
+```{r samples}
+library(readxl)
+
+metadataTable <- read_excel("data/Exp24metadataTable_TMT.xlsx")
+
+samples <- metadataTable %>% as.data.frame() %>%
+  dplyr::select(tubeNumber, ReporterName = Channel, 
+                PlexID = Plex, patient, SampleType, Drug, CellNumber) %>%
+  mutate(QuantBlock = "1",
+         ReporterAlias = as.character(tubeNumber),
+         PlexID = as.character(PlexID),
+         ReporterAlias = case_when(is.na(SampleType) ~ "ref",
+                                   TRUE ~ ReporterAlias), # customize if reference changes
+         ReporterName = case_when(ReporterName == "126C" ~ "126",       ## Here we make the channel names match the
+                                  ReporterName == "134" ~ "134N",       ## format of the converter_ion conversion table.
+                                  TRUE ~ ReporterName),
+         MeasurementName = as.character(seq(1, nrow(metadataTable)))) # measurement names must be unique
+
+samples_p <- samples
+#samples_p[grepl("Pooled", samples_p$'patient'), "MeasurementName"] <- c("Pooled 1", "Pooled 2")
+#samples_p[grepl("Pooled", samples_p$'patient'), "ReporterAlias"] <- c("Pooled 1", "Pooled 2")
+samples_p[samples_p$ReporterAlias == "ref" | is.na(samples_p$ReporterAlias), "MeasurementName"] <- NA
+
+samples[grepl("Pooled", samples$MeasurementName), "MeasurementName"] <- NA
+samples[samples$ReporterAlias == "ref" | is.na(samples$ReporterAlias), "MeasurementName"] <- NA
+
+write.table(samples %>% select(-tubeNumber, -patient, -SampleType, -Drug, -CellNumber), 
+            paste0(path_to_global_study_design, "samples.txt"),
+            quote=F, sep="\t", row.names=F)
+
+write.table(samples_p %>% select(-tubeNumber, -patient, -SampleType, -Drug, -CellNumber), 
+            paste0(path_to_global_study_design, "samples_pooled.txt"),
+            quote=F, sep="\t", row.names=F)
+
+write.table(samples %>% select(-tubeNumber, -patient, -SampleType, -Drug, -CellNumber), 
+            paste0(path_to_phospho_study_design, "samples.txt"),
+            quote=F, sep="\t", row.names=F)
+
+write.table(samples_p %>% select(-tubeNumber, -patient, -SampleType, -Drug, -CellNumber), 
+            paste0(path_to_phospho_study_design, "samples_pooled.txt"),
+            quote=F, sep="\t", row.names=F)
+
+```
+
+
+```{r references}
+references <- samples %>%
+  dplyr::select(PlexID, QuantBlock) %>%
+  unique() %>% mutate(Reference = "ref")
+
+write.table(references, paste0(path_to_global_study_design, "references.txt"),
+            quote=F, sep="\t", row.names=F)
+
+write.table(references, paste0(path_to_phospho_study_design, "references.txt"),
+            quote=F, sep="\t", row.names=F)
+
+```
+
+
+```{r fractions}
+## Global
+job_records <- PNNL.DMS.utils::get_job_records_by_dataset_package(global_data_package_num)
+
+n.plex <- length(unique(metadataTable$Plex))
+# example Datasets
+# global: PTRC_Plex1_TMT_FT_nanoFrac_f01_11Jan24_Homer_BEHCoA-23-11-17
+# phospho: PTRC_Plex1_TMT_Phospho_R1_11Jan24_Homer_BEHCoA-23-11-17	
+if (n.plex > 1) {
+  fractions <- data.frame(Dataset = unique(job_records$Dataset)) %>%
+  mutate(PlexID = sub("^PTRC_Plex(.*)_TMT_.*$", "\\1", Dataset)) # customize if Dataset format changes
+} else {
+  fractions <- data.frame(Dataset = unique(job_records$Dataset), PlexID = 1)
+}
+write.table(fractions, paste0(path_to_global_study_design, "fractions.txt"),
+            quote=F, sep="\t", row.names=F)
+
+## Phospho
+job_records <- PNNL.DMS.utils::get_job_records_by_dataset_package(phospho_data_package_num)
+
+if (n.plex > 1) {
+  fractions <- data.frame(Dataset = unique(job_records$Dataset)) %>%
+  mutate(PlexID = sub("^PTRC_Plex(.*)_TMT_.*$", "\\1", Dataset)) # customize if Dataset format changes
+} else {
+  fractions <- data.frame(Dataset = unique(job_records$Dataset), PlexID = 1)
+}
+write.table(fractions, paste0(path_to_phospho_study_design, "fractions.txt"),
+            quote=F, sep="\t", row.names=F)
+
+```
+

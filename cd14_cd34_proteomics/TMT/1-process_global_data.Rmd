@@ -1,0 +1,281 @@
+---
+title: "Exp24 Global proteomics"
+output: html_document
+---
+
+The global proteomics pipeline uses the R package [PlexedPiper](https://github.com/vladpetyuk/PlexedPiper). It also requires a connection to the DMS to access data packages.
+
+
+```{r, echo=F}
+library(knitr)
+knitr::opts_chunk$set(message=F, warning=F)
+t0 <- Sys.time(); print(t0)
+```
+
+
+```{r setup}
+library(PlexedPiper)
+library(dplyr)
+library(PNNL.DMS.utils)
+library(Biostrings)
+library(tidyverse)
+
+data_package_num <- 5391
+data_folder <- "data/global_data"
+crosstab_prefix <- "Exp24"
+
+dir.create(data_folder)
+
+```
+
+
+# Study design
+
+Study design information in PlexedPiper is encoded in three tables: fractions, samples, and references. 
+These tables can be made using metadata and should be stored on the DMS before processing.
+
+```{r read_study_design}
+fractions <- read.table("study_design/global_study_design/fractions.txt", sep = "\t", header = T)
+samples <- read.table("study_design/global_study_design/samples.txt", sep = "\t", header = T)
+references <- read.table("study_design/global_study_design/references.txt", sep = "\t", header = T)
+
+```
+
+# Process MS-GF+ data
+
+MS-GF+ data is processed in several steps. First, read MS-GF+ output from the DMS. (This step can take a while).
+
+```{r read_msgf}
+msgf_data_path <- file.path(data_folder, "msgfData_original.RData")
+if (file.exists(msgf_data_path)) {
+  load(msgf_data_path)
+} else {
+  msnid <- read_msgf_data_from_DMS(data_package_num)
+  save(msnid, file=msgf_data_path)
+}
+show(msnid)
+
+```
+
+
+## Correct peak selection and peptide FDR
+We use the target-decoy search strategy method described in [(Elias 2010)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2922680/). 
+Filtering is done first at peptide level, then at protein level, both with max FDR of 1%.
+
+```{r}
+## peak selection & Peptide filter
+msnid <- correct_peak_selection(msnid)   ## optional for phospho
+msnid <- filter_msgf_data_peptide_level(msnid, 0.01)
+
+
+```
+
+
+## Remap accessions
+
+This function remaps UniProt protein accessions to gene symbol.
+
+```{r remap_accessions}
+options(timeout = 120)
+# get fst_dms_path from:
+path_to_FASTA_used_by_DMS(data_package_num)
+fst_dms_pth <- path_to_FASTA_used_by_DMS(data_package_num)
+
+fst <- readAAStringSet(fst_dms_pth)
+
+conv <- data.frame(NAME = names(fst)) %>%
+  mutate(UNIPROT = str_extract(names(fst), "^(\\S)+"),
+         SYMBOL = str_extract(names(fst), "GN=(\\S)+")) %>%
+  dplyr::select(-NAME) %>%
+  mutate(UNIPROT = sub(".*\\|(.*)\\|.*", "\\1", UNIPROT),
+         SYMBOL = sub("GN=", "", SYMBOL))
+
+msnid_prot <- msnid
+
+msnid <- remap_accessions_uniprot_to_gene(msnid,
+                                          organism_name="Homo sapiens",
+                                          conversion_table = conv)
+
+show(msnid)
+table(is.na(msnid$accession))
+msnid <- apply_filter(msnid, "!is.na(accession)")
+show(msnid)
+
+```
+
+
+## Accession FDR
+
+
+```{r protein_level_filter }
+fst_dms_pth_2 <- remap_fasta_entry_names(fst_dms_pth, conv, "^.*\\|(.+?)(-\\d+)?\\|.*")
+
+## peptide density and accession filter
+msnid <- compute_num_peptides_per_1000aa(msnid, fst_dms_pth_2)
+msnid <- filter_msgf_data_protein_level(msnid, 0.01)
+show(msnid)
+
+
+msnid_prot <- compute_num_peptides_per_1000aa(msnid_prot, fst_dms_pth)
+msnid_prot <- filter_msgf_data_protein_level(msnid_prot, 0.01)
+show(msnid_prot)
+
+```
+
+
+## Parsimonious inference
+
+To reduce number of protein identifications, we use a parsimonious inference algorithm described in 
+[(Zhang et al. 2007)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2810678/).
+
+```{r parsimonious_inference}
+msnid <- infer_parsimonious_accessions(msnid, unique_only=FALSE)
+msnid_prot <- infer_parsimonious_accessions(msnid_prot, unique_only=FALSE)
+show(msnid)
+show(msnid_prot)
+
+```
+
+
+## Remove Decoys
+
+```{r}
+msnid <- apply_filter(msnid, "!isDecoy")
+show(msnid)
+
+msnid_prot <- apply_filter(msnid_prot, "!isDecoy")
+show(msnid_prot)
+
+save(msnid, file=file.path(data_folder, "msgfData_filtered.RData"))
+
+```
+
+
+## Process MASIC data
+
+Output from the MASIC software is read from DMS, then filtered by interference score.
+
+
+```{r read_masic}
+masic_data_path <- file.path(data_folder, "masicData_original.RData")
+
+options(timeout = 120)
+if (file.exists(masic_data_path)) {
+  load(masic_data_path)
+} else {
+  masic_data <- read_masic_data_from_DMS(data_package_num,
+                                       interference_score = TRUE)
+  save(masic_data, file=masic_data_path)
+}
+
+nrow(masic_data)
+```
+
+
+```{r filter_masic}
+masic_data <- filter_masic_data(masic_data,
+                                interference_score_threshold = 0.5,
+                                s2n_threshold = 0)
+save(masic_data, file=file.path(data_folder, "masicData_filtered.RData"))
+
+nrow(masic_data)
+```
+
+
+## Create crosstab
+
+The quantitative crosstab combines MS/MS identifications with reporter ion intensities. 
+Abundances are taken relative to the reference channel and then log-transformed.
+
+
+```{r create_global_gene_crosstab}
+setwd("~/OneDrive - PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/")
+load(file.path(data_folder, "msgfData_filtered.RData"))
+load(file.path(data_folder, "masicData_filtered.RData"))
+
+aggregation_level <- c("accession")
+
+# remove non-samples (empty), but keep references
+samples <- samples[samples$ReporterAlias != "EMPTY", ]
+#samples$MeasurementName <- as.character(seq(1, nrow(samples)))
+
+# if more than 1 reference per plex:
+# debug(create_crosstab)
+# once in debug environment, run:
+# debug(converting_to_relative_to_reference)
+# because there is more than 1 reference on the plex, after line 35 run: 
+# quant_data_i_w <- dcast(quant_data_i, Specie ~ ReporterAlias, fun.aggregate = mean, value.var = "Abundance")
+
+# this time, getting this error from converting_to_relative_to_reference in create_crosstab:
+# Error in eval(parse(text = ref_i$Reference)) : object 'ref' not found
+# because of line 278 in create_crosstab: https://github.com/PNNL-Comp-Mass-Spec/PlexedPiper/blob/master/R/create_crosstab.R
+# ref_values must be numeric, but parse(text = ref_i$Reference) results in expression(ref) and eval(expression(ref))
+# results in object 'ref' not found. Not sure why because 'ref' was used for other experiments too
+
+quant_cross_tab <- create_crosstab(msnid, 
+                                   masic_data, 
+                                   aggregation_level, 
+                                   fractions, samples, references)
+
+dim(quant_cross_tab)
+
+write.table(quant_cross_tab, file=file.path(data_folder, paste(crosstab_prefix, "crosstab_global_gene_original.txt", sep="_")),
+            quote=F, sep="\t")
+```
+
+
+
+
+```{r create_global_peptide_crosstab}
+aggregation_level <- c("peptide")
+
+# if more than 1 reference per plex:
+# debug(create_crosstab)
+# once in debug environment, run:
+# debug(converting_to_relative_to_reference)
+# because there is more than 1 reference on the plex, after line 35 run: 
+# quant_data_i_w <- dcast(quant_data_i, Specie ~ ReporterAlias, fun.aggregate = mean, value.var = "Abundance")
+
+quant_cross_tab <- create_crosstab(msnid, 
+                                   masic_data, 
+                                   aggregation_level, 
+                                   fractions, samples, references)
+dim(quant_cross_tab)
+
+xx <- psms(msnid) %>% select(accession, peptide, pepSeq) %>% unique()
+crosstab <- quant_cross_tab %>% as.data.frame()
+crosstab$peptide <- rownames(crosstab)
+
+crosstab <- left_join(crosstab, xx, by = "peptide")
+write.table(crosstab %>% select(peptide, pepSeq, accession, everything()), 
+            file=file.path(data_folder, paste(crosstab_prefix, "crosstab_global_peptide_original.txt", sep="_")),
+            quote=F, sep="\t")
+```
+
+
+```{r create_global_gene_crosstab}
+psms(msnid_prot)$accession <- sub("^.*\\|(.*)\\|.*$", "\\1", psms(msnid_prot)$accession)
+
+psms(msnid_prot) <- psms(msnid_prot) %>%
+  filter(!grepl("Contaminant", accession))
+
+aggregation_level <- c("accession")
+
+# if more than 1 reference per plex:
+# debug(create_crosstab)
+# once in debug environment, run:
+# debug(converting_to_relative_to_reference)
+# because there is more than 1 reference on the plex, after line 35 run: 
+# quant_data_i_w <- dcast(quant_data_i, Specie ~ ReporterAlias, fun.aggregate = mean, value.var = "Abundance")
+
+quant_cross_tab_prot <- create_crosstab(msnid_prot, 
+                                        masic_data, 
+                                        aggregation_level, 
+                                        fractions, samples, references)
+dim(quant_cross_tab_prot)
+
+write.table(quant_cross_tab_prot, file=file.path(data_folder, paste(crosstab_prefix, "crosstab_global_prot_original.txt", sep="_")),
+            quote=F, sep="\t")
+```
+
+

@@ -1,0 +1,283 @@
+---
+title: "Ex22 Phospho proteomics"
+output: html_document
+---
+
+Preliminary summary
+
+
+
+
+```{r include=FALSE}
+library(MSnSet.utils)
+library(dplyr)
+library(ggplot2)
+library(readxl)
+
+global_crosstab <- read.table("../proteomics/data/global_data/ptrc_ex22_crosstab_global_gene_original.txt")
+phospho_crosstab <- read.table("../proteomics/data/phospho_data/ptrc_ex22_crosstab_phospho_siteID_original.txt")
+phospho_crosstab_prot <- read.table("../proteomics/data/phospho_data/ptrc_ex22_crosstab_phospho_siteID_prot_original.txt", sep = "\t")
+
+meta <- read_excel("../proteomics/data/Expt 22 Design.xlsx", sheet = 2) %>%
+  filter(!is.na(Tube)) %>%
+  mutate(Tube = as.character(Tube),
+         Plex = as.character(Plex)) %>% as.data.frame()
+#rownames(meta) <- meta$Tube # duplicate 'row.names' are not allowed (because of EMPTY and PNNL REFERENCE rows)
+
+# remove EMPTY rows
+meta <- meta[meta$Tube != "EMPTY", ]
+
+colnames(global_crosstab) <- sub("^X", "", colnames(global_crosstab))
+colnames(phospho_crosstab) <- sub("^X", "", colnames(phospho_crosstab))
+colnames(phospho_crosstab_prot) <- sub("^data.", "", colnames(phospho_crosstab_prot))
+
+## data only
+phospho_prot_mat <- phospho_crosstab_prot[, intersect(as.character(1:ncol(phospho_crosstab_prot)), colnames(phospho_crosstab_prot))]
+
+
+```
+
+
+Missing data
+
+
+```{r}
+global_missing <- rowSums(is.na(global_crosstab))
+phospho_missing <- rowSums(is.na(phospho_crosstab))
+phospho_prot_missing <- rowSums(is.na(phospho_prot_mat))
+
+hist(global_missing)
+hist(phospho_missing)
+hist(phospho_prot_missing)
+
+## 50 % missingness filter, lose 178 global features and 27205 phosphosites
+global_crosstab <- global_crosstab[global_missing < ncol(global_crosstab)/2, ]
+phospho_crosstab <- phospho_crosstab[phospho_missing < ncol(phospho_crosstab)/2, ]
+phospho_prot_mat <- phospho_prot_mat[phospho_prot_missing < ncol(phospho_crosstab)/2, ]
+
+```
+
+
+Raw data stats.
+
+
+```{r}
+## row medians
+hist(apply(global_crosstab, 1, median, na.rm = T))
+hist(apply(phospho_crosstab, 1, median, na.rm = T))
+hist(apply(phospho_prot_mat, 1, median, na.rm = T))
+
+global_row_medians <- apply(global_crosstab, 1, median, na.rm = T)
+phospho_row_medians <- apply(phospho_crosstab, 1, median, na.rm = T)
+phospho_prot_row_medians <- apply(phospho_prot_mat, 1, median, na.rm = T)
+
+global_crosstab <- sweep(global_crosstab, 1, global_row_medians, FUN = '-')
+phospho_crosstab <- sweep(phospho_crosstab, 1, phospho_row_medians, FUN = '-')
+phospho_prot_mat <- sweep(phospho_prot_mat, 1, phospho_prot_row_medians, FUN = '-')
+
+```
+
+
+
+```{r}
+table(colnames(global_crosstab) == colnames(phospho_crosstab))
+table(colnames(global_crosstab) == colnames(phospho_prot_mat))
+
+## sample medians
+hist(apply(global_crosstab, 2, median, na.rm = T))
+hist(apply(phospho_crosstab, 2, median, na.rm = T))
+hist(apply(phospho_prot_mat, 2, median, na.rm = T))
+
+## Using global coefficients to normalize phospho.
+global_sample_coef <- apply(global_crosstab, 2, median, na.rm = T)
+
+global_crosstab <- sweep(global_crosstab, 2, global_sample_coef, FUN = '-')
+phospho_crosstab <- sweep(phospho_crosstab, 2, global_sample_coef, FUN = '-')
+phospho_prot_mat <- sweep(phospho_prot_mat, 2, global_sample_coef, FUN = '-')
+
+```
+
+
+
+```{r}
+m_global <- MSnSet(exprs = global_crosstab %>% as.matrix(), 
+                   pData = meta[colnames(global_crosstab), ])
+
+m_phospho <- MSnSet(exprs = phospho_crosstab %>% as.matrix(), 
+                    pData = meta[colnames(phospho_crosstab), ])
+
+m_phospho_prot <- MSnSet(exprs = phospho_prot_mat %>% as.matrix(), 
+                         pData = meta[colnames(phospho_prot_mat), ])
+
+```
+
+
+Both datasets show strong batch effect
+
+
+```{r}
+plot_pca(m_global, phenotype = "Plex") + ggtitle("Global PCA - All features by Plex")
+plot_pca(m_global, phenotype = "Sample Name") + ggtitle("Global PCA - All features by Plex")
+plot_pca(m_phospho, phenotype = "Plex") + ggtitle("Phospho PCA - All features by Plex")
+
+plot_pca(m_phospho_prot, phenotype = "Plex") + ggtitle("Phospho prot PCA - All features by Plex")
+
+```
+
+
+```{r}
+# can only perform correction for plex if more than one plex
+if (length(unique(meta$Plex)) > 1) {
+ m_global_corrected <- correct_batch_effect_NA(m_global, "Plex", par.prior = T)
+ m_phospho_corrected <- correct_batch_effect_NA(m_phospho, "Plex", par.prior = T)
+ m_phospho_prot_corrected <- correct_batch_effect_NA(m_phospho_prot, "Plex", par.prior = T) 
+} else {
+  m_global_corrected <- m_global
+  m_phospho_corrected <- m_phospho
+  m_phospho_prot_corrected <- m_phospho_prot
+}
+```
+
+
+
+```{r}
+plot_pca(m_global_corrected, phenotype = "Plex") + ggtitle("Global PCA - All features by Plex, Corrected")
+plot_pca(m_global_corrected, phenotype = "Sample Name") + ggtitle("Global PCA - All features by Plex, Corrected")
+plot_pca(m_phospho_corrected, phenotype = "Plex") + ggtitle("Phospho PCA - All features by Plex, Corrected")
+plot_pca(m_phospho_corrected, phenotype = "Sample Name") + ggtitle("Phospho PCA - All features by Plex, Corrected")
+
+plot_pca(m_phospho_prot_corrected, phenotype = "Plex") + ggtitle("Phospho prot PCA - All features by Plex, Corrected")
+
+```
+
+Push to synapse.
+
+```{r}
+write.table(exprs(m_global_corrected), 
+            file = "data/global_data/ptrc_ex22_crosstab_global_gene_corrected.txt",
+            quote=F, sep="\t")
+
+write.table(exprs(m_phospho_corrected), 
+            file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_corrected.txt",
+            quote=F, sep="\t")
+
+
+phospho_prot_corrected <- exprs(m_phospho_prot_corrected) %>%
+  as.data.frame() %>%
+  mutate(feature = rownames(.))
+mapping_df <- phospho_crosstab_prot %>%
+  mutate(feature = rownames(.)) %>%
+  select(feature, Peptide_kstar, Protein_kstar, SiteID)
+
+phospho_prot_corrected <- merge(phospho_prot_corrected, mapping_df, by = "feature")
+rownames(phospho_prot_corrected) <- phospho_prot_corrected$feature
+phospho_prot_corrected <- phospho_prot_corrected %>% select(-feature) %>%
+  select(SiteID, Peptide_kstar, Protein_kstar, everything())
+
+colnames(phospho_prot_corrected) <- sub("(^[0-9].*$)", "data:\\1", colnames(phospho_prot_corrected))
+write.table(phospho_prot_corrected, 
+            file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_prot_corrected.txt",
+            sep="\t")
+
+```
+
+
+```{r}
+# can only perform if more than one plex
+if (length(unique(meta$Plex)) > 1) {
+  plex_global <- limma_gen(m_global, "~Plex", "Plex")
+  plex_phospho <- limma_gen(m_phospho, "~Plex", "Plex")
+
+  plex_global_corrected <- limma_gen(m_global_corrected, "~Plex", "Plex")
+  plex_phospho_corrected <- limma_gen(m_phospho_corrected, "~Plex", "Plex")
+}
+
+```
+
+
+
+```{r}
+# can only perform if more than one plex
+if (length(unique(meta$Plex)) > 1) {
+  hist(plex_global$P.Value)
+  hist(plex_global_corrected$P.Value)
+
+  hist(plex_phospho$P.Value)
+  hist(plex_phospho_corrected$P.Value)
+}
+```
+
+
+
+
+
+```{r}
+library(readxl)
+## Finalizing KSTAR input
+crosstab <- read.table(file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_prot_corrected.txt",
+            sep="\t")
+colnames(crosstab) <- sub("data.", "", colnames(crosstab))
+meta <- read_excel("../proteomics/data/Expt 22 Design.xlsx", sheet = 2) %>%
+  filter(!is.na(Tube)) %>%
+  mutate(Tube = as.character(Tube),
+         Plex = as.character(Plex)) %>% as.data.frame()
+#rownames(meta) <- meta$Tube
+
+# remove EMPTY rows
+meta <- meta[meta$Tube != "EMPTY", ]
+
+crosstab_kstar <- crosstab %>%
+  select(SiteID, Peptide_kstar, Protein_kstar)
+
+# add more descriptive treatment column
+meta$Treatment <- meta$`Sample Name`
+meta[grep("NRAS", meta$`Sample Name`), ]$Treatment <- substr(
+  meta[grep("NRAS", meta$`Sample Name`), ]$'Sample Name', 1, 
+  nchar(meta[grep("NRAS", meta$`Sample Name`), ]$'Sample Name') - 3) # remove last 3 chars
+
+# customize for appropriate baseline! here, we have 3 different baselines
+all_groups <- na.omit(unique(meta$Treatment))
+for (i in 1:length(all_groups)){
+  samples <- meta %>% filter(Treatment == all_groups[i])
+  
+  # get volume for appropriate baseline
+  if (any(grepl("CRISPR-Cas9", all_groups[i]))) {
+    group.vol <- substr(all_groups[i], 1, 2)
+  } else {
+    group.vol <- substr(all_groups[i], nchar(all_groups[i]) - 2, 
+                        nchar(all_groups[i]) - 1)
+  }
+  vol.samples <- samples[grep(group.vol, samples$Treatment), ]
+  baseline_samples <- vol.samples[grep("guide", vol.samples$Treatment), ] %>% 
+    pull(Tube)
+  
+  mat <- crosstab[, samples$Tube]
+  base.mat <- crosstab[, baseline_samples]
+  if (is.null(dim(mat)) & is.null(dim(base.mat))) {
+    crosstab_kstar[paste0("data:", all_groups[i], "_logFC")] <- 
+    mat - base.mat
+  } else if (is.null(dim(mat))) {
+    crosstab_kstar[paste0("data:", all_groups[i], "_logFC")] <- 
+    mat - 
+    apply(base.mat, 1, mean, na.rm = TRUE)
+  } else if (is.null(dim(base.mat))) {
+      crosstab_kstar[paste0("data:", all_groups[i], "_logFC")] <- 
+    apply(mat, 1, mean, na.rm = TRUE) - 
+    base.mat
+  } else {
+     crosstab_kstar[paste0("data:", all_groups[i], "_logFC")] <- 
+    apply(mat, 1, mean, na.rm = TRUE) - 
+    apply(base.mat, 1, mean, na.rm = TRUE) 
+  }
+}
+
+data_folder = "data/phospho_data/"
+crosstab_prefix = "ptrc_ex22"
+## showing logFC vs baseline and none for each treatment.
+write.table(crosstab_kstar,
+            file=file.path(data_folder, paste(crosstab_prefix, "crosstab_phospho_treatments_logFC.txt", sep="_")),
+            sep="\t", quote = F)
+
+```
+
+

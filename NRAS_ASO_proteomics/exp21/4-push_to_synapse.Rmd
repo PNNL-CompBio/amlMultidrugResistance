@@ -1,0 +1,29 @@
+---
+title: "MPNST Synergy Exp1 Push to synapse"
+output: html_document
+---
+
+```{r login}
+if (!require("amlresistancenetworks", quietly = TRUE))
+  remotes::install_github("https://github.com/PNNL-CompBio/amlresistancenetworks")
+library(amlresistancenetworks); library(reticulate); library(synapser)
+
+synLogin()
+
+```
+
+
+```{r upload}
+synapse_id_map <- c("syn61695503" = "data/global_data/", 
+                 "syn61695503" = "data/phospho_data/")
+
+for (i in 1:length(synapse_id_map)) {
+  crosstabs <- list.files(path = synapse_id_map[i],
+                          pattern = "crosstab.*.txt",
+                          full.names = T)
+  files <- lapply(crosstabs, synapser::File,
+         parent = names(synapse_id_map)[i])
+  lapply(files, synStore)
+}
+```
+

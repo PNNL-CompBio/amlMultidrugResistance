@@ -1,0 +1,343 @@
+---
+title: "Ex1 Phospho proteomics"
+output: html_document
+---
+
+Preliminary summary
+
+
+
+
+```{r include=FALSE}
+library(MSnSet.utils)
+library(dplyr)
+library(ggplot2)
+library(readxl)
+
+global_crosstab <- read.table("../proteomics/data/global_data/ptrc_ex21_crosstab_global_gene_original.txt")
+phospho_crosstab <- read.table("../proteomics/data/phospho_data/ptrc_ex21_crosstab_phospho_siteID_original.txt")
+#phospho_crosstab_prot <- read.table("../proteomics/data/phospho_data/ptrc_ex21_crosstab_phospho_siteID_prot_original.txt", sep = "\t")
+
+synapser::synLogin()
+meta <- read_excel(synapser::synGet("syn64732333")$path, sheet = 2) %>%
+  filter(!is.na(Tube)) %>%
+  mutate(Tube = as.character(Tube),
+         Plex = as.character(Plex)) %>% as.data.frame()
+#rownames(meta) <- meta$Tube # duplicate 'row.names' are not allowed (because of EMPTY and PNNL REFERENCE rows)
+
+# remove EMPTY rows
+meta <- meta[meta$Tube != "EMPTY", ]
+
+colnames(global_crosstab) <- sub("^X", "", colnames(global_crosstab))
+colnames(phospho_crosstab) <- sub("^X", "", colnames(phospho_crosstab))
+#colnames(phospho_crosstab_prot) <- sub("^data.", "", colnames(phospho_crosstab_prot))
+
+## data only
+#phospho_prot_mat <- phospho_crosstab_prot[, intersect(as.character(1:ncol(phospho_crosstab_prot)), colnames(phospho_crosstab_prot))]
+
+```
+
+
+Missing data
+
+
+```{r}
+global_missing <- rowSums(is.na(global_crosstab))
+phospho_missing <- rowSums(is.na(phospho_crosstab))
+#phospho_prot_missing <- rowSums(is.na(phospho_prot_mat))
+
+hist(global_missing)
+hist(phospho_missing)
+#hist(phospho_prot_missing)
+
+## 50 % missingness filter
+global_crosstab <- global_crosstab[global_missing < ncol(global_crosstab)/2, ]
+phospho_crosstab <- phospho_crosstab[phospho_missing < ncol(phospho_crosstab)/2, ]
+#phospho_prot_mat <- phospho_prot_mat[phospho_prot_missing < ncol(phospho_crosstab)/2, ]
+
+```
+
+
+Raw data stats.
+
+
+```{r}
+## row medians
+hist(apply(global_crosstab, 1, median, na.rm = T))
+hist(apply(phospho_crosstab, 1, median, na.rm = T))
+#hist(apply(phospho_prot_mat, 1, median, na.rm = T))
+
+global_row_medians <- apply(global_crosstab, 1, median, na.rm = T)
+phospho_row_medians <- apply(phospho_crosstab, 1, median, na.rm = T)
+#phospho_prot_row_medians <- apply(phospho_prot_mat, 1, median, na.rm = T)
+
+global_crosstab <- sweep(global_crosstab, 1, global_row_medians, FUN = '-')
+phospho_crosstab <- sweep(phospho_crosstab, 1, phospho_row_medians, FUN = '-')
+#phospho_prot_mat <- sweep(phospho_prot_mat, 1, phospho_prot_row_medians, FUN = '-')
+
+```
+
+
+
+```{r}
+table(colnames(global_crosstab) == colnames(phospho_crosstab))
+#table(colnames(global_crosstab) == colnames(phospho_prot_mat))
+all(colnames(global_crosstab) == colnames(phospho_crosstab))
+
+## sample medians
+hist(apply(global_crosstab, 2, median, na.rm = T))
+hist(apply(phospho_crosstab, 2, median, na.rm = T))
+#hist(apply(phospho_prot_mat, 2, median, na.rm = T))
+
+## Using global coefficients to normalize phospho.
+global_sample_coef <- apply(global_crosstab, 2, median, na.rm = T)
+
+global_crosstab <- sweep(global_crosstab, 2, global_sample_coef, FUN = '-')
+phospho_crosstab <- sweep(phospho_crosstab, 2, global_sample_coef, FUN = '-')
+#phospho_prot_mat <- sweep(phospho_prot_mat, 2, global_sample_coef, FUN = '-')
+
+```
+
+
+
+```{r}
+meta <- meta[!is.na(meta$Treatment),]
+rownames(meta) <- meta$Tube
+m_global <- MSnSet(exprs = global_crosstab %>% as.matrix(), 
+                   pData = meta[colnames(global_crosstab), ])
+
+m_phospho <- MSnSet(exprs = phospho_crosstab %>% as.matrix(), 
+                    pData = meta[colnames(phospho_crosstab), ])
+
+# m_phospho_prot <- MSnSet(exprs = phospho_prot_mat %>% as.matrix(), 
+#                          pData = meta[colnames(phospho_prot_mat), ])
+
+```
+
+
+Both datasets show strong batch effect
+
+
+```{r}
+plot_pca(m_global, phenotype = "Plex") + ggtitle("Global PCA")
+plot_pca(m_global, phenotype = "Treatment") + ggtitle("Global PCA")
+plot_pca(m_phospho, phenotype = "Plex") + ggtitle("Phospho PCA")
+
+#plot_pca(m_phospho_prot, phenotype = "Plex") + ggtitle("Phospho prot PCA")
+
+```
+
+
+```{r}
+m_global_corrected <- correct_batch_effect_NA(m_global, "Plex", par.prior = T)
+m_phospho_corrected <- correct_batch_effect_NA(m_phospho, "Plex", par.prior = T)
+
+#m_phospho_prot_corrected <- correct_batch_effect_NA(m_phospho_prot, "Plex", par.prior = T)
+
+```
+
+
+
+```{r}
+plot_pca(m_global_corrected, phenotype = "Plex") + ggtitle("Global PCA - Corrected")
+plot_pca(m_global_corrected, phenotype = "Treatment") + ggtitle("Global PCA - Corrected")
+plot_pca(m_phospho_corrected, phenotype = "Plex") + ggtitle("Phospho PCA - Corrected")
+plot_pca(m_phospho_corrected, phenotype = "Treatment") + ggtitle("Phospho PCA - Corrected")
+
+#plot_pca(m_phospho_prot_corrected, phenotype = "Plex") + ggtitle("Phospho prot PCA - Corrected")
+
+# also filter to focus on specific drug treatments, PDX
+PDXs <- unique(meta$PDX)
+PDXs <- PDXs[!grepl("reference", PDXs, ignore.case = TRUE)]
+drugs <- na.omit(unique(meta$Drug))
+for (i in drugs) {
+  dir.create(file.path(temp.path, i))
+  temp.path2 <- file.path(temp.path, i)
+  
+  drug.meta <- na.omit(meta[meta$Drug == "DMSO" | meta$Drug == i,])
+  drug.samples <- rownames(drug.meta)
+  drug_global <- MSnSet(exprs = exprs(m_global_corrected)[, drug.samples], 
+                   pData = meta[drug.samples, ])
+  drug_phospho <- MSnSet(exprs = exprs(m_phospho_corrected)[, drug.samples], 
+                   pData = meta[drug.samples, ])
+  drug_phospho_prot <- MSnSet(exprs = exprs(m_phospho_prot_corrected)[, drug.samples], 
+                   pData = meta[drug.samples, ])
+  
+  for (k in 1:length(phenos)) {
+  plot_pca(drug_global, phenotype = phenos[k]) + ggtitle("Global PCA")
+  ggsave(paste0(temp.path2, "/Chr8_UMN1_global_PCA_by_", phenos[k], ".pdf"))
+  
+  plot_pca(drug_phospho, phenotype = phenos[k]) + ggtitle("Phospho PCA")
+  ggsave(paste0(temp.path2,"/Chr8_UMN1_phospho_PCA_by_", phenos[k], ".pdf"))
+  
+  plot_pca(drug_phospho_prot, phenotype = phenos[k]) + ggtitle("Phospho prot PCA")
+  ggsave(paste0(temp.path2, "/Chr8_UMN1_phospho_prot_PCA_by_", phenos[k], ".pdf"))
+  }
+  
+  # also filter for each PDX
+  for (j in PDXs) {
+    dir.create(file.path(temp.path2, j))
+    temp.path3 <- file.path(temp.path2, j) 
+    
+    drug.pdx.samples <- rownames(na.omit(drug.meta[drug.meta$PDX == j,]))
+    drug_pdx_global <- MSnSet(exprs = exprs(m_global_corrected)[, drug.pdx.samples], 
+                   pData = meta[drug.pdx.samples, ])
+    drug_pdx_phospho <- MSnSet(exprs = exprs(m_phospho_corrected)[, drug.pdx.samples], 
+                   pData = meta[drug.pdx.samples, ])
+    drug_pdx_phospho_prot <- MSnSet(exprs = exprs(m_phospho_prot_corrected)[, drug.pdx.samples], 
+                   pData = meta[drug.pdx.samples, ])
+    
+    for (k in 1:length(phenos)) {
+      plot_pca(drug_pdx_global, phenotype = phenos[k]) + ggtitle("Global PCA")
+      ggsave(paste0(temp.path3, "/Chr8_UMN1_global_PCA_by_", phenos[k], ".pdf"))
+  
+      plot_pca(drug_pdx_phospho, phenotype = phenos[k]) + ggtitle("Phospho PCA")
+      ggsave(paste0(temp.path3,"/Chr8_UMN1_phospho_PCA_by_", phenos[k], ".pdf"))
+  
+      plot_pca(drug_pdx_phospho_prot, phenotype = phenos[k]) + ggtitle("Phospho prot PCA")
+      ggsave(paste0(temp.path3, "/Chr8_UMN1_phospho_prot_PCA_by_", phenos[k], ".pdf"))
+    }
+  }
+}
+
+# PCAs with better format / groupings
+dir.create("PCA_ggplot")
+setwd("PCA_ggplot")
+# global
+# make sure there's no missing data for PCAs
+global.df <- exprs(m_global_corrected)
+complete.global <- as.matrix(global.df[rowSums(is.na(global.df)) == 0,])
+
+phospho.df <- exprs(m_phospho_corrected)
+complete.phospho <- as.matrix(phospho.df[rowSums(is.na(phospho.df)) == 0,])
+
+# set titles
+global.title <- paste0("Global Proteomics (", nrow(complete.global), " out of ", nrow(global.df), " Proteins Represented)")
+phospho.title <- paste0("Phospho-proteomics (", nrow(complete.phospho), " out of ", nrow(phospho.df), " Phospho-sites Represented)")
+
+meta$Replicate <- substr(meta$Tube, nchar(meta$Tube), nchar(meta$Tube))
+meta$id2 <- rownames(meta)
+
+# run PCA
+combo.pca.df <- data.frame(prcomp(t(complete.global))$x)
+combo.pca.df$id2 <- rownames(combo.pca.df)
+combo.pca.df2 <- merge(combo.pca.df, meta)
+
+# plot PCA
+abs.max <- ceiling(max(abs(c(combo.pca.df2$PC1, combo.pca.df2$PC2))))
+global.pca <- ggplot2::ggplot(combo.pca.df2, aes(x=PC1, y=PC2, size = `Time point (hr)`, color = PDX, shape = Drug, label = Replicate)) + 
+  geom_point() + theme_bw() + xlim(-abs.max, abs.max) + ylim(-abs.max, abs.max) +
+  theme(text=element_text(size=20)) +
+  labs(title= global.title)
+ggplot2::ggsave(paste0("Global_PCA_8.5x12_equalAxisLimits_textSize20_", Sys.Date(), ".pdf"), global.pca, width = 12, height = 8.5)
+
+# phospho
+# run PCA
+combo.pca.df <- data.frame(prcomp(t(complete.phospho))$x)
+combo.pca.df$id2 <- rownames(combo.pca.df)
+combo.pca.df2 <- merge(combo.pca.df, meta)
+
+# plot PCA
+abs.max <- ceiling(max(abs(c(combo.pca.df2$PC1, combo.pca.df2$PC2))))
+phospho.pca <- ggplot2::ggplot(combo.pca.df2, aes(x=PC1, y=PC2, size = `Time point (hr)`, color = PDX, shape = Drug, label = Replicate)) + 
+  geom_point() + theme_bw() + xlim(-abs.max, abs.max) + ylim(-abs.max, abs.max) +
+  theme(text=element_text(size=20)) +
+  labs(title= phospho.title)
+ggplot2::ggsave(paste0("phospho_PCA_8.5x12_equalAxisLimits_textSize20_", Sys.Date(), ".pdf"), phospho.pca, width = 12, height = 8.5)
+```
+
+Push to synapse.
+
+```{r}
+write.table(exprs(m_global_corrected), 
+            file = "data/global_data/Chr8_UMN1_crosstab_global_gene_corrected.txt",
+            quote=F, sep="\t")
+
+write.table(exprs(m_phospho_corrected), 
+            file = "data/phospho_data/Chr8_UMN1_crosstab_phospho_SiteID_corrected.txt",
+            quote=F, sep="\t")
+
+
+# phospho_prot_corrected <- exprs(m_phospho_prot_corrected) %>%
+#   as.data.frame() %>%
+#   mutate(feature = rownames(.))
+# mapping_df <- phospho_crosstab_prot %>%
+#   mutate(feature = rownames(.)) %>%
+#   select(feature, Peptide_kstar, Protein_kstar, SiteID)
+# 
+# phospho_prot_corrected <- merge(phospho_prot_corrected, mapping_df, by = "feature")
+# rownames(phospho_prot_corrected) <- phospho_prot_corrected$feature
+# phospho_prot_corrected <- phospho_prot_corrected %>% select(-feature) %>%
+#   select(SiteID, Peptide_kstar, Protein_kstar, everything())
+# 
+# colnames(phospho_prot_corrected) <- sub("(^[0-9].*$)", "data:\\1", colnames(phospho_prot_corrected))
+# write.table(phospho_prot_corrected, 
+#             file = "data/phospho_data/ptrc_ex21_crosstab_phospho_SiteID_prot_corrected.txt",
+#             sep="\t")
+
+
+```
+
+
+```{r}
+plex_global <- limma_gen(m_global, "~Plex", "Plex")
+plex_phospho <- limma_gen(m_phospho, "~Plex", "Plex")
+
+plex_global_corrected <- limma_gen(m_global_corrected, "~Plex", "Plex")
+plex_phospho_corrected <- limma_gen(m_phospho_corrected, "~Plex", "Plex")
+
+
+```
+
+
+
+```{r}
+hist(plex_global$P.Value)
+hist(plex_global_corrected$P.Value)
+
+hist(plex_phospho$P.Value)
+hist(plex_phospho_corrected$P.Value)
+
+```
+
+
+
+
+```{r}
+# library(readxl)
+# ## Finalizing KSTAR input
+# crosstab <- read.table(file = "data/phospho_data/ptrc_ex21_crosstab_phospho_SiteID_prot_corrected.txt",
+#             sep="\t")
+# colnames(crosstab) <- sub("data.", "", colnames(crosstab))
+# synapser::synLogin()
+# meta <- read_excel(synapser::synGet("syn64732333")$path, sheet = 2) %>%
+#   filter(!is.na(Tube)) %>%
+#   mutate(Tube = as.character(Tube),
+#          Plex = as.character(Plex)) %>% as.data.frame()
+# #rownames(meta) <- meta$Tube
+# 
+# # remove EMPTY rows
+# meta <- meta[meta$Tube != "EMPTY", ]
+# 
+# crosstab_kstar <- crosstab %>%
+#   select(SiteID, Peptide_kstar, Protein_kstar)
+# 
+# all_groups <- na.omit(unique(meta$Treatment))
+# for (Treatment in all_groups){
+#   samples <- meta %>% filter(Treatment == Treatment) %>%
+#     pull(Tube)
+#   baseline_samples <- meta %>% filter(Treatment == "BASELINE (No ASO)") %>% 
+#     pull(Tube)
+#   mat <- crosstab[, samples]
+#   crosstab_kstar[paste0("data:", Treatment, "_logFC")] <- apply(crosstab[, samples], 1, mean, na.rm = T) - apply(crosstab[, baseline_samples], 1, mean, na.rm = T)
+# }
+# 
+# data_folder = "data/phospho_data/"
+# crosstab_prefix = "ptrc_ex21"
+# ## showing logFC vs baseline and none for each treatment.
+# write.table(crosstab_kstar,
+#             file=file.path(data_folder, paste(crosstab_prefix, "crosstab_phospho_treatments_logFC.txt", sep="_")),
+#             sep="\t", quote = F)
+
+```
+
