@@ -1,17 +1,23 @@
 
 Loading data
 
-```{r}
+```{r packages, echo=FALSE}
 library(dplyr)
 library(MSnSet.utils)
 library(ggplot2)
 library(ggpubr)
-
+library(clusterProfiler)
 source("../drug_treated_samples/s2n_model.R")
 source("../drug_treated_samples/helper_scripts.R")
 source('../synapseUtil.R')
 
 syn <- synapseLogin()
+
+```
+
+Now start the analysis
+
+```{r load things}
 
 subcohort_colors =  c("#e8991b", "#00798c", "#d1495b", "grey27")
 subcohort_colors2 =  c("#e8991b", "#00798c", "#d1495b", "grey27")
@@ -42,10 +48,14 @@ mat = mat_df[, -1] %>% as.matrix()
 rownames(mat) = mat_df$Genes
 
 
+##SG: suggest these outliers
+outliers <- c('24-00144', '24-00675', '22-00184')
+
 # meta = openxlsx::read.xlsx("metadata_Exp28.xlsx")
 meta = openxlsx::read.xlsx(syn$get("syn69058992")$path)
 meta$survival_days = meta[[13]]
-p_data = meta %>% mutate(sample_name = datasetNameGlobal,
+p_data = meta %>% subset(!labId %in% outliers) |>
+  mutate(sample_name = datasetNameGlobal,
                          subcohort = gsub(" - ", "_", `sub-cohort.PNNL`),
                          subcohort = gsub(" ", "_", subcohort),
                          group = subcohort,
@@ -57,9 +67,10 @@ p_data = meta %>% mutate(sample_name = datasetNameGlobal,
                                                 subcohort == "Relapse" & survival_days >= 500 ~ "relapse_long",
                                                 TRUE ~ subcohort))
 rownames(p_data) = p_data$sample_name
-p_data = p_data[colnames(mat), ]
+pats <- intersect(colnames(mat), rownames(p_data))
+p_data = p_data[pats, ]
 
-m_exp28 = MSnSet(exprs = mat, pData = p_data)
+m_exp28 = MSnSet(exprs = mat[,pats], pData = p_data)
 hist(apply(exprs(m_exp28), 2, mean, na.rm = T))
 hist(apply(exprs(m_exp28), 1, mean, na.rm = T))
 exprs(m_exp28) = sweep(exprs(m_exp28), 2, apply(exprs(m_exp28), 2, mean, na.rm = T), FUN = '-')
@@ -84,7 +95,7 @@ complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
 Load t2g tables (for GSEA)
 
 
-```{r}
+```{r GSEA analysis}
 ## Load t2g tables
 library(msigdbr)
 t2g_hallmark <- msigdbr(species = "Homo sapiens", category = "H") %>%
@@ -586,7 +597,7 @@ the sample cohort. The point is to check whether the signals can separate the va
 
 Ven - Untreated signal (exp25)
 
-```{r}
+```{r ven untreated signal}
 ## Main figures of the analysis. We have various signatures computed on exp28 samples, and we plot them while annotating
 ## the sample cohort. The point is to check whether the signals can separate the various cohorts.
 subcohort_colors_surv =  c("#b37615", "#e8991b", "#014f5c", "#00798c", "#963340", "#d1495b", "grey27")
@@ -608,7 +619,7 @@ method = "kmeans"
 ## This is the model from exp25 separating Ven from Untreated. (Resisant vs sensitive). Selects 8 markers using the k-means method
 if (!exists("yy10_V")){
    yy10_V <- logistic_model(m_corrected[complete_V_UT_features, ], "Treatment",
-                          pred_group = "V", control_group = "UT", combine_markers = TRUE,
+                          pred_group = "V", control_group = "UT", #combine_markers = TRUE,
                           ## Tune-able parameters
                           N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
 }
@@ -759,7 +770,7 @@ method = "kmeans"
 ## This is the model from exp25 separating Dec Ven from Untreated. (Resistant vs sensitive). Selects 10 markers using the k-means method
 if (!exists("yy10_DV")){
    yy10_DV <- logistic_model(m_corrected[complete_DV_UT_features, ], "Treatment",
-                          pred_group = "DV", control_group = "UT", combine_markers = TRUE,
+                          pred_group = "DV", control_group = "UT", #combine_markers = TRUE,
                           ## Tune-able parameters
                           N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
 }
