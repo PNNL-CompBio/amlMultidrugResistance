@@ -1,0 +1,1953 @@
+DIA-NN 1.8.1 (Data-Independent Acquisition by Neural Networks)
+Compiled on Apr 14 2022 15:31:19
+Current date and time: Thu Aug 22 09:15:41 2024
+CPU: GenuineIntel Intel(R) Core(TM) i9-10920X CPU @ 3.50GHz
+SIMD instructions: AVX AVX2 AVX512CD AVX512F FMA SSE4.1 SSE4.2 
+Logical CPU cores: 24
+C:\DIA-NN\1.8.1\diann.exe --f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plus_34_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML --f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plusFlow_08_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD34plus_33_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_MSCflow_31_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plus_44_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plusFlow_19_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plus_43_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plusFlow_03_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_MSCflow_21_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plus_48_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plusFlow_11_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plus_47_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plusFlow_20_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_MSCflow_13_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plus_46_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plusFlow_27_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plus_45_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plusFlow_05_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_MSCflow_28_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plus_18_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plusFlow_02_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plus_25_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plusFlow_32_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_MSCflow_10_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plus_40_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plusFlow_15_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plus_39_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plusFlow_26_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_MSCflow_09_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plus_29_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plusFlow_17_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plus_22_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plusFlow_23_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_MSCflow_30_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plus_38_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plusFlow_16_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plus_37_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plusFlow_04_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_MSCflow_14_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plus_36_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plusFlow_06_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plus_35_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plusFlow_01_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plus_42_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plusFlow_12_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plus_41_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plusFlow_07_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--f D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_MSCflow_24_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML--lib --threads 12 --verbose 1 --out D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report.tsv --qvalue 0.01 --matrices --out-lib D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-lib.tsv --gen-spec-lib --predictor --fasta D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/Human2023.fasta --fasta-search --min-fr-mz 200 --max-fr-mz 1800 --cut K*,R* --missed-cleavages 1 --min-pep-len 7 --max-pep-len 30 --min-pr-mz 300 --max-pr-mz 1800 --min-pr-charge 1 --max-pr-charge 4 --unimod4 --var-mods 1 --var-mod UniMod:1,42.010565,*n --monitor-mod UniMod:1 --reanalyse --relaxed-prot-inf --smart-profiling --pg-level 1 --peak-center --no-ifs-removal 
+
+Thread number set to 12
+Output will be filtered at 0.01 FDR
+Precursor/protein x samples expression level matrices will be saved along with the main report
+A spectral library will be generated
+Deep learning will be used to generate a new in silico spectral library from peptides provided
+Library-free search enabled
+Min fragment m/z set to 200
+Max fragment m/z set to 1800
+In silico digest will involve cuts at K*,R*
+Maximum number of missed cleavages set to 1
+Min peptide length set to 7
+Max peptide length set to 30
+Min precursor m/z set to 300
+Max precursor m/z set to 1800
+Min precursor charge set to 1
+Max precursor charge set to 4
+Cysteine carbamidomethylation enabled as a fixed modification
+Maximum number of variable modifications set to 1
+Modification UniMod:1 with mass delta 42.0106 at *n will be considered as variable
+A spectral library will be created from the DIA runs and used to reanalyse them; .quant files will only be saved to disk during the first step
+Highly heuristic protein grouping will be used, to reduce the number of protein groups obtained; this mode is recommended for benchmarking protein ID numbers; use with caution for anything else
+When generating a spectral library, in silico predicted spectra will be retained if deemed more reliable than experimental ones
+Implicit protein grouping: protein names; this determines which peptides are considered 'proteotypic' and thus affects protein FDR calculation
+Fixed-width center of each elution peak will be used for quantification
+Interference removal from fragment elution curves disabled
+DIA-NN will optimise the mass accuracy automatically using the first run in the experiment. This is useful primarily for quick initial analyses, when it is not yet known which mass accuracy setting works best for a particular acquisition scheme.
+Exclusion of fragments shared between heavy and light peptides from quantification is not supported in FASTA digest mode - disabled; to enable, generate an in silico predicted spectral library and analyse with this library
+The following variable modifications will be scored: UniMod:1 
+
+48 files will be processed
+[0:00] Loading FASTA D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/Human2023.fasta
+[0:04] Processing FASTA
+[0:11] Assembling elution groups
+[0:17] 4302137 precursors generated
+[0:17] Gene names missing for some isoforms
+[0:17] Library contains 20396 proteins, and 20192 genes
+[0:17] [0:24] [12:22] [14:28] [14:35] [14:38] Saving the library to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-lib.predicted.speclib
+[14:46] Initialising library
+
+[14:48] First pass: generating a spectral library from DIA data
+[14:48] File #1/48
+[14:48] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plus_34_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[15:06] 3875484 library precursors are potentially detectable
+[15:07] Processing...
+[15:30] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[17:10] RT window set to 7.05243
+[17:10] Peak width: 2.684
+[17:10] Scan window radius set to 5
+[17:10] Recommended MS1 mass accuracy setting: 13.2527 ppm
+[20:17] Optimised mass accuracy: 14.079 ppm
+[34:07] Removing low confidence identifications
+[34:08] Searching PTM decoys
+[34:14] Removing interfering precursors
+[34:22] Training neural networks: 183622 targets, 127860 decoys
+[34:34] Number of IDs at 0.01 FDR: 93189
+[34:36] Calculating protein q-values
+[34:36] Number of proteins identified at 1% FDR: 8013 (precursor-level), 7197 (protein-level) (inference performed using proteotypic peptides only)
+[34:37] Quantification
+[34:37] Precursors with monitored PTMs at 1% FDR: 137 out of 150
+[34:37] Unmodified precursors with monitored PTM sites at 1% FDR: 81 out of 104
+[34:38] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plus_34_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[34:40] File #2/48
+[34:40] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plusFlow_08_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[34:53] 3875484 library precursors are potentially detectable
+[34:53] Processing...
+[36:35] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[42:25] RT window set to 6.4724
+[42:25] Recommended MS1 mass accuracy setting: 10.5244 ppm
+[49:10] Removing low confidence identifications
+[49:10] Searching PTM decoys
+[49:13] Removing interfering precursors
+[49:15] Training neural networks: 33837 targets, 21527 decoys
+[49:18] Number of IDs at 0.01 FDR: 14154
+[49:18] Calculating protein q-values
+[49:18] Number of proteins identified at 1% FDR: 3003 (precursor-level), 2722 (protein-level) (inference performed using proteotypic peptides only)
+[49:19] Quantification
+[49:19] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plusFlow_08_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[49:20] File #3/48
+[49:20] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD34plus_33_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[49:36] 3875484 library precursors are potentially detectable
+[49:37] Processing...
+[49:59] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[51:32] RT window set to 6.60243
+[51:32] Recommended MS1 mass accuracy setting: 16.4416 ppm
+[62:41] Removing low confidence identifications
+[62:41] Searching PTM decoys
+[62:46] Removing interfering precursors
+[62:54] Training neural networks: 168094 targets, 117891 decoys
+[63:05] Number of IDs at 0.01 FDR: 87168
+[63:06] Calculating protein q-values
+[63:07] Number of proteins identified at 1% FDR: 7864 (precursor-level), 7164 (protein-level) (inference performed using proteotypic peptides only)
+[63:07] Quantification
+[63:08] Precursors with monitored PTMs at 1% FDR: 111 out of 114
+[63:08] Unmodified precursors with monitored PTM sites at 1% FDR: 75 out of 92
+[63:09] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD34plus_33_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[63:10] File #4/48
+[63:10] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_MSCflow_31_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[63:23] 3875484 library precursors are potentially detectable
+[63:24] Processing...
+[63:41] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[65:45] RT window set to 7.20139
+[65:45] Recommended MS1 mass accuracy setting: 14.9913 ppm
+[73:21] Removing low confidence identifications
+[73:22] Searching PTM decoys
+[73:25] Removing interfering precursors
+[73:31] Training neural networks: 93916 targets, 66757 decoys
+[73:37] Number of IDs at 0.01 FDR: 47163
+[73:38] Calculating protein q-values
+[73:38] Number of proteins identified at 1% FDR: 5608 (precursor-level), 4985 (protein-level) (inference performed using proteotypic peptides only)
+[73:38] Quantification
+[73:39] Precursors with monitored PTMs at 1% FDR: 0 out of 29
+[73:39] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 43
+[73:40] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_MSCflow_31_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[73:40] File #5/48
+[73:40] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plus_44_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[73:58] 3875484 library precursors are potentially detectable
+[73:58] Processing...
+[155:00] RT window set to 6.30581
+[155:01] Recommended MS1 mass accuracy setting: 5.82375 ppm
+[166:50] Removing low confidence identifications
+[166:51] Searching PTM decoys
+[166:56] Removing interfering precursors
+[167:03] Training neural networks: 147431 targets, 101527 decoys
+[167:12] Number of IDs at 0.01 FDR: 71236
+[167:13] Calculating protein q-values
+[167:14] Number of proteins identified at 1% FDR: 7411 (precursor-level), 6666 (protein-level) (inference performed using proteotypic peptides only)
+[167:14] Quantification
+[167:15] Precursors with monitored PTMs at 1% FDR: 100 out of 107
+[167:15] Unmodified precursors with monitored PTM sites at 1% FDR: 65 out of 72
+[167:16] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plus_44_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[167:17] File #6/48
+[167:17] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plusFlow_19_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[167:34] 3875484 library precursors are potentially detectable
+[167:34] Processing...
+[167:52] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[169:13] RT window set to 5.80699
+[169:14] Recommended MS1 mass accuracy setting: 14.4276 ppm
+[179:42] Removing low confidence identifications
+[179:42] Searching PTM decoys
+[179:47] Removing interfering precursors
+[179:55] Training neural networks: 185743 targets, 127791 decoys
+[180:07] Number of IDs at 0.01 FDR: 96324
+[180:08] Calculating protein q-values
+[180:09] Number of proteins identified at 1% FDR: 8014 (precursor-level), 7241 (protein-level) (inference performed using proteotypic peptides only)
+[180:09] Quantification
+[180:10] Precursors with monitored PTMs at 1% FDR: 108 out of 114
+[180:10] Unmodified precursors with monitored PTM sites at 1% FDR: 102 out of 106
+[180:11] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plusFlow_19_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[180:12] File #7/48
+[180:12] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plus_43_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[180:29] 3875484 library precursors are potentially detectable
+[180:30] Processing...
+[180:57] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[183:41] RT window set to 6.32936
+[183:42] Recommended MS1 mass accuracy setting: 13.2603 ppm
+[195:41] Removing low confidence identifications
+[195:41] Searching PTM decoys
+[195:47] Removing interfering precursors
+[195:52] Training neural networks: 120386 targets, 80659 decoys
+[196:00] Number of IDs at 0.01 FDR: 54650
+[196:01] Calculating protein q-values
+[196:01] Number of proteins identified at 1% FDR: 7089 (precursor-level), 6422 (protein-level) (inference performed using proteotypic peptides only)
+[196:01] Quantification
+[196:02] Precursors with monitored PTMs at 1% FDR: 0 out of 90
+[196:02] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 52
+[196:03] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plus_43_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[196:04] File #8/48
+[196:04] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plusFlow_03_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[196:17] 3875484 library precursors are potentially detectable
+[196:17] Processing...
+[197:39] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[202:15] RT window set to 7.24239
+[202:16] Recommended MS1 mass accuracy setting: 13.3115 ppm
+[209:08] Removing low confidence identifications
+[209:08] Searching PTM decoys
+[209:11] Removing interfering precursors
+[209:14] Training neural networks: 39518 targets, 26931 decoys
+[209:17] Number of IDs at 0.01 FDR: 18647
+[209:17] Calculating protein q-values
+[209:18] Number of proteins identified at 1% FDR: 3220 (precursor-level), 2863 (protein-level) (inference performed using proteotypic peptides only)
+[209:18] Quantification
+[209:19] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plusFlow_03_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[209:19] File #9/48
+[209:19] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_MSCflow_21_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[209:36] 3875484 library precursors are potentially detectable
+[209:36] Processing...
+[211:17] RT window set to 6.16475
+[211:17] Recommended MS1 mass accuracy setting: 5.96204 ppm
+[222:03] Removing low confidence identifications
+[222:03] Searching PTM decoys
+[222:08] Removing interfering precursors
+[222:16] Training neural networks: 173335 targets, 120619 decoys
+[222:27] Number of IDs at 0.01 FDR: 88474
+[222:28] Calculating protein q-values
+[222:29] Number of proteins identified at 1% FDR: 8145 (precursor-level), 7373 (protein-level) (inference performed using proteotypic peptides only)
+[222:29] Quantification
+[222:30] Precursors with monitored PTMs at 1% FDR: 0 out of 114
+[222:30] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 100
+[222:31] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_MSCflow_21_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[222:32] File #10/48
+[222:32] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plus_48_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[222:47] 3875484 library precursors are potentially detectable
+[222:48] Processing...
+[225:48] RT window set to 6.45062
+[225:48] Recommended MS1 mass accuracy setting: 17.1664 ppm
+[235:18] Removing low confidence identifications
+[235:18] Searching PTM decoys
+[235:22] Removing interfering precursors
+[235:28] Training neural networks: 115311 targets, 80793 decoys
+[235:36] Number of IDs at 0.01 FDR: 56384
+[235:37] Calculating protein q-values
+[235:37] Number of proteins identified at 1% FDR: 6916 (precursor-level), 6237 (protein-level) (inference performed using proteotypic peptides only)
+[235:38] Quantification
+[235:38] Precursors with monitored PTMs at 1% FDR: 0 out of 54
+[235:38] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 47
+[235:39] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plus_48_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[235:40] File #11/48
+[235:40] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plusFlow_11_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[235:53] 3875484 library precursors are potentially detectable
+[235:54] Processing...
+[236:11] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[238:15] RT window set to 6.52756
+[238:16] Recommended MS1 mass accuracy setting: 15.1432 ppm
+[245:08] Removing low confidence identifications
+[245:08] Searching PTM decoys
+[245:12] Removing interfering precursors
+[245:18] Training neural networks: 103492 targets, 74423 decoys
+[245:25] Number of IDs at 0.01 FDR: 52986
+[245:26] Calculating protein q-values
+[245:26] Number of proteins identified at 1% FDR: 6085 (precursor-level), 5425 (protein-level) (inference performed using proteotypic peptides only)
+[245:26] Quantification
+[245:27] Precursors with monitored PTMs at 1% FDR: 0 out of 35
+[245:27] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 33
+[245:28] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plusFlow_11_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[245:29] File #12/48
+[245:29] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plus_47_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[245:46] 3875484 library precursors are potentially detectable
+[245:47] Processing...
+[246:11] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[247:55] RT window set to 5.84586
+[247:55] Recommended MS1 mass accuracy setting: 18.1896 ppm
+[259:43] Removing low confidence identifications
+[259:43] Searching PTM decoys
+[259:49] Removing interfering precursors
+[259:57] Training neural networks: 196990 targets, 133761 decoys
+[260:09] Number of IDs at 0.01 FDR: 98801
+[260:10] Calculating protein q-values
+[260:11] Number of proteins identified at 1% FDR: 8820 (precursor-level), 8038 (protein-level) (inference performed using proteotypic peptides only)
+[260:11] Quantification
+[260:12] Precursors with monitored PTMs at 1% FDR: 111 out of 131
+[260:12] Unmodified precursors with monitored PTM sites at 1% FDR: 56 out of 95
+[260:13] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plus_47_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[260:15] File #13/48
+[260:15] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plusFlow_20_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[260:31] 3875484 library precursors are potentially detectable
+[260:31] Processing...
+[262:07] RT window set to 6.93258
+[262:07] Recommended MS1 mass accuracy setting: 8.14392 ppm
+[274:44] Removing low confidence identifications
+[274:45] Searching PTM decoys
+[274:50] Removing interfering precursors
+[275:00] Training neural networks: 199146 targets, 140092 decoys
+[275:13] Number of IDs at 0.01 FDR: 107281
+[275:15] Calculating protein q-values
+[275:16] Number of proteins identified at 1% FDR: 8503 (precursor-level), 7688 (protein-level) (inference performed using proteotypic peptides only)
+[275:16] Quantification
+[275:17] Precursors with monitored PTMs at 1% FDR: 128 out of 189
+[275:17] Unmodified precursors with monitored PTM sites at 1% FDR: 39 out of 93
+[275:18] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plusFlow_20_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[275:19] File #14/48
+[275:19] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_MSCflow_13_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[275:32] 3875484 library precursors are potentially detectable
+[275:33] Processing...
+[276:03] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[279:44] RT window set to 6.76751
+[279:44] Recommended MS1 mass accuracy setting: 14.32 ppm
+[286:55] Removing low confidence identifications
+[286:56] Searching PTM decoys
+[286:59] Removing interfering precursors
+[287:02] Training neural networks: 56385 targets, 38555 decoys
+[287:07] Number of IDs at 0.01 FDR: 26705
+[287:07] Calculating protein q-values
+[287:08] Number of proteins identified at 1% FDR: 4114 (precursor-level), 3694 (protein-level) (inference performed using proteotypic peptides only)
+[287:08] Quantification
+[287:09] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_MSCflow_13_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[287:10] File #15/48
+[287:10] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plus_46_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[287:28] 3875484 library precursors are potentially detectable
+[287:29] Processing...
+[287:55] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[289:50] RT window set to 6.76434
+[289:50] Recommended MS1 mass accuracy setting: 19.6159 ppm
+[307:06] Removing low confidence identifications
+[307:07] Searching PTM decoys
+[307:15] Removing interfering precursors
+[307:29] Training neural networks: 156754 targets, 106193 decoys
+[307:45] Number of IDs at 0.01 FDR: 76568
+[307:47] Calculating protein q-values
+[307:48] Number of proteins identified at 1% FDR: 7393 (precursor-level), 6642 (protein-level) (inference performed using proteotypic peptides only)
+[307:49] Quantification
+[307:50] Precursors with monitored PTMs at 1% FDR: 115 out of 145
+[307:50] Unmodified precursors with monitored PTM sites at 1% FDR: 47 out of 77
+[307:51] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plus_46_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[307:54] File #16/48
+[307:54] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plusFlow_27_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[308:17] 3875484 library precursors are potentially detectable
+[308:18] Processing...
+[308:45] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[311:04] RT window set to 6.82035
+[311:05] Recommended MS1 mass accuracy setting: 17.4253 ppm
+[323:15] Removing low confidence identifications
+[323:16] Searching PTM decoys
+[323:22] Removing interfering precursors
+[323:33] Training neural networks: 109564 targets, 77837 decoys
+[323:45] Number of IDs at 0.01 FDR: 57954
+[323:47] Calculating protein q-values
+[323:48] Number of proteins identified at 1% FDR: 6294 (precursor-level), 5595 (protein-level) (inference performed using proteotypic peptides only)
+[323:48] Quantification
+[323:49] Precursors with monitored PTMs at 1% FDR: 0 out of 43
+[323:49] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 49
+[323:50] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plusFlow_27_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[323:51] File #17/48
+[323:51] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plus_45_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[324:18] 3875484 library precursors are potentially detectable
+[324:18] Processing...
+[325:00] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[327:34] RT window set to 6.02879
+[327:34] Recommended MS1 mass accuracy setting: 15.648 ppm
+[345:21] Removing low confidence identifications
+[345:21] Searching PTM decoys
+[345:29] Removing interfering precursors
+[345:42] Training neural networks: 171921 targets, 116897 decoys
+[346:02] Number of IDs at 0.01 FDR: 86403
+[346:04] Calculating protein q-values
+[346:05] Number of proteins identified at 1% FDR: 7992 (precursor-level), 7275 (protein-level) (inference performed using proteotypic peptides only)
+[346:05] Quantification
+[346:06] Precursors with monitored PTMs at 1% FDR: 0 out of 144
+[346:06] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 72
+[346:07] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plus_45_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[346:09] File #18/48
+[346:09] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plusFlow_05_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[346:30] 3875484 library precursors are potentially detectable
+[346:30] Processing...
+[349:43] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[362:55] RT window set to 6.57334
+[362:56] Recommended MS1 mass accuracy setting: 16.0889 ppm
+[372:34] Removing low confidence identifications
+[372:35] Searching PTM decoys
+[372:38] Removing interfering precursors
+[372:41] Training neural networks: 23746 targets, 14715 decoys
+[372:43] Number of IDs at 0.01 FDR: 9766
+[372:43] Calculating protein q-values
+[372:44] Number of proteins identified at 1% FDR: 2228 (precursor-level), 2036 (protein-level) (inference performed using proteotypic peptides only)
+[372:44] Quantification
+[372:45] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plusFlow_05_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[372:45] File #19/48
+[372:45] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_MSCflow_28_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[373:05] 3875484 library precursors are potentially detectable
+[373:06] Processing...
+[373:21] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[375:04] RT window set to 6.38175
+[375:04] Recommended MS1 mass accuracy setting: 16.6082 ppm
+[389:03] Removing low confidence identifications
+[389:04] Searching PTM decoys
+[389:10] Removing interfering precursors
+[389:25] Training neural networks: 172400 targets, 122143 decoys
+[389:44] Number of IDs at 0.01 FDR: 93725
+[389:46] Calculating protein q-values
+[389:47] Number of proteins identified at 1% FDR: 7873 (precursor-level), 7098 (protein-level) (inference performed using proteotypic peptides only)
+[389:47] Quantification
+[389:49] Precursors with monitored PTMs at 1% FDR: 0 out of 108
+[389:49] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 104
+[389:50] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_MSCflow_28_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[389:52] File #20/48
+[389:52] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plus_18_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[390:16] 3875484 library precursors are potentially detectable
+[390:17] Processing...
+[390:47] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[393:24] RT window set to 6.65252
+[393:24] Recommended MS1 mass accuracy setting: 16.7742 ppm
+[408:15] Removing low confidence identifications
+[408:16] Searching PTM decoys
+[408:22] Removing interfering precursors
+[408:35] Training neural networks: 130595 targets, 90528 decoys
+[408:49] Number of IDs at 0.01 FDR: 66200
+[408:50] Calculating protein q-values
+[408:52] Number of proteins identified at 1% FDR: 7009 (precursor-level), 6272 (protein-level) (inference performed using proteotypic peptides only)
+[408:52] Quantification
+[408:53] Precursors with monitored PTMs at 1% FDR: 0 out of 73
+[408:53] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 69
+[408:54] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plus_18_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[408:56] File #21/48
+[408:56] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plusFlow_02_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[409:17] 3875484 library precursors are potentially detectable
+[409:18] Processing...
+[410:19] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[416:15] RT window set to 6.22133
+[416:15] Recommended MS1 mass accuracy setting: 14.7517 ppm
+[426:08] Removing low confidence identifications
+[426:09] Searching PTM decoys
+[426:13] Removing interfering precursors
+[426:21] Training neural networks: 51190 targets, 36110 decoys
+[426:27] Number of IDs at 0.01 FDR: 23871
+[426:27] Calculating protein q-values
+[426:28] Number of proteins identified at 1% FDR: 3860 (precursor-level), 3511 (protein-level) (inference performed using proteotypic peptides only)
+[426:29] Quantification
+[426:30] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plusFlow_02_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[426:31] File #22/48
+[426:31] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plus_25_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[427:01] 3875484 library precursors are potentially detectable
+[427:02] Processing...
+[427:39] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[431:30] RT window set to 6.42383
+[431:31] Recommended MS1 mass accuracy setting: 9.81598 ppm
+[447:10] Removing low confidence identifications
+[447:10] Searching PTM decoys
+[447:16] Removing interfering precursors
+[447:22] Training neural networks: 153286 targets, 101031 decoys
+[447:31] Number of IDs at 0.01 FDR: 74268
+[447:33] Calculating protein q-values
+[447:33] Number of proteins identified at 1% FDR: 7880 (precursor-level), 7166 (protein-level) (inference performed using proteotypic peptides only)
+[447:33] Quantification
+[447:34] Precursors with monitored PTMs at 1% FDR: 118 out of 124
+[447:34] Unmodified precursors with monitored PTM sites at 1% FDR: 53 out of 60
+[447:35] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plus_25_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[447:37] File #23/48
+[447:37] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plusFlow_32_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[447:54] 3875484 library precursors are potentially detectable
+[447:54] Processing...
+[448:08] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[449:29] RT window set to 6.03201
+[449:30] Recommended MS1 mass accuracy setting: 20.4247 ppm
+[460:39] Removing low confidence identifications
+[460:40] Searching PTM decoys
+[460:45] Removing interfering precursors
+[460:54] Training neural networks: 210264 targets, 146534 decoys
+[461:07] Number of IDs at 0.01 FDR: 112372
+[461:08] Calculating protein q-values
+[461:09] Number of proteins identified at 1% FDR: 8573 (precursor-level), 7746 (protein-level) (inference performed using proteotypic peptides only)
+[461:09] Quantification
+[461:10] Precursors with monitored PTMs at 1% FDR: 138 out of 142
+[461:10] Unmodified precursors with monitored PTM sites at 1% FDR: 106 out of 121
+[461:11] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plusFlow_32_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[461:13] File #24/48
+[461:13] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_MSCflow_10_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[461:25] 3875484 library precursors are potentially detectable
+[461:26] Processing...
+[462:00] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[465:14] RT window set to 6.39812
+[465:14] Recommended MS1 mass accuracy setting: 14.2938 ppm
+[471:27] Removing low confidence identifications
+[471:27] Searching PTM decoys
+[471:30] Removing interfering precursors
+[471:33] Training neural networks: 56262 targets, 39088 decoys
+[471:37] Number of IDs at 0.01 FDR: 26336
+[471:38] Calculating protein q-values
+[471:38] Number of proteins identified at 1% FDR: 4001 (precursor-level), 3624 (protein-level) (inference performed using proteotypic peptides only)
+[471:39] Quantification
+[471:39] Precursors with monitored PTMs at 1% FDR: 0 out of 10
+[471:39] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 19
+[471:40] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_MSCflow_10_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML.quant.
+
+[471:41] File #25/48
+[471:41] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plus_40_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[471:56] 3875484 library precursors are potentially detectable
+[471:57] Processing...
+[472:14] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[473:31] RT window set to 6.08693
+[473:31] Recommended MS1 mass accuracy setting: 17.5307 ppm
+[483:12] Removing low confidence identifications
+[483:12] Searching PTM decoys
+[483:17] Removing interfering precursors
+[483:26] Training neural networks: 184613 targets, 129135 decoys
+[483:37] Number of IDs at 0.01 FDR: 100079
+[483:39] Calculating protein q-values
+[483:40] Number of proteins identified at 1% FDR: 8298 (precursor-level), 7494 (protein-level) (inference performed using proteotypic peptides only)
+[483:40] Quantification
+[483:41] Precursors with monitored PTMs at 1% FDR: 121 out of 129
+[483:41] Unmodified precursors with monitored PTM sites at 1% FDR: 83 out of 103
+[483:42] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plus_40_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[483:43] File #26/48
+[483:43] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plusFlow_15_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[483:57] 3875484 library precursors are potentially detectable
+[483:58] Processing...
+[484:16] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[485:49] RT window set to 6.82775
+[485:49] Recommended MS1 mass accuracy setting: 18.8329 ppm
+[493:51] Removing low confidence identifications
+[493:52] Searching PTM decoys
+[493:56] Removing interfering precursors
+[494:02] Training neural networks: 133395 targets, 94340 decoys
+[494:12] Number of IDs at 0.01 FDR: 71444
+[494:13] Calculating protein q-values
+[494:13] Number of proteins identified at 1% FDR: 6857 (precursor-level), 6250 (protein-level) (inference performed using proteotypic peptides only)
+[494:14] Quantification
+[494:14] Precursors with monitored PTMs at 1% FDR: 0 out of 80
+[494:14] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 57
+[494:15] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plusFlow_15_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[494:16] File #27/48
+[494:16] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plus_39_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[494:34] 3875484 library precursors are potentially detectable
+[494:35] Processing...
+[494:49] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[496:13] RT window set to 5.7821
+[496:14] Recommended MS1 mass accuracy setting: 21.6894 ppm
+[507:18] Removing low confidence identifications
+[507:18] Searching PTM decoys
+[507:23] Removing interfering precursors
+[507:32] Training neural networks: 203813 targets, 141796 decoys
+[507:45] Number of IDs at 0.01 FDR: 105811
+[507:47] Calculating protein q-values
+[507:47] Number of proteins identified at 1% FDR: 8828 (precursor-level), 8039 (protein-level) (inference performed using proteotypic peptides only)
+[507:47] Quantification
+[507:48] Precursors with monitored PTMs at 1% FDR: 128 out of 165
+[507:48] Unmodified precursors with monitored PTM sites at 1% FDR: 69 out of 100
+[507:49] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plus_39_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[507:51] File #28/48
+[507:51] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plusFlow_26_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[508:09] 3875484 library precursors are potentially detectable
+[508:09] Processing...
+[508:28] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[509:53] RT window set to 5.4634
+[509:54] Recommended MS1 mass accuracy setting: 19.1246 ppm
+[520:42] Removing low confidence identifications
+[520:42] Searching PTM decoys
+[520:47] Removing interfering precursors
+[520:56] Training neural networks: 213924 targets, 147285 decoys
+[521:09] Number of IDs at 0.01 FDR: 112070
+[521:11] Calculating protein q-values
+[521:11] Number of proteins identified at 1% FDR: 8780 (precursor-level), 7897 (protein-level) (inference performed using proteotypic peptides only)
+[521:12] Quantification
+[521:13] Precursors with monitored PTMs at 1% FDR: 145 out of 156
+[521:13] Unmodified precursors with monitored PTM sites at 1% FDR: 88 out of 113
+[521:14] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plusFlow_26_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[521:15] File #29/48
+[521:15] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_MSCflow_09_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[521:28] 3875484 library precursors are potentially detectable
+[521:29] Processing...
+[558:49] RT window set to 6.83357
+[558:50] Recommended MS1 mass accuracy setting: 10.9608 ppm
+[565:55] Removing low confidence identifications
+[565:56] Searching PTM decoys
+[565:59] Removing interfering precursors
+[566:01] Training neural networks: 48280 targets, 31114 decoys
+[566:05] Number of IDs at 0.01 FDR: 22023
+[566:05] Calculating protein q-values
+[566:06] Number of proteins identified at 1% FDR: 3863 (precursor-level), 3475 (protein-level) (inference performed using proteotypic peptides only)
+[566:06] Quantification
+[566:07] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_MSCflow_09_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[566:08] File #30/48
+[566:08] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plus_29_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[566:26] 3875484 library precursors are potentially detectable
+[566:27] Processing...
+[566:51] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[569:23] RT window set to 6.10154
+[569:24] Recommended MS1 mass accuracy setting: 20.0405 ppm
+[582:16] Removing low confidence identifications
+[582:16] Searching PTM decoys
+[582:22] Removing interfering precursors
+[582:28] Training neural networks: 150369 targets, 100110 decoys
+[582:37] Number of IDs at 0.01 FDR: 71454
+[582:39] Calculating protein q-values
+[582:39] Number of proteins identified at 1% FDR: 7584 (precursor-level), 6871 (protein-level) (inference performed using proteotypic peptides only)
+[582:39] Quantification
+[582:40] Precursors with monitored PTMs at 1% FDR: 108 out of 125
+[582:40] Unmodified precursors with monitored PTM sites at 1% FDR: 44 out of 61
+[582:41] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plus_29_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[582:43] File #31/48
+[582:43] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plusFlow_17_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[582:58] 3875484 library precursors are potentially detectable
+[582:58] Processing...
+[584:27] RT window set to 6.16138
+[584:28] Recommended MS1 mass accuracy setting: 15.2444 ppm
+[593:20] Removing low confidence identifications
+[593:21] Searching PTM decoys
+[593:25] Removing interfering precursors
+[593:34] Training neural networks: 171752 targets, 122000 decoys
+[593:45] Number of IDs at 0.01 FDR: 94056
+[593:46] Calculating protein q-values
+[593:47] Number of proteins identified at 1% FDR: 7735 (precursor-level), 7023 (protein-level) (inference performed using proteotypic peptides only)
+[593:47] Quantification
+[593:48] Precursors with monitored PTMs at 1% FDR: 0 out of 95
+[593:48] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 115
+[593:49] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plusFlow_17_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[593:50] File #32/48
+[593:50] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plus_22_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[594:08] 3875484 library precursors are potentially detectable
+[594:08] Processing...
+[594:43] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[597:03] RT window set to 6.18218
+[597:03] Recommended MS1 mass accuracy setting: 12.5517 ppm
+[608:47] Removing low confidence identifications
+[608:48] Searching PTM decoys
+[608:53] Removing interfering precursors
+[609:00] Training neural networks: 132210 targets, 91056 decoys
+[609:08] Number of IDs at 0.01 FDR: 61619
+[609:09] Calculating protein q-values
+[609:09] Number of proteins identified at 1% FDR: 7351 (precursor-level), 6641 (protein-level) (inference performed using proteotypic peptides only)
+[609:10] Quantification
+[609:10] Precursors with monitored PTMs at 1% FDR: 0 out of 81
+[609:10] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 64
+[609:11] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plus_22_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[609:13] File #33/48
+[609:13] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plusFlow_23_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[609:30] 3875484 library precursors are potentially detectable
+[609:31] Processing...
+[609:49] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[611:13] RT window set to 6.10658
+[611:13] Recommended MS1 mass accuracy setting: 14.5554 ppm
+[622:51] Removing low confidence identifications
+[622:51] Searching PTM decoys
+[622:56] Removing interfering precursors
+[623:05] Training neural networks: 205587 targets, 140516 decoys
+[623:18] Number of IDs at 0.01 FDR: 105508
+[623:20] Calculating protein q-values
+[623:21] Number of proteins identified at 1% FDR: 8539 (precursor-level), 7799 (protein-level) (inference performed using proteotypic peptides only)
+[623:21] Quantification
+[623:22] Precursors with monitored PTMs at 1% FDR: 116 out of 144
+[623:22] Unmodified precursors with monitored PTM sites at 1% FDR: 79 out of 127
+[623:23] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plusFlow_23_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[623:24] File #34/48
+[623:24] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_MSCflow_30_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[623:41] 3875484 library precursors are potentially detectable
+[623:42] Processing...
+[623:55] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[625:15] RT window set to 6.63105
+[625:16] Recommended MS1 mass accuracy setting: 20.7381 ppm
+[636:52] Removing low confidence identifications
+[636:52] Searching PTM decoys
+[636:57] Removing interfering precursors
+[637:06] Training neural networks: 193595 targets, 134192 decoys
+[637:18] Number of IDs at 0.01 FDR: 101851
+[637:20] Calculating protein q-values
+[637:21] Number of proteins identified at 1% FDR: 8206 (precursor-level), 7451 (protein-level) (inference performed using proteotypic peptides only)
+[637:21] Quantification
+[637:22] Precursors with monitored PTMs at 1% FDR: 145 out of 150
+[637:22] Unmodified precursors with monitored PTM sites at 1% FDR: 109 out of 116
+[637:23] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_MSCflow_30_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[637:24] File #35/48
+[637:24] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plus_38_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[637:40] 3875484 library precursors are potentially detectable
+[637:41] Processing...
+[638:07] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[640:37] RT window set to 6.07381
+[640:38] Recommended MS1 mass accuracy setting: 13.9104 ppm
+[649:58] Removing low confidence identifications
+[649:59] Searching PTM decoys
+[650:03] Removing interfering precursors
+[650:09] Training neural networks: 121375 targets, 83971 decoys
+[650:17] Number of IDs at 0.01 FDR: 58380
+[650:18] Calculating protein q-values
+[650:18] Number of proteins identified at 1% FDR: 6936 (precursor-level), 6307 (protein-level) (inference performed using proteotypic peptides only)
+[650:19] Quantification
+[650:19] Precursors with monitored PTMs at 1% FDR: 0 out of 64
+[650:19] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 66
+[650:20] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plus_38_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[650:21] File #36/48
+[650:21] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plusFlow_16_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[650:36] 3875484 library precursors are potentially detectable
+[650:37] Processing...
+[650:53] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[652:17] RT window set to 6.83608
+[652:18] Recommended MS1 mass accuracy setting: 22.49 ppm
+[661:46] Removing low confidence identifications
+[661:46] Searching PTM decoys
+[661:50] Removing interfering precursors
+[661:58] Training neural networks: 157016 targets, 110349 decoys
+[662:08] Number of IDs at 0.01 FDR: 83290
+[662:09] Calculating protein q-values
+[662:10] Number of proteins identified at 1% FDR: 7462 (precursor-level), 6761 (protein-level) (inference performed using proteotypic peptides only)
+[662:10] Quantification
+[662:11] Precursors with monitored PTMs at 1% FDR: 104 out of 104
+[662:11] Unmodified precursors with monitored PTM sites at 1% FDR: 86 out of 86
+[662:12] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plusFlow_16_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[662:13] File #37/48
+[662:13] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plus_37_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[662:29] 3875484 library precursors are potentially detectable
+[662:29] Processing...
+[666:02] RT window set to 6.14099
+[666:02] Recommended MS1 mass accuracy setting: 10.9746 ppm
+[675:32] Removing low confidence identifications
+[675:33] Searching PTM decoys
+[675:37] Removing interfering precursors
+[675:43] Training neural networks: 106168 targets, 73381 decoys
+[675:50] Number of IDs at 0.01 FDR: 47596
+[675:51] Calculating protein q-values
+[675:51] Number of proteins identified at 1% FDR: 6630 (precursor-level), 6019 (protein-level) (inference performed using proteotypic peptides only)
+[675:51] Quantification
+[675:52] Precursors with monitored PTMs at 1% FDR: 0 out of 51
+[675:52] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 57
+[675:53] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plus_37_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[675:54] File #38/48
+[675:54] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plusFlow_04_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[676:07] 3875484 library precursors are potentially detectable
+[676:08] Processing...
+[676:57] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[680:40] RT window set to 6.85291
+[680:40] Recommended MS1 mass accuracy setting: 12.5025 ppm
+[686:48] Removing low confidence identifications
+[686:48] Searching PTM decoys
+[686:51] Removing interfering precursors
+[686:54] Training neural networks: 46242 targets, 32452 decoys
+[686:57] Number of IDs at 0.01 FDR: 22053
+[686:58] Calculating protein q-values
+[686:58] Number of proteins identified at 1% FDR: 3444 (precursor-level), 3025 (protein-level) (inference performed using proteotypic peptides only)
+[686:58] Quantification
+[686:59] Precursors with monitored PTMs at 1% FDR: 0 out of 13
+[686:59] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 16
+[686:59] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plusFlow_04_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[687:00] File #39/48
+[687:00] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_MSCflow_14_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[687:14] 3875484 library precursors are potentially detectable
+[687:14] Processing...
+[687:32] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[689:19] RT window set to 6.91175
+[689:20] Recommended MS1 mass accuracy setting: 14.6762 ppm
+[697:00] Removing low confidence identifications
+[697:00] Searching PTM decoys
+[697:04] Removing interfering precursors
+[697:10] Training neural networks: 112192 targets, 79522 decoys
+[697:18] Number of IDs at 0.01 FDR: 59084
+[697:19] Calculating protein q-values
+[697:19] Number of proteins identified at 1% FDR: 6527 (precursor-level), 5880 (protein-level) (inference performed using proteotypic peptides only)
+[697:19] Quantification
+[697:20] Precursors with monitored PTMs at 1% FDR: 0 out of 60
+[697:20] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 49
+[697:21] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_MSCflow_14_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[697:22] File #40/48
+[697:22] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plus_36_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[697:36] 3875484 library precursors are potentially detectable
+[697:36] Processing...
+[699:26] RT window set to 5.99326
+[699:26] Recommended MS1 mass accuracy setting: 12.6874 ppm
+[706:39] Removing low confidence identifications
+[706:39] Searching PTM decoys
+[706:43] Removing interfering precursors
+[706:49] Training neural networks: 100287 targets, 70784 decoys
+[706:56] Number of IDs at 0.01 FDR: 53105
+[706:56] Calculating protein q-values
+[706:57] Number of proteins identified at 1% FDR: 6025 (precursor-level), 5394 (protein-level) (inference performed using proteotypic peptides only)
+[706:57] Quantification
+[706:58] Precursors with monitored PTMs at 1% FDR: 0 out of 46
+[706:58] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 64
+[706:59] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plus_36_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[707:00] File #41/48
+[707:00] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plusFlow_06_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[707:12] 3875484 library precursors are potentially detectable
+[707:13] Processing...
+[707:54] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[711:41] RT window set to 6.78643
+[711:42] Recommended MS1 mass accuracy setting: 23.1572 ppm
+[718:05] Removing low confidence identifications
+[718:05] Searching PTM decoys
+[718:08] Removing interfering precursors
+[718:11] Training neural networks: 46393 targets, 31003 decoys
+[718:14] Number of IDs at 0.01 FDR: 21724
+[718:14] Calculating protein q-values
+[718:15] Number of proteins identified at 1% FDR: 3715 (precursor-level), 3324 (protein-level) (inference performed using proteotypic peptides only)
+[718:15] Quantification
+[718:15] Precursors with monitored PTMs at 1% FDR: 0 out of 13
+[718:15] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 24
+[718:16] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plusFlow_06_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[718:17] File #42/48
+[718:17] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plus_35_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[718:33] 3875484 library precursors are potentially detectable
+[718:34] Processing...
+[718:45] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[720:21] RT window set to 5.619
+[720:22] Recommended MS1 mass accuracy setting: 13.0499 ppm
+[730:19] Removing low confidence identifications
+[730:19] Searching PTM decoys
+[730:24] Removing interfering precursors
+[730:32] Training neural networks: 174188 targets, 120434 decoys
+[730:43] Number of IDs at 0.01 FDR: 89379
+[730:45] Calculating protein q-values
+[730:45] Number of proteins identified at 1% FDR: 7816 (precursor-level), 7100 (protein-level) (inference performed using proteotypic peptides only)
+[730:46] Quantification
+[730:47] Precursors with monitored PTMs at 1% FDR: 103 out of 103
+[730:47] Unmodified precursors with monitored PTM sites at 1% FDR: 87 out of 87
+[730:47] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plus_35_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[730:49] File #43/48
+[730:49] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plusFlow_01_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[731:02] 3875484 library precursors are potentially detectable
+[731:02] Processing...
+[741:33] RT window set to 6.64973
+[741:34] Recommended MS1 mass accuracy setting: 10.8921 ppm
+[748:12] Removing low confidence identifications
+[748:12] Searching PTM decoys
+[748:15] Removing interfering precursors
+[748:17] Training neural networks: 25457 targets, 16900 decoys
+[748:19] Number of IDs at 0.01 FDR: 11057
+[748:19] Calculating protein q-values
+[748:20] Number of proteins identified at 1% FDR: 2200 (precursor-level), 1979 (protein-level) (inference performed using proteotypic peptides only)
+[748:20] Quantification
+[748:21] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plusFlow_01_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[748:21] File #44/48
+[748:21] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plus_42_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[748:37] 3875484 library precursors are potentially detectable
+[748:38] Processing...
+[748:58] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[750:44] RT window set to 6.47665
+[750:44] Recommended MS1 mass accuracy setting: 15.1324 ppm
+[760:40] Removing low confidence identifications
+[760:40] Searching PTM decoys
+[760:45] Removing interfering precursors
+[760:52] Training neural networks: 144929 targets, 102190 decoys
+[761:01] Number of IDs at 0.01 FDR: 72859
+[761:02] Calculating protein q-values
+[761:03] Number of proteins identified at 1% FDR: 7221 (precursor-level), 6461 (protein-level) (inference performed using proteotypic peptides only)
+[761:03] Quantification
+[761:04] Precursors with monitored PTMs at 1% FDR: 0 out of 88
+[761:04] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 75
+[761:05] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plus_42_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[761:06] File #45/48
+[761:06] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plusFlow_12_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[761:20] 3875484 library precursors are potentially detectable
+[761:20] Processing...
+[761:38] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[763:42] RT window set to 6.3279
+[763:42] Recommended MS1 mass accuracy setting: 15.4142 ppm
+[770:25] Removing low confidence identifications
+[770:25] Searching PTM decoys
+[770:28] Removing interfering precursors
+[770:33] Training neural networks: 91572 targets, 63127 decoys
+[770:39] Number of IDs at 0.01 FDR: 46253
+[770:40] Calculating protein q-values
+[770:40] Number of proteins identified at 1% FDR: 5550 (precursor-level), 4936 (protein-level) (inference performed using proteotypic peptides only)
+[770:40] Quantification
+[770:41] Precursors with monitored PTMs at 1% FDR: 0 out of 17
+[770:41] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 39
+[770:42] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plusFlow_12_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[770:42] File #46/48
+[770:42] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plus_41_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[771:00] 3875484 library precursors are potentially detectable
+[771:01] Processing...
+[771:19] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[772:58] RT window set to 6.17427
+[772:58] Recommended MS1 mass accuracy setting: 18.866 ppm
+[784:29] Removing low confidence identifications
+[784:30] Searching PTM decoys
+[784:35] Removing interfering precursors
+[784:43] Training neural networks: 173375 targets, 118804 decoys
+[784:54] Number of IDs at 0.01 FDR: 84238
+[784:55] Calculating protein q-values
+[784:56] Number of proteins identified at 1% FDR: 8285 (precursor-level), 7583 (protein-level) (inference performed using proteotypic peptides only)
+[784:56] Quantification
+[784:57] Precursors with monitored PTMs at 1% FDR: 115 out of 117
+[784:57] Unmodified precursors with monitored PTM sites at 1% FDR: 67 out of 76
+[784:58] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plus_41_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[784:59] File #47/48
+[784:59] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plusFlow_07_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[785:13] 3875484 library precursors are potentially detectable
+[785:13] Processing...
+[785:40] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[788:48] RT window set to 5.88866
+[788:48] Recommended MS1 mass accuracy setting: 18.5324 ppm
+[795:44] Removing low confidence identifications
+[795:44] Searching PTM decoys
+[795:47] Removing interfering precursors
+[795:52] Training neural networks: 79342 targets, 54276 decoys
+[795:57] Number of IDs at 0.01 FDR: 36262
+[795:58] Calculating protein q-values
+[795:58] Number of proteins identified at 1% FDR: 4931 (precursor-level), 4388 (protein-level) (inference performed using proteotypic peptides only)
+[795:58] Quantification
+[796:00] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plusFlow_07_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[796:00] File #48/48
+[796:00] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_MSCflow_24_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[796:18] 3875484 library precursors are potentially detectable
+[796:18] Processing...
+[796:38] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[798:02] RT window set to 5.05596
+[798:03] Recommended MS1 mass accuracy setting: 16.1744 ppm
+[807:54] Removing low confidence identifications
+[807:54] Searching PTM decoys
+[807:59] Removing interfering precursors
+[808:07] Training neural networks: 180315 targets, 122764 decoys
+[808:18] Number of IDs at 0.01 FDR: 88946
+[808:20] Calculating protein q-values
+[808:20] Number of proteins identified at 1% FDR: 8163 (precursor-level), 7395 (protein-level) (inference performed using proteotypic peptides only)
+[808:20] Quantification
+[808:21] Precursors with monitored PTMs at 1% FDR: 0 out of 129
+[808:21] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 91
+[808:22] Quantification information saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_MSCflow_24_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML.quant.
+
+[808:24] Cross-run analysis
+[808:24] Reading quantification information: 48 files
+[808:36] Quantifying peptides
+[809:01] Assembling protein groups
+[809:05] Quantifying proteins
+[809:08] Calculating q-values for protein and gene groups
+[809:12] Calculating global q-values for protein and gene groups
+[809:12] Writing report
+[812:07] Report saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-first-pass.tsv.
+[812:07] Saving precursor levels matrix
+[812:10] Precursor levels matrix (1% precursor and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-first-pass.pr_matrix.tsv.
+[812:10] Saving protein group levels matrix
+[812:10] Protein group levels matrix (1% precursor FDR and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-first-pass.pg_matrix.tsv.
+[812:10] Saving gene group levels matrix
+[812:10] Gene groups levels matrix (1% precursor FDR and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-first-pass.gg_matrix.tsv.
+[812:11] Saving unique genes levels matrix
+[812:11] Unique genes levels matrix (1% precursor FDR and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-first-pass.unique_genes_matrix.tsv.
+[812:11] Stats report saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-first-pass.stats.tsv
+[812:11] Generating spectral library:
+[812:11] 202466 precursors passing the FDR threshold are to be extracted
+[812:11] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plus_34_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[812:29] 3875484 library precursors are potentially detectable
+[812:30] 2573 spectra added to the library
+[812:31] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plusFlow_08_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[812:44] 3875484 library precursors are potentially detectable
+[812:45] 298 spectra added to the library
+[812:45] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD34plus_33_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[813:02] 3875484 library precursors are potentially detectable
+[813:03] 4066 spectra added to the library
+[813:04] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_MSCflow_31_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[813:17] 3875484 library precursors are potentially detectable
+[813:18] 425 spectra added to the library
+[813:18] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plus_44_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[813:36] 3875484 library precursors are potentially detectable
+[813:37] 989 spectra added to the library
+[813:37] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plusFlow_19_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[813:54] 3875484 library precursors are potentially detectable
+[813:55] 7176 spectra added to the library
+[813:56] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plus_43_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[814:14] 3875484 library precursors are potentially detectable
+[814:14] 992 spectra added to the library
+[814:15] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plusFlow_03_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[814:27] 3875484 library precursors are potentially detectable
+[814:28] 82 spectra added to the library
+[814:28] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_MSCflow_21_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[814:44] 3875484 library precursors are potentially detectable
+[814:45] 3568 spectra added to the library
+[814:46] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plus_48_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[815:01] 3875484 library precursors are potentially detectable
+[815:01] 427 spectra added to the library
+[815:02] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plusFlow_11_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[815:15] 3875484 library precursors are potentially detectable
+[815:15] 1740 spectra added to the library
+[815:16] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plus_47_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[815:34] 3875484 library precursors are potentially detectable
+[815:35] 6651 spectra added to the library
+[815:35] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plusFlow_20_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[815:51] 3875484 library precursors are potentially detectable
+[815:52] 6325 spectra added to the library
+[815:53] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_MSCflow_13_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[816:05] 3875484 library precursors are potentially detectable
+[816:06] 348 spectra added to the library
+[816:06] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plus_46_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[816:23] 3875484 library precursors are potentially detectable
+[816:24] 1217 spectra added to the library
+[816:24] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plusFlow_27_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[816:38] 3875484 library precursors are potentially detectable
+[816:38] 1192 spectra added to the library
+[816:39] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plus_45_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[816:55] 3875484 library precursors are potentially detectable
+[816:56] 1022 spectra added to the library
+[816:57] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plusFlow_05_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[817:09] 3875484 library precursors are potentially detectable
+[817:10] 24 spectra added to the library
+[817:10] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_MSCflow_28_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[817:25] 3875484 library precursors are potentially detectable
+[817:26] 7181 spectra added to the library
+[817:27] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plus_18_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[817:41] 3875484 library precursors are potentially detectable
+[817:42] 2520 spectra added to the library
+[817:43] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plusFlow_02_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[817:55] 3875484 library precursors are potentially detectable
+[817:56] 361 spectra added to the library
+[817:56] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plus_25_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[818:14] 3875484 library precursors are potentially detectable
+[818:15] 1660 spectra added to the library
+[818:16] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plusFlow_32_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[818:32] 3875484 library precursors are potentially detectable
+[818:33] 8642 spectra added to the library
+[818:34] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_MSCflow_10_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[818:46] 3875484 library precursors are potentially detectable
+[818:47] 480 spectra added to the library
+[818:47] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plus_40_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[819:03] 3875484 library precursors are potentially detectable
+[819:04] 10492 spectra added to the library
+[819:05] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plusFlow_15_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[819:19] 3875484 library precursors are potentially detectable
+[819:19] 1500 spectra added to the library
+[819:20] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plus_39_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[819:37] 3875484 library precursors are potentially detectable
+[819:38] 3941 spectra added to the library
+[819:38] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plusFlow_26_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[819:56] 3875484 library precursors are potentially detectable
+[819:57] 11593 spectra added to the library
+[819:58] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_MSCflow_09_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[820:11] 3875484 library precursors are potentially detectable
+[820:12] 153 spectra added to the library
+[820:12] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plus_29_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[820:31] 3875484 library precursors are potentially detectable
+[820:32] 1439 spectra added to the library
+[820:32] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plusFlow_17_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[820:48] 3875484 library precursors are potentially detectable
+[820:48] 3640 spectra added to the library
+[820:49] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plus_22_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[821:07] 3875484 library precursors are potentially detectable
+[821:07] 1737 spectra added to the library
+[821:08] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plusFlow_23_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[821:26] 3875484 library precursors are potentially detectable
+[821:27] 12455 spectra added to the library
+[821:27] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_MSCflow_30_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[821:44] 3875484 library precursors are potentially detectable
+[821:45] 10696 spectra added to the library
+[821:46] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plus_38_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[822:01] 3875484 library precursors are potentially detectable
+[822:02] 835 spectra added to the library
+[822:03] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plusFlow_16_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[822:18] 3875484 library precursors are potentially detectable
+[822:19] 4450 spectra added to the library
+[822:19] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plus_37_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[822:35] 3875484 library precursors are potentially detectable
+[822:36] 1399 spectra added to the library
+[822:36] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plusFlow_04_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[822:49] 3875484 library precursors are potentially detectable
+[822:49] 293 spectra added to the library
+[822:50] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_MSCflow_14_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[823:03] 3875484 library precursors are potentially detectable
+[823:04] 1218 spectra added to the library
+[823:04] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plus_36_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[823:18] 3875484 library precursors are potentially detectable
+[823:19] 1714 spectra added to the library
+[823:19] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plusFlow_06_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[823:32] 3875484 library precursors are potentially detectable
+[823:32] 519 spectra added to the library
+[823:33] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plus_35_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[823:49] 3875484 library precursors are potentially detectable
+[823:50] 3768 spectra added to the library
+[823:51] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plusFlow_01_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[824:03] 3875484 library precursors are potentially detectable
+[824:04] 8 spectra added to the library
+[824:04] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plus_42_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[824:20] 3875484 library precursors are potentially detectable
+[824:20] 6944 spectra added to the library
+[824:21] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plusFlow_12_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[824:34] 3875484 library precursors are potentially detectable
+[824:35] 1354 spectra added to the library
+[824:35] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plus_41_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[824:53] 3875484 library precursors are potentially detectable
+[824:54] 4517 spectra added to the library
+[824:54] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plusFlow_07_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[825:08] 3875484 library precursors are potentially detectable
+[825:09] 576 spectra added to the library
+[825:09] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_MSCflow_24_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[825:27] 3875484 library precursors are potentially detectable
+[825:28] 4305 spectra added to the library
+[825:28] Saving spectral library to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-lib.tsv
+[825:48] 202466 precursors saved
+[825:48] Loading the generated library and saving it in the .speclib format
+[825:48] Loading spectral library D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-lib.tsv
+[826:01] Spectral library loaded: 12890 protein isoforms, 14378 protein groups and 202466 precursors in 165973 elution groups.
+[826:01] Loading protein annotations from FASTA D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/Human2023.fasta
+[826:01] Gene names missing for some isoforms
+[826:01] Library contains 12889 proteins, and 12858 genes
+[826:01] Saving the library to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report-lib.tsv.speclib
+
+[826:05] Second pass: using the newly created spectral library to reanalyse the data
+[826:05] File #1/48
+[826:05] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plus_34_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[826:22] 202466 library precursors are potentially detectable
+[826:22] Processing...
+[826:29] RT window set to 2.66443
+[826:29] Recommended MS1 mass accuracy setting: 15.8555 ppm
+[826:48] Removing low confidence identifications
+[826:48] Searching PTM decoys
+[826:48] Removing interfering precursors
+[826:52] Training neural networks: 187140 targets, 195204 decoys
+[827:05] Number of IDs at 0.01 FDR: 101333
+[827:06] Calculating protein q-values
+[827:06] Number of proteins identified at 1% FDR: 8307 (precursor-level), 7483 (protein-level) (inference performed using proteotypic peptides only)
+[827:06] Quantification
+[827:07] Precursors with monitored PTMs at 1% FDR: 171 out of 201
+[827:07] Unmodified precursors with monitored PTM sites at 1% FDR: 87 out of 137
+
+[827:08] File #2/48
+[827:08] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD14plusFlow_08_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[827:20] 202466 library precursors are potentially detectable
+[827:20] Processing...
+[827:23] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[827:45] RT window set to 2.63863
+[827:45] Recommended MS1 mass accuracy setting: 13.2747 ppm
+[827:55] Removing low confidence identifications
+[827:55] Searching PTM decoys
+[827:55] Removing interfering precursors
+[827:57] Training neural networks: 90533 targets, 95601 decoys
+[828:04] Number of IDs at 0.01 FDR: 13352
+[828:04] Calculating protein q-values
+[828:04] Number of proteins identified at 1% FDR: 2976 (precursor-level), 2365 (protein-level) (inference performed using proteotypic peptides only)
+[828:04] Quantification
+
+[828:04] File #3/48
+[828:04] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_CD34plus_33_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[828:20] 202466 library precursors are potentially detectable
+[828:20] Processing...
+[828:27] RT window set to 2.60662
+[828:27] Recommended MS1 mass accuracy setting: 19.224 ppm
+[828:45] Removing low confidence identifications
+[828:45] Searching PTM decoys
+[828:45] Removing interfering precursors
+[828:49] Training neural networks: 182664 targets, 190110 decoys
+[829:02] Number of IDs at 0.01 FDR: 94760
+[829:04] Calculating protein q-values
+[829:04] Number of proteins identified at 1% FDR: 8285 (precursor-level), 7312 (protein-level) (inference performed using proteotypic peptides only)
+[829:04] Quantification
+[829:05] Precursors with monitored PTMs at 1% FDR: 120 out of 178
+[829:05] Unmodified precursors with monitored PTM sites at 1% FDR: 55 out of 111
+
+[829:06] File #4/48
+[829:06] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_16-01184_MSCflow_31_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[829:18] 202466 library precursors are potentially detectable
+[829:18] Processing...
+[829:20] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[829:27] RT window set to 2.60086
+[829:27] Recommended MS1 mass accuracy setting: 13.7437 ppm
+[829:38] Removing low confidence identifications
+[829:38] Searching PTM decoys
+[829:38] Removing interfering precursors
+[829:41] Training neural networks: 133371 targets, 134017 decoys
+[829:50] Number of IDs at 0.01 FDR: 48409
+[829:51] Calculating protein q-values
+[829:51] Number of proteins identified at 1% FDR: 5943 (precursor-level), 5015 (protein-level) (inference performed using proteotypic peptides only)
+[829:51] Quantification
+[829:52] Precursors with monitored PTMs at 1% FDR: 0 out of 76
+[829:52] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 46
+
+[829:52] File #5/48
+[829:52] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plus_44_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[830:09] 202466 library precursors are potentially detectable
+[830:09] Processing...
+[830:21] RT window set to 2.65878
+[830:21] Recommended MS1 mass accuracy setting: 15.1698 ppm
+[830:40] Removing low confidence identifications
+[830:40] Searching PTM decoys
+[830:40] Removing interfering precursors
+[830:43] Training neural networks: 183810 targets, 194033 decoys
+[830:57] Number of IDs at 0.01 FDR: 77632
+[830:58] Calculating protein q-values
+[830:58] Number of proteins identified at 1% FDR: 7737 (precursor-level), 6864 (protein-level) (inference performed using proteotypic peptides only)
+[830:58] Quantification
+[830:59] Precursors with monitored PTMs at 1% FDR: 121 out of 165
+[830:59] Unmodified precursors with monitored PTM sites at 1% FDR: 45 out of 108
+
+[831:00] File #6/48
+[831:00] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD14plusFlow_19_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[831:16] 202466 library precursors are potentially detectable
+[831:16] Processing...
+[831:22] RT window set to 2.63051
+[831:22] Recommended MS1 mass accuracy setting: 17.061 ppm
+[831:40] Removing low confidence identifications
+[831:40] Searching PTM decoys
+[831:40] Removing interfering precursors
+[831:44] Training neural networks: 186164 targets, 192890 decoys
+[831:57] Number of IDs at 0.01 FDR: 108045
+[831:59] Calculating protein q-values
+[831:59] Number of proteins identified at 1% FDR: 8408 (precursor-level), 7479 (protein-level) (inference performed using proteotypic peptides only)
+[831:59] Quantification
+[832:00] Precursors with monitored PTMs at 1% FDR: 186 out of 209
+[832:00] Unmodified precursors with monitored PTM sites at 1% FDR: 86 out of 146
+
+[832:01] File #7/48
+[832:01] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plus_43_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[832:18] 202466 library precursors are potentially detectable
+[832:18] Processing...
+[832:27] RT window set to 2.68449
+[832:27] Recommended MS1 mass accuracy setting: 14.2842 ppm
+[832:46] Removing low confidence identifications
+[832:46] Searching PTM decoys
+[832:46] Removing interfering precursors
+[832:49] Training neural networks: 181474 targets, 193448 decoys
+[833:02] Number of IDs at 0.01 FDR: 59190
+[833:03] Calculating protein q-values
+[833:03] Number of proteins identified at 1% FDR: 7413 (precursor-level), 6560 (protein-level) (inference performed using proteotypic peptides only)
+[833:04] Quantification
+[833:04] Precursors with monitored PTMs at 1% FDR: 106 out of 153
+[833:04] Unmodified precursors with monitored PTM sites at 1% FDR: 31 out of 68
+
+[833:05] File #8/48
+[833:05] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_CD34plusFlow_03_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[833:17] 202466 library precursors are potentially detectable
+[833:17] Processing...
+[833:19] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[833:38] RT window set to 2.62826
+[833:38] Recommended MS1 mass accuracy setting: 13.1864 ppm
+[833:47] Removing low confidence identifications
+[833:47] Searching PTM decoys
+[833:47] Removing interfering precursors
+[833:49] Training neural networks: 84986 targets, 85221 decoys
+[833:55] Number of IDs at 0.01 FDR: 18658
+[833:55] Calculating protein q-values
+[833:55] Number of proteins identified at 1% FDR: 3414 (precursor-level), 2655 (protein-level) (inference performed using proteotypic peptides only)
+[833:55] Quantification
+[833:55] Precursors with monitored PTMs at 1% FDR: 0 out of 19
+[833:55] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 15
+
+[833:56] File #9/48
+[833:56] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_17-01060_MSCflow_21_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[834:11] 202466 library precursors are potentially detectable
+[834:12] Processing...
+[834:18] RT window set to 2.61832
+[834:18] Recommended MS1 mass accuracy setting: 20.4485 ppm
+[834:35] Removing low confidence identifications
+[834:35] Searching PTM decoys
+[834:35] Removing interfering precursors
+[834:39] Training neural networks: 183378 targets, 191150 decoys
+[834:52] Number of IDs at 0.01 FDR: 96765
+[834:53] Calculating protein q-values
+[834:53] Number of proteins identified at 1% FDR: 8450 (precursor-level), 7681 (protein-level) (inference performed using proteotypic peptides only)
+[834:53] Quantification
+[834:54] Precursors with monitored PTMs at 1% FDR: 149 out of 183
+[834:54] Unmodified precursors with monitored PTM sites at 1% FDR: 75 out of 125
+
+[834:55] File #10/48
+[834:55] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plus_48_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[835:09] 202466 library precursors are potentially detectable
+[835:10] Processing...
+[835:19] RT window set to 2.68089
+[835:19] Recommended MS1 mass accuracy setting: 13.6928 ppm
+[835:33] Removing low confidence identifications
+[835:34] Searching PTM decoys
+[835:34] Removing interfering precursors
+[835:37] Training neural networks: 172468 targets, 180931 decoys
+[835:49] Number of IDs at 0.01 FDR: 61645
+[835:50] Calculating protein q-values
+[835:50] Number of proteins identified at 1% FDR: 7397 (precursor-level), 6412 (protein-level) (inference performed using proteotypic peptides only)
+[835:50] Quantification
+[835:50] Precursors with monitored PTMs at 1% FDR: 86 out of 114
+[835:50] Unmodified precursors with monitored PTM sites at 1% FDR: 38 out of 67
+
+[835:51] File #11/48
+[835:51] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD14plusFlow_11_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[836:03] 202466 library precursors are potentially detectable
+[836:03] Processing...
+[836:11] RT window set to 2.58668
+[836:11] Recommended MS1 mass accuracy setting: 9.88796 ppm
+[836:21] Removing low confidence identifications
+[836:21] Searching PTM decoys
+[836:21] Removing interfering precursors
+[836:24] Training neural networks: 135760 targets, 134814 decoys
+[836:33] Number of IDs at 0.01 FDR: 55310
+[836:34] Calculating protein q-values
+[836:34] Number of proteins identified at 1% FDR: 6369 (precursor-level), 5471 (protein-level) (inference performed using proteotypic peptides only)
+[836:34] Quantification
+[836:34] Precursors with monitored PTMs at 1% FDR: 0 out of 87
+[836:34] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 38
+
+[836:35] File #12/48
+[836:35] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plus_47_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[836:52] 202466 library precursors are potentially detectable
+[836:53] Processing...
+[836:59] RT window set to 2.71642
+[836:59] Recommended MS1 mass accuracy setting: 17.5647 ppm
+[837:19] Removing low confidence identifications
+[837:20] Searching PTM decoys
+[837:20] Removing interfering precursors
+[837:24] Training neural networks: 186839 targets, 196738 decoys
+[837:37] Number of IDs at 0.01 FDR: 105171
+[837:39] Calculating protein q-values
+[837:39] Number of proteins identified at 1% FDR: 8937 (precursor-level), 8091 (protein-level) (inference performed using proteotypic peptides only)
+[837:39] Quantification
+[837:40] Precursors with monitored PTMs at 1% FDR: 165 out of 189
+[837:40] Unmodified precursors with monitored PTM sites at 1% FDR: 75 out of 112
+
+[837:41] File #13/48
+[837:41] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_CD34plusFlow_20_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[837:56] 202466 library precursors are potentially detectable
+[837:56] Processing...
+[838:02] RT window set to 2.59945
+[838:02] Recommended MS1 mass accuracy setting: 12.2545 ppm
+[838:19] Removing low confidence identifications
+[838:19] Searching PTM decoys
+[838:19] Removing interfering precursors
+[838:23] Training neural networks: 184106 targets, 189751 decoys
+[838:36] Number of IDs at 0.01 FDR: 113813
+[838:38] Calculating protein q-values
+[838:38] Number of proteins identified at 1% FDR: 8694 (precursor-level), 7785 (protein-level) (inference performed using proteotypic peptides only)
+[838:38] Quantification
+[838:39] Precursors with monitored PTMs at 1% FDR: 199 out of 225
+[838:39] Unmodified precursors with monitored PTM sites at 1% FDR: 76 out of 117
+
+[838:40] File #14/48
+[838:40] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00103_MSCflow_13_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[838:51] 202466 library precursors are potentially detectable
+[838:51] Processing...
+[839:06] RT window set to 2.64411
+[839:06] Recommended MS1 mass accuracy setting: 13.9404 ppm
+[839:16] Removing low confidence identifications
+[839:16] Searching PTM decoys
+[839:16] Removing interfering precursors
+[839:18] Training neural networks: 99978 targets, 101350 decoys
+[839:25] Number of IDs at 0.01 FDR: 26382
+[839:25] Calculating protein q-values
+[839:25] Number of proteins identified at 1% FDR: 4358 (precursor-level), 3637 (protein-level) (inference performed using proteotypic peptides only)
+[839:25] Quantification
+[839:26] Precursors with monitored PTMs at 1% FDR: 0 out of 21
+[839:26] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 16
+
+[839:26] File #15/48
+[839:26] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plus_46_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[839:42] 202466 library precursors are potentially detectable
+[839:42] Processing...
+[839:51] RT window set to 2.66621
+[839:51] Recommended MS1 mass accuracy setting: 13.839 ppm
+[840:09] Removing low confidence identifications
+[840:09] Searching PTM decoys
+[840:09] Removing interfering precursors
+[840:13] Training neural networks: 184744 targets, 193972 decoys
+[840:26] Number of IDs at 0.01 FDR: 83309
+[840:27] Calculating protein q-values
+[840:28] Number of proteins identified at 1% FDR: 7707 (precursor-level), 6862 (protein-level) (inference performed using proteotypic peptides only)
+[840:28] Quantification
+[840:28] Precursors with monitored PTMs at 1% FDR: 118 out of 173
+[840:28] Unmodified precursors with monitored PTM sites at 1% FDR: 46 out of 113
+
+[840:29] File #16/48
+[840:29] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD14plusFlow_27_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[840:42] 202466 library precursors are potentially detectable
+[840:42] Processing...
+[840:50] RT window set to 2.62928
+[840:50] Recommended MS1 mass accuracy setting: 11.7364 ppm
+[841:02] Removing low confidence identifications
+[841:02] Searching PTM decoys
+[841:02] Removing interfering precursors
+[841:05] Training neural networks: 149211 targets, 152288 decoys
+[841:16] Number of IDs at 0.01 FDR: 60500
+[841:17] Calculating protein q-values
+[841:17] Number of proteins identified at 1% FDR: 6608 (precursor-level), 5736 (protein-level) (inference performed using proteotypic peptides only)
+[841:17] Quantification
+[841:18] Precursors with monitored PTMs at 1% FDR: 0 out of 101
+[841:18] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 69
+
+[841:18] File #17/48
+[841:18] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plus_45_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[841:34] 202466 library precursors are potentially detectable
+[841:35] Processing...
+[841:43] RT window set to 2.67098
+[841:43] Recommended MS1 mass accuracy setting: 18.137 ppm
+[842:02] Removing low confidence identifications
+[842:03] Searching PTM decoys
+[842:03] Removing interfering precursors
+[842:07] Training neural networks: 185916 targets, 194330 decoys
+[842:20] Number of IDs at 0.01 FDR: 95349
+[842:21] Calculating protein q-values
+[842:21] Number of proteins identified at 1% FDR: 8361 (precursor-level), 7499 (protein-level) (inference performed using proteotypic peptides only)
+[842:21] Quantification
+[842:22] Precursors with monitored PTMs at 1% FDR: 159 out of 196
+[842:22] Unmodified precursors with monitored PTM sites at 1% FDR: 66 out of 108
+
+[842:23] File #18/48
+[842:23] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_CD34plusFlow_05_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[842:35] 202466 library precursors are potentially detectable
+[842:35] Processing...
+[842:40] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[843:11] RT window set to 2.6177
+[843:11] Recommended MS1 mass accuracy setting: 12.4017 ppm
+[843:21] Removing low confidence identifications
+[843:21] Searching PTM decoys
+[843:21] Removing interfering precursors
+[843:22] Training neural networks: 67699 targets, 69899 decoys
+[843:27] Number of IDs at 0.01 FDR: 9281
+[843:27] Calculating protein q-values
+[843:27] Number of proteins identified at 1% FDR: 2135 (precursor-level), 1656 (protein-level) (inference performed using proteotypic peptides only)
+[843:27] Quantification
+
+[843:27] File #19/48
+[843:27] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_18-00105_MSCflow_28_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[843:42] 202466 library precursors are potentially detectable
+[843:42] Processing...
+[843:48] RT window set to 2.58085
+[843:48] Recommended MS1 mass accuracy setting: 17.1752 ppm
+[844:03] Removing low confidence identifications
+[844:03] Searching PTM decoys
+[844:03] Removing interfering precursors
+[844:06] Training neural networks: 179683 targets, 184510 decoys
+[844:19] Number of IDs at 0.01 FDR: 100244
+[844:21] Calculating protein q-values
+[844:21] Number of proteins identified at 1% FDR: 8176 (precursor-level), 7273 (protein-level) (inference performed using proteotypic peptides only)
+[844:21] Quantification
+[844:22] Precursors with monitored PTMs at 1% FDR: 104 out of 151
+[844:22] Unmodified precursors with monitored PTM sites at 1% FDR: 64 out of 124
+
+[844:22] File #20/48
+[844:22] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plus_18_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[844:37] 202466 library precursors are potentially detectable
+[844:37] Processing...
+[844:44] RT window set to 2.60879
+[844:44] Recommended MS1 mass accuracy setting: 18.3389 ppm
+[844:59] Removing low confidence identifications
+[844:59] Searching PTM decoys
+[844:59] Removing interfering precursors
+[845:02] Training neural networks: 171316 targets, 178165 decoys
+[845:14] Number of IDs at 0.01 FDR: 69806
+[845:15] Calculating protein q-values
+[845:15] Number of proteins identified at 1% FDR: 7276 (precursor-level), 6364 (protein-level) (inference performed using proteotypic peptides only)
+[845:15] Quantification
+[845:16] Precursors with monitored PTMs at 1% FDR: 0 out of 131
+[845:16] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 80
+
+[845:17] File #21/48
+[845:17] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD14plusFlow_02_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[845:29] 202466 library precursors are potentially detectable
+[845:29] Processing...
+[845:31] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[845:44] RT window set to 2.60131
+[845:44] Recommended MS1 mass accuracy setting: 15.5008 ppm
+[845:53] Removing low confidence identifications
+[845:53] Searching PTM decoys
+[845:53] Removing interfering precursors
+[845:56] Training neural networks: 104855 targets, 106787 decoys
+[846:03] Number of IDs at 0.01 FDR: 24665
+[846:03] Calculating protein q-values
+[846:03] Number of proteins identified at 1% FDR: 4146 (precursor-level), 3353 (protein-level) (inference performed using proteotypic peptides only)
+[846:03] Quantification
+[846:03] Precursors with monitored PTMs at 1% FDR: 0 out of 32
+[846:03] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 21
+
+[846:04] File #22/48
+[846:04] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plus_25_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[846:21] 202466 library precursors are potentially detectable
+[846:22] Processing...
+[846:30] RT window set to 2.65207
+[846:31] Recommended MS1 mass accuracy setting: 13.4201 ppm
+[846:50] Removing low confidence identifications
+[846:50] Searching PTM decoys
+[846:50] Removing interfering precursors
+[846:54] Training neural networks: 183737 targets, 195883 decoys
+[847:07] Number of IDs at 0.01 FDR: 78150
+[847:08] Calculating protein q-values
+[847:08] Number of proteins identified at 1% FDR: 8020 (precursor-level), 7222 (protein-level) (inference performed using proteotypic peptides only)
+[847:08] Quantification
+[847:09] Precursors with monitored PTMs at 1% FDR: 138 out of 170
+[847:09] Unmodified precursors with monitored PTM sites at 1% FDR: 57 out of 88
+
+[847:10] File #23/48
+[847:10] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_CD34plusFlow_32_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[847:26] 202466 library precursors are potentially detectable
+[847:26] Processing...
+[847:33] RT window set to 2.66489
+[847:33] Recommended MS1 mass accuracy setting: 16.2819 ppm
+[847:51] Removing low confidence identifications
+[847:51] Searching PTM decoys
+[847:51] Removing interfering precursors
+[847:55] Training neural networks: 188306 targets, 194528 decoys
+[848:08] Number of IDs at 0.01 FDR: 122747
+[848:10] Calculating protein q-values
+[848:10] Number of proteins identified at 1% FDR: 8776 (precursor-level), 7888 (protein-level) (inference performed using proteotypic peptides only)
+[848:10] Quantification
+[848:11] Precursors with monitored PTMs at 1% FDR: 198 out of 217
+[848:11] Unmodified precursors with monitored PTM sites at 1% FDR: 127 out of 150
+
+[848:12] File #24/48
+[848:12] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_19-00074_MSCflow_10_FAIMS_DIA_Lisa_23Jan24_WBEH-23-11-06.mzML
+[848:24] 202466 library precursors are potentially detectable
+[848:24] Processing...
+[848:25] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[848:37] RT window set to 2.5805
+[848:37] Recommended MS1 mass accuracy setting: 12.7938 ppm
+[848:46] Removing low confidence identifications
+[848:46] Searching PTM decoys
+[848:46] Removing interfering precursors
+[848:48] Training neural networks: 101604 targets, 102060 decoys
+[848:55] Number of IDs at 0.01 FDR: 27498
+[848:55] Calculating protein q-values
+[848:55] Number of proteins identified at 1% FDR: 4382 (precursor-level), 3600 (protein-level) (inference performed using proteotypic peptides only)
+[848:56] Quantification
+[848:56] Precursors with monitored PTMs at 1% FDR: 0 out of 29
+[848:56] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 21
+
+[848:56] File #25/48
+[848:56] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plus_40_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[849:11] 202466 library precursors are potentially detectable
+[849:11] Processing...
+[849:17] RT window set to 2.60943
+[849:17] Recommended MS1 mass accuracy setting: 17.9945 ppm
+[849:33] Removing low confidence identifications
+[849:33] Searching PTM decoys
+[849:33] Removing interfering precursors
+[849:37] Training neural networks: 179742 targets, 187462 decoys
+[849:49] Number of IDs at 0.01 FDR: 104969
+[849:51] Calculating protein q-values
+[849:51] Number of proteins identified at 1% FDR: 8510 (precursor-level), 7652 (protein-level) (inference performed using proteotypic peptides only)
+[849:51] Quantification
+[849:52] Precursors with monitored PTMs at 1% FDR: 153 out of 187
+[849:52] Unmodified precursors with monitored PTM sites at 1% FDR: 68 out of 108
+
+[849:53] File #26/48
+[849:53] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD14plusFlow_15_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[850:06] 202466 library precursors are potentially detectable
+[850:06] Processing...
+[850:13] RT window set to 2.59378
+[850:13] Recommended MS1 mass accuracy setting: 12.6938 ppm
+[850:25] Removing low confidence identifications
+[850:25] Searching PTM decoys
+[850:25] Removing interfering precursors
+[850:28] Training neural networks: 153330 targets, 154726 decoys
+[850:38] Number of IDs at 0.01 FDR: 74710
+[850:40] Calculating protein q-values
+[850:40] Number of proteins identified at 1% FDR: 7140 (precursor-level), 6320 (protein-level) (inference performed using proteotypic peptides only)
+[850:40] Quantification
+[850:40] Precursors with monitored PTMs at 1% FDR: 115 out of 152
+[850:40] Unmodified precursors with monitored PTM sites at 1% FDR: 46 out of 73
+
+[850:41] File #27/48
+[850:41] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plus_39_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[850:58] 202466 library precursors are potentially detectable
+[850:58] Processing...
+[851:05] RT window set to 2.67747
+[851:05] Recommended MS1 mass accuracy setting: 23.2493 ppm
+[851:24] Removing low confidence identifications
+[851:24] Searching PTM decoys
+[851:24] Removing interfering precursors
+[851:28] Training neural networks: 187244 targets, 195239 decoys
+[851:42] Number of IDs at 0.01 FDR: 114551
+[851:44] Calculating protein q-values
+[851:44] Number of proteins identified at 1% FDR: 8940 (precursor-level), 8115 (protein-level) (inference performed using proteotypic peptides only)
+[851:44] Quantification
+[851:45] Precursors with monitored PTMs at 1% FDR: 180 out of 205
+[851:45] Unmodified precursors with monitored PTM sites at 1% FDR: 81 out of 123
+
+[851:46] File #28/48
+[851:46] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_CD34plusFlow_26_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[852:03] 202466 library precursors are potentially detectable
+[852:03] Processing...
+[852:10] RT window set to 2.64578
+[852:10] Recommended MS1 mass accuracy setting: 12.37 ppm
+[852:28] Removing low confidence identifications
+[852:28] Searching PTM decoys
+[852:28] Removing interfering precursors
+[852:33] Training neural networks: 185857 targets, 195538 decoys
+[852:46] Number of IDs at 0.01 FDR: 119892
+[852:48] Calculating protein q-values
+[852:49] Number of proteins identified at 1% FDR: 8850 (precursor-level), 8057 (protein-level) (inference performed using proteotypic peptides only)
+[852:49] Quantification
+[852:49] Precursors with monitored PTMs at 1% FDR: 184 out of 205
+[852:49] Unmodified precursors with monitored PTM sites at 1% FDR: 103 out of 131
+
+[852:51] File #29/48
+[852:51] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00432_MSCflow_09_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[853:03] 202466 library precursors are potentially detectable
+[853:03] Processing...
+[853:54] RT window set to 2.58966
+[853:54] Recommended MS1 mass accuracy setting: 7.94999 ppm
+[854:05] Removing low confidence identifications
+[854:05] Searching PTM decoys
+[854:05] Removing interfering precursors
+[854:07] Training neural networks: 94255 targets, 95204 decoys
+[854:14] Number of IDs at 0.01 FDR: 21577
+[854:14] Calculating protein q-values
+[854:14] Number of proteins identified at 1% FDR: 3960 (precursor-level), 3304 (protein-level) (inference performed using proteotypic peptides only)
+[854:14] Quantification
+[854:14] Precursors with monitored PTMs at 1% FDR: 0 out of 23
+[854:14] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 28
+
+[854:15] File #30/48
+[854:15] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plus_29_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[854:34] 202466 library precursors are potentially detectable
+[854:34] Processing...
+[854:43] RT window set to 2.66081
+[854:43] Recommended MS1 mass accuracy setting: 16.1653 ppm
+[855:04] Removing low confidence identifications
+[855:04] Searching PTM decoys
+[855:04] Removing interfering precursors
+[855:07] Training neural networks: 183216 targets, 195734 decoys
+[855:21] Number of IDs at 0.01 FDR: 72796
+[855:22] Calculating protein q-values
+[855:22] Number of proteins identified at 1% FDR: 7734 (precursor-level), 6919 (protein-level) (inference performed using proteotypic peptides only)
+[855:22] Quantification
+[855:22] Precursors with monitored PTMs at 1% FDR: 135 out of 156
+[855:22] Unmodified precursors with monitored PTM sites at 1% FDR: 50 out of 79
+
+[855:23] File #31/48
+[855:23] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD14plusFlow_17_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[855:38] 202466 library precursors are potentially detectable
+[855:38] Processing...
+[855:44] RT window set to 2.65139
+[855:44] Recommended MS1 mass accuracy setting: 18.9375 ppm
+[855:58] Removing low confidence identifications
+[855:58] Searching PTM decoys
+[855:58] Removing interfering precursors
+[856:01] Training neural networks: 173969 targets, 180828 decoys
+[856:14] Number of IDs at 0.01 FDR: 98984
+[856:15] Calculating protein q-values
+[856:15] Number of proteins identified at 1% FDR: 7907 (precursor-level), 7035 (protein-level) (inference performed using proteotypic peptides only)
+[856:15] Quantification
+[856:16] Precursors with monitored PTMs at 1% FDR: 165 out of 176
+[856:16] Unmodified precursors with monitored PTM sites at 1% FDR: 94 out of 132
+
+[856:17] File #32/48
+[856:17] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plus_22_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[856:34] 202466 library precursors are potentially detectable
+[856:34] Processing...
+[856:43] RT window set to 2.6816
+[856:43] Recommended MS1 mass accuracy setting: 18.3996 ppm
+[857:02] Removing low confidence identifications
+[857:02] Searching PTM decoys
+[857:02] Removing interfering precursors
+[857:06] Training neural networks: 179157 targets, 193620 decoys
+[857:19] Number of IDs at 0.01 FDR: 63613
+[857:20] Calculating protein q-values
+[857:20] Number of proteins identified at 1% FDR: 7541 (precursor-level), 6647 (protein-level) (inference performed using proteotypic peptides only)
+[857:20] Quantification
+[857:20] Precursors with monitored PTMs at 1% FDR: 0 out of 127
+[857:20] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 80
+
+[857:21] File #33/48
+[857:21] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_CD34plusFlow_23_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[857:39] 202466 library precursors are potentially detectable
+[857:39] Processing...
+[857:45] RT window set to 2.66654
+[857:45] Recommended MS1 mass accuracy setting: 15.6887 ppm
+[858:04] Removing low confidence identifications
+[858:04] Searching PTM decoys
+[858:04] Removing interfering precursors
+[858:09] Training neural networks: 187702 targets, 194891 decoys
+[858:23] Number of IDs at 0.01 FDR: 113918
+[858:24] Calculating protein q-values
+[858:25] Number of proteins identified at 1% FDR: 8753 (precursor-level), 7977 (protein-level) (inference performed using proteotypic peptides only)
+[858:25] Quantification
+[858:25] Precursors with monitored PTMs at 1% FDR: 178 out of 206
+[858:25] Unmodified precursors with monitored PTM sites at 1% FDR: 104 out of 142
+
+[858:26] File #34/48
+[858:26] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_21-00839_MSCflow_30_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[858:43] 202466 library precursors are potentially detectable
+[858:43] Processing...
+[858:49] RT window set to 2.6316
+[858:49] Recommended MS1 mass accuracy setting: 15.8753 ppm
+[859:06] Removing low confidence identifications
+[859:06] Searching PTM decoys
+[859:06] Removing interfering precursors
+[859:11] Training neural networks: 185375 targets, 192251 decoys
+[859:24] Number of IDs at 0.01 FDR: 108341
+[859:25] Calculating protein q-values
+[859:26] Number of proteins identified at 1% FDR: 8382 (precursor-level), 7512 (protein-level) (inference performed using proteotypic peptides only)
+[859:26] Quantification
+[859:26] Precursors with monitored PTMs at 1% FDR: 159 out of 197
+[859:26] Unmodified precursors with monitored PTM sites at 1% FDR: 94 out of 142
+
+[859:27] File #35/48
+[859:27] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plus_38_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[859:43] 202466 library precursors are potentially detectable
+[859:43] Processing...
+[859:52] RT window set to 2.66426
+[859:52] Recommended MS1 mass accuracy setting: 16.8755 ppm
+[860:08] Removing low confidence identifications
+[860:08] Searching PTM decoys
+[860:08] Removing interfering precursors
+[860:12] Training neural networks: 174295 targets, 183640 decoys
+[860:24] Number of IDs at 0.01 FDR: 63941
+[860:25] Calculating protein q-values
+[860:25] Number of proteins identified at 1% FDR: 7302 (precursor-level), 6445 (protein-level) (inference performed using proteotypic peptides only)
+[860:25] Quantification
+[860:26] Precursors with monitored PTMs at 1% FDR: 91 out of 136
+[860:26] Unmodified precursors with monitored PTM sites at 1% FDR: 43 out of 84
+
+[860:27] File #36/48
+[860:27] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD14plusFlow_16_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[860:41] 202466 library precursors are potentially detectable
+[860:41] Processing...
+[860:46] RT window set to 2.6404
+[860:46] Recommended MS1 mass accuracy setting: 13.2925 ppm
+[861:00] Removing low confidence identifications
+[861:00] Searching PTM decoys
+[861:00] Removing interfering precursors
+[861:04] Training neural networks: 174513 targets, 178939 decoys
+[861:16] Number of IDs at 0.01 FDR: 89881
+[861:17] Calculating protein q-values
+[861:17] Number of proteins identified at 1% FDR: 7830 (precursor-level), 6898 (protein-level) (inference performed using proteotypic peptides only)
+[861:17] Quantification
+[861:18] Precursors with monitored PTMs at 1% FDR: 128 out of 162
+[861:18] Unmodified precursors with monitored PTM sites at 1% FDR: 66 out of 110
+
+[861:19] File #37/48
+[861:19] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plus_37_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[861:34] 202466 library precursors are potentially detectable
+[861:34] Processing...
+[861:44] RT window set to 2.6979
+[861:44] Recommended MS1 mass accuracy setting: 12.2492 ppm
+[862:00] Removing low confidence identifications
+[862:00] Searching PTM decoys
+[862:00] Removing interfering precursors
+[862:03] Training neural networks: 173897 targets, 184155 decoys
+[862:15] Number of IDs at 0.01 FDR: 52152
+[862:16] Calculating protein q-values
+[862:16] Number of proteins identified at 1% FDR: 7042 (precursor-level), 6161 (protein-level) (inference performed using proteotypic peptides only)
+[862:16] Quantification
+[862:16] Precursors with monitored PTMs at 1% FDR: 0 out of 98
+[862:16] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 71
+
+[862:17] File #38/48
+[862:17] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_CD34plusFlow_04_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[862:29] 202466 library precursors are potentially detectable
+[862:29] Processing...
+[862:32] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[862:46] RT window set to 2.64953
+[862:46] Recommended MS1 mass accuracy setting: 16.8956 ppm
+[862:55] Removing low confidence identifications
+[862:55] Searching PTM decoys
+[862:55] Removing interfering precursors
+[862:56] Training neural networks: 86504 targets, 86405 decoys
+[863:02] Number of IDs at 0.01 FDR: 21556
+[863:02] Calculating protein q-values
+[863:02] Number of proteins identified at 1% FDR: 3644 (precursor-level), 2953 (protein-level) (inference performed using proteotypic peptides only)
+[863:02] Quantification
+[863:02] Precursors with monitored PTMs at 1% FDR: 0 out of 36
+[863:02] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 15
+
+[863:03] File #39/48
+[863:03] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00117_MSCflow_14_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[863:16] 202466 library precursors are potentially detectable
+[863:16] Processing...
+[863:24] RT window set to 2.65006
+[863:24] Recommended MS1 mass accuracy setting: 13.2509 ppm
+[863:35] Removing low confidence identifications
+[863:35] Searching PTM decoys
+[863:35] Removing interfering precursors
+[863:38] Training neural networks: 146693 targets, 149273 decoys
+[863:48] Number of IDs at 0.01 FDR: 61580
+[863:49] Calculating protein q-values
+[863:49] Number of proteins identified at 1% FDR: 6811 (precursor-level), 6022 (protein-level) (inference performed using proteotypic peptides only)
+[863:49] Quantification
+[863:50] Precursors with monitored PTMs at 1% FDR: 0 out of 112
+[863:50] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 58
+
+[863:50] File #40/48
+[863:50] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plus_36_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[864:04] 202466 library precursors are potentially detectable
+[864:04] Processing...
+[864:12] RT window set to 2.58915
+[864:12] Recommended MS1 mass accuracy setting: 13.7107 ppm
+[864:24] Removing low confidence identifications
+[864:24] Searching PTM decoys
+[864:24] Removing interfering precursors
+[864:27] Training neural networks: 152802 targets, 159122 decoys
+[864:38] Number of IDs at 0.01 FDR: 56870
+[864:39] Calculating protein q-values
+[864:39] Number of proteins identified at 1% FDR: 6356 (precursor-level), 5434 (protein-level) (inference performed using proteotypic peptides only)
+[864:39] Quantification
+[864:40] Precursors with monitored PTMs at 1% FDR: 0 out of 95
+[864:40] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 68
+
+[864:40] File #41/48
+[864:40] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD14plusFlow_06_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[864:53] 202466 library precursors are potentially detectable
+[864:53] Processing...
+[864:54] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[865:08] RT window set to 2.61997
+[865:08] Recommended MS1 mass accuracy setting: 12.1789 ppm
+[865:17] Removing low confidence identifications
+[865:17] Searching PTM decoys
+[865:18] Removing interfering precursors
+[865:19] Training neural networks: 90761 targets, 92389 decoys
+[865:25] Number of IDs at 0.01 FDR: 21196
+[865:26] Calculating protein q-values
+[865:26] Number of proteins identified at 1% FDR: 3783 (precursor-level), 3072 (protein-level) (inference performed using proteotypic peptides only)
+[865:26] Quantification
+[865:26] Precursors with monitored PTMs at 1% FDR: 0 out of 25
+[865:26] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 22
+
+[865:26] File #42/48
+[865:26] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plus_35_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[865:43] 202466 library precursors are potentially detectable
+[865:43] Processing...
+[865:49] RT window set to 2.65102
+[865:49] Recommended MS1 mass accuracy setting: 19.3831 ppm
+[866:06] Removing low confidence identifications
+[866:06] Searching PTM decoys
+[866:06] Removing interfering precursors
+[866:11] Training neural networks: 184583 targets, 192384 decoys
+[866:24] Number of IDs at 0.01 FDR: 98206
+[866:25] Calculating protein q-values
+[866:25] Number of proteins identified at 1% FDR: 8109 (precursor-level), 7253 (protein-level) (inference performed using proteotypic peptides only)
+[866:25] Quantification
+[866:26] Precursors with monitored PTMs at 1% FDR: 165 out of 191
+[866:26] Unmodified precursors with monitored PTM sites at 1% FDR: 87 out of 114
+
+[866:27] File #43/48
+[866:27] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00251_CD34plusFlow_01_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[866:39] 202466 library precursors are potentially detectable
+[866:39] Processing...
+[866:43] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[867:04] RT window set to 2.67369
+[867:04] Recommended MS1 mass accuracy setting: 16.6228 ppm
+[867:13] Removing low confidence identifications
+[867:13] Searching PTM decoys
+[867:13] Removing interfering precursors
+[867:14] Training neural networks: 75516 targets, 78864 decoys
+[867:20] Number of IDs at 0.01 FDR: 11061
+[867:20] Calculating protein q-values
+[867:20] Number of proteins identified at 1% FDR: 2313 (precursor-level), 1781 (protein-level) (inference performed using proteotypic peptides only)
+[867:20] Quantification
+
+[867:20] File #44/48
+[867:20] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plus_42_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[867:35] 202466 library precursors are potentially detectable
+[867:35] Processing...
+[867:43] RT window set to 2.61785
+[867:43] Recommended MS1 mass accuracy setting: 11.788 ppm
+[867:58] Removing low confidence identifications
+[867:58] Searching PTM decoys
+[867:58] Removing interfering precursors
+[868:02] Training neural networks: 176291 targets, 183625 decoys
+[868:15] Number of IDs at 0.01 FDR: 77910
+[868:16] Calculating protein q-values
+[868:16] Number of proteins identified at 1% FDR: 7565 (precursor-level), 6615 (protein-level) (inference performed using proteotypic peptides only)
+[868:16] Quantification
+[868:17] Precursors with monitored PTMs at 1% FDR: 88 out of 141
+[868:17] Unmodified precursors with monitored PTM sites at 1% FDR: 47 out of 89
+
+[868:18] File #45/48
+[868:18] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD14plusFlow_12_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[868:31] 202466 library precursors are potentially detectable
+[868:31] Processing...
+[868:40] RT window set to 2.65566
+[868:40] Recommended MS1 mass accuracy setting: 11.6823 ppm
+[868:51] Removing low confidence identifications
+[868:51] Searching PTM decoys
+[868:51] Removing interfering precursors
+[868:53] Training neural networks: 131941 targets, 136363 decoys
+[869:03] Number of IDs at 0.01 FDR: 47543
+[869:03] Calculating protein q-values
+[869:03] Number of proteins identified at 1% FDR: 5861 (precursor-level), 5012 (protein-level) (inference performed using proteotypic peptides only)
+[869:03] Quantification
+[869:04] Precursors with monitored PTMs at 1% FDR: 0 out of 37
+[869:04] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 40
+
+[869:04] File #46/48
+[869:04] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plus_41_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[869:21] 202466 library precursors are potentially detectable
+[869:21] Processing...
+[869:28] RT window set to 2.70445
+[869:28] Recommended MS1 mass accuracy setting: 20.3636 ppm
+[869:46] Removing low confidence identifications
+[869:46] Searching PTM decoys
+[869:47] Removing interfering precursors
+[869:51] Training neural networks: 184459 targets, 194332 decoys
+[870:04] Number of IDs at 0.01 FDR: 90557
+[870:05] Calculating protein q-values
+[870:06] Number of proteins identified at 1% FDR: 8607 (precursor-level), 7672 (protein-level) (inference performed using proteotypic peptides only)
+[870:06] Quantification
+[870:06] Precursors with monitored PTMs at 1% FDR: 121 out of 173
+[870:06] Unmodified precursors with monitored PTM sites at 1% FDR: 58 out of 109
+
+[870:07] File #47/48
+[870:07] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_CD34plusFlow_07_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[870:20] 202466 library precursors are potentially detectable
+[870:20] Processing...
+[870:22] Cannot perform MS1 mass calibration, too few confidently identified precursors
+[870:33] RT window set to 2.6171
+[870:33] Recommended MS1 mass accuracy setting: 14.3609 ppm
+[870:44] Removing low confidence identifications
+[870:44] Searching PTM decoys
+[870:44] Removing interfering precursors
+[870:46] Training neural networks: 129698 targets, 131333 decoys
+[870:56] Number of IDs at 0.01 FDR: 36379
+[870:56] Calculating protein q-values
+[870:56] Number of proteins identified at 1% FDR: 5135 (precursor-level), 4368 (protein-level) (inference performed using proteotypic peptides only)
+[870:56] Quantification
+[870:57] Precursors with monitored PTMs at 1% FDR: 0 out of 61
+[870:57] Unmodified precursors with monitored PTM sites at 1% FDR: 0 out of 44
+
+[870:57] File #48/48
+[870:57] Loading run D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_DIA_libfree/DIANN_output_libfree_PTRC_results_8_22_24/PTRC_DIA_22-00571_MSCflow_24_FAIMS_DIA_Lisa_19Jan24_WBEH-23-11-06.mzML
+[871:15] 202466 library precursors are potentially detectable
+[871:15] Processing...
+[871:21] RT window set to 2.71881
+[871:21] Recommended MS1 mass accuracy setting: 22.2431 ppm
+[871:40] Removing low confidence identifications
+[871:40] Searching PTM decoys
+[871:40] Removing interfering precursors
+[871:45] Training neural networks: 184712 targets, 194911 decoys
+[871:58] Number of IDs at 0.01 FDR: 95489
+[872:00] Calculating protein q-values
+[872:00] Number of proteins identified at 1% FDR: 8404 (precursor-level), 7596 (protein-level) (inference performed using proteotypic peptides only)
+[872:00] Quantification
+[872:01] Precursors with monitored PTMs at 1% FDR: 144 out of 191
+[872:01] Unmodified precursors with monitored PTM sites at 1% FDR: 59 out of 118
+
+[872:02] Cross-run analysis
+[872:02] Reading quantification information: 48 files
+[872:17] Quantifying peptides
+[872:43] Quantifying proteins
+[872:46] Calculating q-values for protein and gene groups
+[872:48] Calculating global q-values for protein and gene groups
+[872:48] Writing report
+[875:22] Report saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report.tsv.
+[875:22] Saving precursor levels matrix
+[875:25] Precursor levels matrix (1% precursor and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report.pr_matrix.tsv.
+[875:25] Saving protein group levels matrix
+[875:25] Protein group levels matrix (1% precursor FDR and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report.pg_matrix.tsv.
+[875:25] Saving gene group levels matrix
+[875:25] Gene groups levels matrix (1% precursor FDR and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report.gg_matrix.tsv.
+[875:25] Saving unique genes levels matrix
+[875:26] Unique genes levels matrix (1% precursor FDR and protein group FDR) saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report.unique_genes_matrix.tsv.
+[875:26] Stats report saved to D:/DIA_sam/PTRC_CPTAC/PTRC_DIA_wrkpckg5469/PTRC_wrkpckg5469_report.stats.tsv
+
+Finished
+

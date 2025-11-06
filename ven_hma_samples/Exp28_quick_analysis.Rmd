@@ -1,0 +1,1271 @@
+
+Loading data
+
+```{r packages, echo=FALSE}
+library(dplyr)
+library(MSnSet.utils)
+library(ggplot2)
+library(ggpubr)
+library(clusterProfiler)
+source("../drug_treated_samples/s2n_model.R")
+source("../drug_treated_samples/helper_scripts.R")
+source('../synapseUtil.R')
+
+syn <- synapseLogin()
+
+```
+
+Now start the analysis
+
+```{r load things}
+
+subcohort_colors =  c("#e8991b", "#00798c", "#d1495b", "grey27")
+subcohort_colors2 =  c("#e8991b", "#00798c", "#d1495b", "grey27")
+names(subcohort_colors) = c("Response_no_relapse", "Refractory", "Relapse", "Paired_relapse_sample")
+vital_colors = c('orange3', 'plum4', 'darkgrey')
+names(vital_colors) = c("Alive", "Dead", "LTFU")
+
+## Load exp28
+# xx = read.csv2("Aggregation_report.pg_matrix.tsv", sep = "\t")
+xx = read.csv2(syn$get("syn70753414")$path, sep = "\t")
+
+
+mat_df = xx[, c(3, 5:45)] %>% as.data.frame()  ## Take Gene name and samples
+colnames(mat_df) = sub("^.*WorkDir1\\.", "", colnames(mat_df))
+colnames(mat_df) = sub("_FAIMS_.*$", "", colnames(mat_df))
+colnames(mat_df)
+## Rolling up, since there are duplicate gene names. Taking log2 then mean to rollup.
+mat_df = mat_df %>%
+   tidyr::pivot_longer(-Genes, names_to = "sample_name", values_to = "value") %>%
+   mutate(value = as.numeric(value),
+          value = log2(value)) %>%
+   group_by(Genes, sample_name) %>%
+   mutate(value_rollup = mean(value)) %>% ungroup() %>%
+   select(Genes, sample_name, value_rollup) %>% unique() %>%
+   tidyr::pivot_wider(names_from = "sample_name", values_from = "value_rollup")
+mat_df = mat_df %>% filter(Genes != "")
+mat = mat_df[, -1] %>% as.matrix()
+rownames(mat) = mat_df$Genes
+
+
+##SG: suggest these outliers
+outliers <- c('24-00144', '24-00675', '22-00184')
+
+# meta = openxlsx::read.xlsx("metadata_Exp28.xlsx")
+meta = openxlsx::read.xlsx(syn$get("syn69058992")$path)
+meta$survival_days = meta[[13]]
+p_data = meta %>% subset(!labId %in% outliers) |>
+  mutate(sample_name = datasetNameGlobal,
+                         subcohort = gsub(" - ", "_", `sub-cohort.PNNL`),
+                         subcohort = gsub(" ", "_", subcohort),
+                         group = subcohort,
+                         group = factor(group, levels = c("Response_no_relapse", "Refractory", "Relapse", "Paired_relapse_sample")),
+                         group_surv = case_when(subcohort == "Response_no_relapse" & survival_days >= 500 ~ "response_long",
+                                                subcohort == "Response_no_relapse" & survival_days < 500 ~ "response_short",
+                                                subcohort == "Refractory" ~ "Refractory",
+                                                subcohort == "Relapse" & survival_days < 500 ~ "relapse_short",
+                                                subcohort == "Relapse" & survival_days >= 500 ~ "relapse_long",
+                                                TRUE ~ subcohort))
+rownames(p_data) = p_data$sample_name
+pats <- intersect(colnames(mat), rownames(p_data))
+p_data = p_data[pats, ]
+
+m_exp28 = MSnSet(exprs = mat[,pats], pData = p_data)
+hist(apply(exprs(m_exp28), 2, mean, na.rm = T))
+hist(apply(exprs(m_exp28), 1, mean, na.rm = T))
+exprs(m_exp28) = sweep(exprs(m_exp28), 2, apply(exprs(m_exp28), 2, mean, na.rm = T), FUN = '-')
+hist(apply(exprs(m_exp28), 1, mean, na.rm = T))
+# write.table(exprs(m_exp28), "exp28_DIA_crosstab.tsv", sep = "\t", quote = F)
+
+plot_df = data.frame(feature = featureNames(m_exp28), N = rowSums(is.na(exprs(m_exp28))))
+ggplot(plot_df, aes(x = N)) + geom_histogram(color = "black", fill = "grey47") +
+   xlab("Number of missing values") + ggtitle("Missing values per feature") + 
+   theme(text = element_text(size = 15))
+
+plot_pca(m_exp28, "group") + scale_color_manual(values = subcohort_colors) +
+   scale_fill_manual(values = subcohort_colors) +
+   ggtitle("PCA of patient samples")
+
+features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 20]
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+
+```
+
+
+Load t2g tables (for GSEA)
+
+
+```{r GSEA analysis}
+## Load t2g tables
+library(msigdbr)
+t2g_hallmark <- msigdbr(species = "Homo sapiens", category = "H") %>%
+  dplyr::select(gs_name, gene_symbol)
+
+t2g_gobp <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "BP") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gocc <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "CC") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gomf <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "MF") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_wikipath <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "WIKIPATHWAYS") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_reactome <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "REACTOME") %>% 
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+
+# 
+t2g_kegg <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "KEGG_LEGACY") %>%
+  dplyr::select(gs_name, gene_symbol) %>%
+  mutate(gs_name = gsub("_", " ", gs_name))
+mutate <- dplyr::mutate
+
+t2gs = list(t2g_gobp, t2g_hallmark, t2g_kegg, t2g_reactome)
+names(t2gs) = c("GOBP", "Hallmark", "KEGG_legacy", "Reactome")
+
+
+```
+
+
+These are deconvolution results from decomprolute, plotting cell type estimate vs cohort. 
+Also checking correlation between survival and cell type estimate
+
+
+```{r}
+## This is the deconvolution result obtained from log2 sample centered crosstab, including ONLY the complete feature, 4.7K features NO MISSING VALUES.
+# maturation_df = read.table("exp28_log2_sample_centered_crosstab_complete_features-xcell-AML_100.tsv", sep = "\t", header = T) %>%
+#    tidyr::pivot_longer(-X, names_to = "sample_name", values_to = "value") %>%
+#    left_join(., p_data, by = "sample_name")
+# maturation_df = maturation_df %>% mutate(survival_days = maturation_df[[16]])
+
+
+## This is the deconvolution result obtained from the full, log2 sample centered crosstab, including all 11K features, no filtering for NA.
+# maturation_df = read.table("exp28_DIA_crosstab-xcell-AML_100.tsv", sep = "\t", header = T) %>% syn70753424
+maturation_df = read.table(syn$get("syn70753424")$path, sep = "\t", header = T) %>% 
+   tidyr::pivot_longer(-X, names_to = "sample_name", values_to = "value") %>% 
+   group_by(sample_name) %>%
+   mutate(normalized_value = value/sum(value)) %>% ungroup() %>%
+   left_join(., p_data, by = "sample_name")
+
+plots = list()
+for (cell_type in unique(maturation_df$X)){
+   plot_df = maturation_df %>%
+      filter(X == cell_type)
+   
+   p = ggplot(plot_df, aes(x = subcohort, y = value, fill = subcohort)) + geom_boxplot() +
+      scale_fill_manual(values = subcohort_colors) + ggtitle(paste(cell_type, "(from unfiltered crosstab)")) + 
+      ylab(paste(cell_type, "value"))
+   plots = append(plots, list(p))
+   p = ggplot(plot_df, aes(x = survival_days, y = value)) + geom_point() + facet_wrap(~ subcohort) + 
+      ggtitle(paste(cell_type, "(from unfiltered crosstab)")) + ylab(paste(cell_type, "value"))
+   plots = append(plots, list(p))
+}
+plots
+
+## This is the deconvolution result obtained from log2 sample centered crosstab, 8.5K features FEWER THAN 50% missing values.
+# maturation_df = read.table("exp28_log2_sample_centered_crosstab_50percent_features-xcell-AML_100.tsv", sep = "\t", header = T) %>%
+maturation_df = read.table(syn$get("syn70753423")$path, sep = "\t", header = T) %>%
+   tidyr::pivot_longer(-X, names_to = "sample_name", values_to = "value") %>% 
+   group_by(sample_name) %>%
+   mutate(normalized_value = value/sum(value)) %>% ungroup() %>%
+   left_join(., p_data, by = "sample_name")
+
+plots = list()
+for (cell_type in unique(maturation_df$X)){
+   plot_df = maturation_df %>%
+      filter(X == cell_type)
+   
+   p = ggplot(plot_df, aes(x = subcohort, y = value, fill = subcohort)) + geom_boxplot() +
+      scale_fill_manual(values = subcohort_colors) + ggtitle(paste(cell_type, "(from 50% NA filtered crosstab)")) + 
+      ylab(paste(cell_type, "value"))
+   plots = append(plots, list(p))
+   p = ggplot(plot_df, aes(x = survival_days, y = value)) + geom_point() + facet_wrap(~ subcohort) + 
+      ggtitle(paste(cell_type, "(from 50% NA filtered crosstab)")) + ylab(paste(cell_type, "value"))
+   plots = append(plots, list(p))
+}
+plots
+
+```
+
+
+Compute differential expression: Response vs Response no relapse, Refractory vs Response no relapse.
+
+
+```{r}
+diffexp_1 = diffexp_helper(m_exp28, "subcohort", c("Relapse-Response_no_relapse"))  
+diffexp_2 = diffexp_helper(m_exp28, "subcohort", c("Refractory-Response_no_relapse")) 
+## Response long is the subset of Response no relapse with survival days > 500 (survive more than 500). 
+## Relapse short is the subset of Relapse with survival days < 500 (survive less than 500).
+diffexp_3 = diffexp_helper(m_exp28, "group_surv", c("relapse_short-response_long", "Refractory-response_long"))  
+
+# plot_features(m_exp28, c("RHEX", "ACY1", "MARK1", "AIMP2", "CAT", "ARFGEF2"), color_by = "group")
+
+# write.table(exprs(m_exp28), "exp28_log2_sample_centered_crosstab.txt", sep = "\t", quote = F)
+# write.table(exprs(m_exp28[complete_features, ]), 
+#             "exp28_log2_sample_centered_crosstab_complete_features.txt", sep = "\t", quote = F)
+# write.table(exprs(m_exp28[complete_features, ]), 
+#             "exp28_log2_sample_centered_crosstab_complete_features.tsv", sep = "\t", quote = F)
+# write.table(exprs(m_exp28[features_50perc, ]), 
+#             "exp28_log2_sample_centered_crosstab_50percent_features.tsv", sep = "\t", quote = F)
+```
+
+
+Compute GSEA
+
+
+```{r}
+## Compute GSEA results
+
+for (t2g_name in names(t2gs)){
+   GSEA_helper(m_exp28, c("Relapse-Response_no_relapse"),
+               t2g_name = t2g_name, t2g = t2gs[[t2g_name]], coef.str = "subcohort")
+}
+
+GSEA_res_1 = rbind(read.table("GSEA_Relapse_vs_Response_no_relapse_GOBP.txt", sep = "\t") %>% mutate(DB = "GOBP"),
+                   read.table("GSEA_Relapse_vs_Response_no_relapse_Hallmark.txt", sep = "\t") %>% mutate(DB = "Hallmark"),
+                   read.table("GSEA_Relapse_vs_Response_no_relapse_KEGG_legacy.txt", sep = "\t") %>% mutate(DB = "KEGG_legacy"),
+                   read.table("GSEA_Relapse_vs_Response_no_relapse_Reactome.txt", sep = "\t") %>% mutate(DB = "Reactome"))
+
+for (t2g_name in names(t2gs)){
+   GSEA_helper(m_exp28, c("Refractory-Response_no_relapse"),
+               t2g_name = t2g_name, t2g = t2gs[[t2g_name]], coef.str = "subcohort")
+}
+
+GSEA_res_2 = rbind(read.table("GSEA_Refractory_vs_Response_no_relapse_GOBP.txt", sep = "\t") %>% mutate(DB = "GOBP"),
+                   read.table("GSEA_Refractory_vs_Response_no_relapse_Hallmark.txt", sep = "\t") %>% mutate(DB = "Hallmark"),
+                   read.table("GSEA_Refractory_vs_Response_no_relapse_KEGG_legacy.txt", sep = "\t") %>% mutate(DB = "KEGG_legacy"),
+                   read.table("GSEA_Refractory_vs_Response_no_relapse_Reactome.txt", sep = "\t") %>% mutate(DB = "Reactome"))
+
+```
+
+
+Plot GSEA
+
+Relapse vs Response no relapse
+
+```{r}
+## Relapse vs Response no relapse
+
+plot_df <- GSEA_res_1 %>%
+   filter(DB == "Hallmark") %>%
+   mutate(enrichment = NES, adj_p_val = p.adjust, pathway = Description) %>%
+   mutate(group = case_when(enrichment > 0 & adj_p_val < 0.05 ~ "Relapse overexpressed",
+                            enrichment < 0 & adj_p_val < 0.05 ~ "Relapse underexpressed",
+                            adj_p_val >= 0.05 ~ "not significant")) %>%
+   group_by(pathway) %>%
+   mutate(sort1 = sum(abs(enrichment)*(adj_p_val < 0.05)),
+          sort2 = sum((enrichment)*(adj_p_val < 0.05)),
+          sort3 = max(abs(enrichment))*sign(sum(enrichment))) %>%
+   arrange(sort3) %>% filter(adj_p_val < 0.05)
+plot_df <- plot_df %>%
+   mutate(Pathway = gsub("_", " ", pathway),
+          Pathway = sub("HALLMARK ", "", Pathway)) %>%
+   mutate(Pathway = stringr::str_wrap(Pathway, width = 30))
+pathways_to_plot <- unique(plot_df$Pathway)
+plot_df <- plot_df %>%
+   mutate(Pathway = factor(Pathway, levels = pathways_to_plot))
+
+
+ksea_colors <- c("not significant" = "#cfcecb", 
+                 "Relapse underexpressed" = "#937dfc", 
+                 "Relapse overexpressed" = "#fd475f")
+
+plot_title <- "GSEA of Relapse vs Response_no_relapse - Hallmarks"
+p = ggplot(plot_df, aes(x = enrichment, y = Pathway, fill = group)) + 
+   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) + 
+            theme(text = element_text(size = 14)) + 
+            scale_fill_manual(values = ksea_colors) + ggtitle(plot_title)
+# ggsave(plot = p, filename = "Ven_vs_DMSO_34p_ksea.pdf", width = 9, height = 4.5)
+
+
+plot_df <- GSEA_res_1 %>%
+   filter(DB == "GOBP") %>% mutate(sign = NES > 0) %>%
+   group_by(sign) %>% arrange(p.adjust) %>% slice(1:7) %>%
+   mutate(enrichment = NES, adj_p_val = p.adjust, pathway = Description) %>%
+   mutate(group = case_when(enrichment > 0 & adj_p_val < 0.05 ~ "Relapse overexpressed",
+                            enrichment < 0 & adj_p_val < 0.05 ~ "Relapse underexpressed",
+                            adj_p_val >= 0.05 ~ "not significant")) %>%
+   group_by(pathway) %>%
+   mutate(sort1 = sum(abs(enrichment)*(adj_p_val < 0.05)),
+          sort2 = sum((enrichment)*(adj_p_val < 0.05)),
+          sort3 = max(abs(enrichment))*sign(sum(enrichment))) %>%
+   arrange(sort3)
+plot_df <- plot_df %>%
+   mutate(Pathway = gsub("_", " ", pathway),
+          Pathway = sub("GOBP ", "", Pathway)) %>%
+   mutate(Pathway = stringr::str_wrap(Pathway, width = 42))
+pathways_to_plot <- unique(plot_df$Pathway)
+plot_df <- plot_df %>%
+   mutate(Pathway = factor(Pathway, levels = pathways_to_plot))
+
+
+ksea_colors <- c("not significant" = "#cfcecb", 
+                 "Relapse underexpressed" = "#937dfc", 
+                 "Relapse overexpressed" = "#fd475f")
+
+plot_title <- "GSEA of Relapse vs Response_no_relapse - GOBP"
+p = ggplot(plot_df, aes(x = enrichment, y = Pathway, fill = group)) + 
+   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) + 
+            theme(text = element_text(size = 14)) + 
+            scale_fill_manual(values = ksea_colors) + ggtitle(plot_title)
+
+
+```
+
+Refractory vs Response no relapse
+
+```{r}
+## Refractory vs Response no relapse
+
+plot_df <- GSEA_res_2 %>%
+   filter(DB == "Hallmark") %>%
+   mutate(enrichment = NES, adj_p_val = p.adjust, pathway = Description) %>%
+   mutate(group = case_when(enrichment > 0 & adj_p_val < 0.05 ~ "Refractory overexpressed",
+                            enrichment < 0 & adj_p_val < 0.05 ~ "Refractory underexpressed",
+                            adj_p_val >= 0.05 ~ "not significant")) %>%
+   group_by(pathway) %>%
+   mutate(sort1 = sum(abs(enrichment)*(adj_p_val < 0.05)),
+          sort2 = sum((enrichment)*(adj_p_val < 0.05)),
+          sort3 = max(abs(enrichment))*sign(sum(enrichment))) %>%
+   arrange(sort3) %>% filter(adj_p_val < 0.05)
+plot_df <- plot_df %>%
+   mutate(Pathway = gsub("_", " ", pathway),
+          Pathway = sub("HALLMARK ", "", Pathway)) %>%
+   mutate(Pathway = stringr::str_wrap(Pathway, width = 30))
+pathways_to_plot <- unique(plot_df$Pathway)
+plot_df <- plot_df %>%
+   mutate(Pathway = factor(Pathway, levels = pathways_to_plot))
+
+
+ksea_colors <- c("not significant" = "#cfcecb", 
+                 "Refractory underexpressed" = "#937dfc", 
+                 "Refractory overexpressed" = "#fd475f")
+
+plot_title <- "GSEA of Refractory vs Response_no_relapse - Hallmarks"
+p = ggplot(plot_df, aes(x = enrichment, y = Pathway, fill = group)) + 
+   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) + 
+            theme(text = element_text(size = 14)) + 
+            scale_fill_manual(values = ksea_colors) + ggtitle(plot_title)
+# ggsave(plot = p, filename = "Ven_vs_DMSO_34p_ksea.pdf", width = 9, height = 4.5)
+
+
+plot_df <- GSEA_res_2 %>%
+   filter(DB == "GOBP") %>% mutate(sign = NES > 0) %>%
+   group_by(sign) %>% arrange(p.adjust) %>% slice(1:7) %>%
+   mutate(enrichment = NES, adj_p_val = p.adjust, pathway = Description) %>%
+   mutate(group = case_when(enrichment > 0 & adj_p_val < 0.05 ~ "Refractory overexpressed",
+                            enrichment < 0 & adj_p_val < 0.05 ~ "Refractory underexpressed",
+                            adj_p_val >= 0.05 ~ "not significant")) %>%
+   group_by(pathway) %>%
+   mutate(sort1 = sum(abs(enrichment)*(adj_p_val < 0.05)),
+          sort2 = sum((enrichment)*(adj_p_val < 0.05)),
+          sort3 = max(abs(enrichment))*sign(sum(enrichment))) %>%
+   arrange(sort3)
+plot_df <- plot_df %>%
+   mutate(Pathway = gsub("_", " ", pathway),
+          Pathway = sub("GOBP ", "", Pathway)) %>%
+   mutate(Pathway = stringr::str_wrap(Pathway, width = 42))
+pathways_to_plot <- unique(plot_df$Pathway)
+plot_df <- plot_df %>%
+   mutate(Pathway = factor(Pathway, levels = pathways_to_plot))
+
+
+ksea_colors <- c("not significant" = "#cfcecb", 
+                 "Refractory underexpressed" = "#937dfc", 
+                 "Refractory overexpressed" = "#fd475f")
+
+plot_title <- "GSEA of Refractory vs Response_no_relapse - GOBP"
+p = ggplot(plot_df, aes(x = enrichment, y = Pathway, fill = group)) + 
+   geom_bar(stat = 'identity', position = position_dodge(), width = 0.7) + 
+            theme(text = element_text(size = 14)) + 
+            scale_fill_manual(values = ksea_colors) + ggtitle(plot_title)
+
+
+```
+
+
+load exp25 data (4 patient dataset) and predicting function
+
+
+```{r}
+## Load corrected exp25 dataset, subset to 210 features since the model we've shown in slides makes this restriction
+# m_corrected <- readRDS("msnset_4patients_corrected.RDS")
+m_corrected <- readRDS(syn$get("syn64605135")$path)
+# m_210 <- readRDS("210_cohort_global.RDS")
+m_210 <- readRDS(syn$get("syn64605141")$path)
+m_210 <- m_210[complete.cases(exprs(m_210)), ]
+m_corrected <- m_corrected[featureNames(m_corrected) %in% featureNames(m_210), ]
+complete_DV_UT_features <- complete.cases(exprs(m_corrected[, m_corrected$Treatment %in% c("UT", "DV")]))
+complete_V_UT_features <- complete.cases(exprs(m_corrected[, m_corrected$Treatment %in% c("UT", "V")]))
+# drug_data <- read.csv("210_cohort_drug_auc_syn51674470.csv")
+drug_data <- read.csv(syn$get("syn51674470")$path)
+
+# zz = read.csv("../210_cohort_drug_auc_syn51674470.csv")
+# table(zz$inhibitor)
+
+## Inhibitors of interest
+drug_data_df <- rbind(drug_data %>% filter(inhibitor == "Venetoclax"),   ## 127 samples)
+                      drug_data %>% filter(inhibitor == "Azacytidine - Venetoclax"),  ## 20 samples
+                      drug_data %>% filter(inhibitor == "Bortezomib - Venetoclax"),  ## 19 samples
+                      drug_data %>% filter(inhibitor == "Dasatinib - Venetoclax"),  ## 92 samples
+                      drug_data %>% filter(inhibitor == "Doramapimod - Venetoclax"),  ## 110 samples
+                      drug_data %>% filter(inhibitor == "GW-2580 - Venetoclax"),  ## 20 samples
+                      drug_data %>% filter(inhibitor == "Idelalisib - Venetoclax"),  ## 107 samples
+                      drug_data %>% filter(inhibitor == "Olaparib - Venetoclax"),  ## 18 samples
+                      drug_data %>% filter(inhibitor == "Quizartinib - Venetoclax"),  ## 80 samples
+                      drug_data %>% filter(inhibitor == "Ruxolitinib - Venetoclax"),  ## 111 samples
+                      drug_data %>% filter(inhibitor == "Sorafenib - Venetoclax"),  ## 92 samples
+                      drug_data %>% filter(inhibitor == "Trametinib - Venetoclax"),  ## 84 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Artemisinin"),  ## 76 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Ibrutinib"),  ## 119 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - JQ1"),  ## 85 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Palbociclib"),  ## 85 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - Panobinostat"),  ## 82 samples
+                      drug_data %>% filter(inhibitor == "Venetoclax - PH797804")  ## 11 samples
+)
+
+## Function to compute signal value using the markers contained in 'full_model'. This is an element in the output produced by
+## the 'logistic_model' function, in the script 's2n_model' which is loaded at the top.
+## NOTE: The markers in the 'full_model' objects are intersected with the set of COMPLETE (NO NA) features from the new data.
+predict_helper <- function(new_msnset, full_model, case_group, control_group){
+   case_marker = full_model$features %>% filter(group_ == case_group) %>% pull(feature)
+   control_marker = full_model$features %>% filter(group_ == control_group) %>% pull(feature)
+   
+   ## This ensures we don't have any NA when computing the signal in the new samples.
+   case_marker = intersect(case_marker, complete_features)
+   control_marker = intersect(control_marker, complete_features)
+   
+   case_mat = t(exprs(new_msnset)[case_marker, , drop = FALSE]) %>% as.data.frame()
+   control_mat = t(exprs(new_msnset)[control_marker, , drop = FALSE]) %>% as.data.frame()
+   if (ncol(control_mat) > 0){
+      control_mat$control_avg = rowMeans(control_mat, na.rm = T)
+      control_mat <- control_mat %>% select(control_avg)
+   }
+   if (ncol(case_mat) > 0){
+      case_mat$case_avg = rowMeans(case_mat, na.rm = T)
+      case_mat <- case_mat %>% select(case_avg)
+   }
+   
+   logistic_df <- data.frame(sample = sampleNames(new_msnset)) %>% 
+      cbind(case_mat, control_mat) 
+   logistic_pred = predict.glm(full_model$model, logistic_df, type = "response")
+   coefs = full_model$model$coefficients
+   logistic_df <- logistic_df %>%
+      mutate(logistic_signal = coefs[['(Intercept)']] + coefs[['case_avg']]*case_avg + coefs[['control_avg']]*control_avg,
+             logistic_signal2 = case_avg - control_avg,
+             prob = logistic_pred,
+             prob2 = 1/(1+exp(-logistic_signal)))
+   return(logistic_df)
+}
+
+## Function to compute signal value using two sets of markers. The signal will be mean(case_markers) - mean(control_markers)
+## NOTE: The markers are intersected with the set of COMPLETE (NO NA) features from the new data.
+predict_helper_ <- function(new_msnset, case_markers, control_markers){
+   ## intersect with complete features from exp28
+   case_markers = intersect(case_markers, complete_features)
+   control_markers = intersect(control_markers, complete_features)
+   case_mat = t(exprs(new_msnset)[case_markers, , drop = FALSE]) %>% as.data.frame()
+   control_mat = t(exprs(new_msnset)[control_markers, , drop = FALSE]) %>% as.data.frame()
+   if (ncol(control_mat) > 0){
+      control_mat$control_avg = rowMeans(control_mat, na.rm = T)
+      control_mat <- control_mat %>% select(control_avg)
+   }
+   if (ncol(case_mat) > 0){
+      case_mat$case_avg = rowMeans(case_mat, na.rm = T)
+      case_mat <- case_mat %>% select(case_avg)
+   }
+   logistic_df <- data.frame(sample = sampleNames(new_msnset)) %>% 
+      cbind(case_mat, control_mat) %>%
+      mutate(signal = case_avg - control_avg)
+   return(logistic_df)
+}
+
+
+
+```
+
+
+Function to help with p-value annotation
+
+
+```{r}
+
+### Function to annotate t_test pvalues in a boxplot (y = value, x = category) comparing two values in the x-axis.
+t_test_ann <- function(q, comparison, pval_cutoff = 1.1, y_start = NULL, test = "t_test"){
+   x_var = rlang::quo_get_expr(q$mapping$x)
+   y_var = rlang::quo_get_expr(q$mapping$y)
+   test_df = q$data %>% dplyr::select(x_var, y_var) %>%
+      mutate(y = !!y_var, x = !!x_var)
+   if (!(is.factor(test_df$x))){
+      test_df <- test_df %>%
+         mutate(x = factor(x))
+   }
+   boxplot_df = layer_data(q, 1)
+   factor_levels = sapply(comparison, function(x){which(levels(test_df$x) == x)})
+   factor_levels_inbetween = min(factor_levels):max(factor_levels)
+   x_start = min(factor_levels) - 0.05
+   x_end = max(factor_levels) + 0.05
+   seg_y = 0.04 * (max(boxplot_df$ymax) - min(boxplot_df$ymin))
+   if (is.null(y_start)){
+      y_start = max(boxplot_df[factor_levels_inbetween, "upper"]) + seg_y/2
+   }
+   y_end = y_start + seg_y
+ 
+   test_df = test_df %>% filter(!!x_var %in% comparison)
+   t_test = t.test(y ~ x, data = test_df,
+                   alternative = "two.sided", var.equal = TRUE)
+   w_test = wilcox.test(y ~ x, data = test_df,
+                        alternative = "two.sided", var.equal = TRUE)
+   if (test == "t_test"){
+      stat_test = t_test
+   } else if (test == "wilcox_test"){
+      stat_test = w_test
+   }
+   if (stat_test[[3]] < pval_cutoff){
+      q = q + annotate("segment", x = x_start, xend = x_end, y = y_end, yend = y_end, linewidth = 0.8) +
+         annotate("segment", x = x_start, xend = x_start, y = y_start, yend = y_end, linewidth = 0.8) + 
+         annotate("segment", x = x_end, xend = x_end, y = y_start, yend = y_end, linewidth = 0.8) +
+         annotate("text", x = (x_start + x_end)/2, y = y_end + seg_y, label = formatC(stat_test[[3]], digits = 2),
+                  size = 4.3)
+
+   }
+   return(q)
+}
+
+# q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+# q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+# q2
+
+## Helper function to compute t_test between the combined group 'Repsonse_no_relapse + Relapse' vs 'Refractory'
+stat_test_ <- function(plot_df){
+   test_df = plot_df %>%
+      mutate(x_ = case_when(x %in% c("Response_no_relapse", "Relapse") ~ "combined_response_group",
+                            TRUE ~ x)) %>%
+      filter(x_ != "Paired_relapse_sample")
+   t_test = t.test(y ~ x_, data = test_df,
+                   alternative = "two.sided", var.equal = TRUE)
+   w_test = wilcox.test(y ~ x_, data = test_df,
+                        alternative = "two.sided", var.equal = TRUE)
+   message_ = paste("t_test_pval =", formatC(t_test[[3]], digits = 2), "\n") %>%
+      paste("wilcox_test_pval =", formatC(w_test[[3]], digits = 2))
+   print(message_)
+}
+
+## Plot CD14 and CD34
+## Example of how to use the t_test_ann function
+plot_df <- exprs(m_exp28[c("CD14", "CD34"), ]) %>% as.data.frame() %>% tibble::rownames_to_column("feature") %>%
+    tidyr::pivot_longer(-feature, names_to = "sample_name", values_to = "abundance") %>% 
+    inner_join(p_data, by = "sample_name")
+
+q = ggplot(plot_df %>% filter(feature == "CD14"), 
+           aes(x = subcohort, y = abundance, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("Ven signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("CD14") +
+   theme(text = element_text(size = 15))
+q
+
+q = ggplot(plot_df %>% filter(feature == "CD34"), 
+           aes(x = subcohort, y = abundance, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("Ven signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("CD34") +
+   theme(text = element_text(size = 15))
+q
+
+stat_test_(plot_df %>% mutate(x = subcohort, y = abundance))
+## Example of how to use the t_test_ann function
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), y_start = 3.5)
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = 4)
+q2
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), test = "wilcox_test", y_start = -0.12)
+q2
+
+```
+
+
+Main figures of the analysis. We have various signatures computed on exp28 samples, and we plot them while annotating
+the sample cohort. The point is to check whether the signals can separate the various cohorts.
+
+Ven - Untreated signal (exp25)
+
+```{r ven untreated signal}
+## Main figures of the analysis. We have various signatures computed on exp28 samples, and we plot them while annotating
+## the sample cohort. The point is to check whether the signals can separate the various cohorts.
+subcohort_colors_surv =  c("#b37615", "#e8991b", "#014f5c", "#00798c", "#963340", "#d1495b", "grey27")
+
+# belinda_features <- read.csv("Extracting signatures/Differential_expression_results.csv")
+# belinda_sig_25 = c("NCF2", "FCGRT", "KCTD12", "CD93", "TLR8", "NCF1", "MEFV", "PPP1R18", "THEMIS2", 
+#                    "ARAP1", "LRRC25", "IFI30", "AP1B1", "MYO1F", "MTA1", "TNFAIP2", "LRP1", "NADK", 
+#                    "HCK", "UNC119", "EHBP1L1", "GTF2I", "LDB1", "ATP6V1C1", "GIMAP8")
+# my_comparisons = list(c("Refractory, Relapse"), c("Refractory, Response_no_relapse"), c("Relapse, Response_no_relapse"))
+
+############################## V - UT signature ############################## 
+stats_df <- data.frame()
+all_features_df <- data.frame()
+N_markers = 8
+pval_cutoff = 0.001
+var.equal = TRUE
+# method = "s2n_max_v2"
+method = "kmeans"
+## This is the model from exp25 separating Ven from Untreated. (Resisant vs sensitive). Selects 8 markers using the k-means method
+if (!exists("yy10_V")){
+   yy10_V <- logistic_model(m_corrected[complete_V_UT_features, ], "Treatment",
+                          pred_group = "V", control_group = "UT", #combine_markers = TRUE,
+                          ## Tune-able parameters
+                          N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
+}
+
+all_features_df_ <- yy10_V$full_model$features
+xx = predict_helper(m_exp28, yy10_V$full_model, case_group = "V", control_group = "UT") %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   mutate(group_ = case_when(subcohort == "Refractory" & survival_days > 500 ~ "Refractory_over500",
+                             subcohort == "Refractory" & survival_days <= 500 ~ "Refractory_under500",
+                             subcohort == "Relapse" & survival_days > 500 ~ "Relapse_over500",
+                             subcohort == "Relapse" & survival_days <= 500 ~ "Relapse_under500",
+                             subcohort == "Response_no_relapse" & survival_days > 500 ~ "Response_no_relapse_over500",
+                             subcohort == "Response_no_relapse" & survival_days <= 500 ~ "Response_no_relapse_under500",
+                             subcohort == "Paired_relapse_sample" ~ "Paired_relapse_sample"),
+          group_ = factor(group_, levels = c("Response_no_relapse_under500", "Response_no_relapse_over500",
+                                             "Refractory_under500", "Refractory_over500",
+                                             "Relapse_under500", "Relapse_over500",
+                                             "Paired_relapse_sample"))) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(logistic_signal2, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2)))
+
+## Boxplot with no pvalue annotations
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = logistic_signal2, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("Ven signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("4 Patient Ven signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+stat_test_(xx %>% mutate(x = subcohort, y = logistic_signal2))
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = -0.12)
+q2
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), test = "wilcox_test", y_start = -0.12)
+q2
+
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = logistic_signal2, fill = group_)) + geom_boxplot(width = 0.75) + 
+   ylab("Ven signal") + scale_fill_manual(values = subcohort_colors_surv) +
+   ggtitle("4 Patient Ven signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+
+## Jitter plot
+ggplot(xx, aes(x = survival_days, y = logistic_signal2)) + geom_point() + facet_wrap(~subcohort_corr)
+ggplot(xx, aes(x = subcohort, y = logistic_signal2, color = group)) + geom_jitter(size = 3) + 
+   ylab("Ven signal") + scale_color_manual(values = subcohort_colors) +
+   ggtitle("4 Patient Ven signal within Exp 28") +
+   theme(text = element_text(size = 15))
+plot_df = xx %>% 
+   arrange(logistic_signal2) %>%
+   mutate(N = 1:nrow(.))
+
+## Rank plot
+ggplot(plot_df, aes(x = N, y = logistic_signal2, color = group)) + geom_point(size = 4) +
+   ggtitle("4 Patient Ven signal - Rank plot") + scale_color_manual(values = subcohort_colors) + ylab("signal") +
+   theme(text = element_text(size = 15))
+# plot_df = xx %>%
+#    left_join(., maturation_df %>% filter(X == "Monocyte") %>% select(sample_name, Monocyte_est = value),
+#              by = c("sample" = "sample_name"))
+# ggplot(plot_df, aes(x = Monocyte_est, y = logistic_signal2)) + geom_point(size = 4) +    
+#    ggtitle("4 Patient Ven signal - Rank plot") + 
+#    theme(text = element_text(size = 15))
+
+## Use all possible markers to predict signal
+V_markers = read.table("Extracting signatures/4patients_V_UT_diffexp.txt", sep = "\t") %>%
+   filter(logFC > 0, t_test_pval < 0.001) %>% arrange(adj.P.Val)
+UT_markers = read.table("Extracting signatures/4patients_V_UT_diffexp.txt", sep = "\t") %>%
+   filter(logFC < 0, t_test_pval < 0.001) %>% arrange(adj.P.Val)
+
+plot_df = predict_helper_(m_exp28, case_markers = V_markers$feature,
+                          control_markers = UT_markers$feature) %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   mutate(group_ = case_when(subcohort == "Refractory" & survival_days > 500 ~ "Refractory_over500",
+                             subcohort == "Refractory" & survival_days <= 500 ~ "Refractory_under500",
+                             subcohort == "Relapse" & survival_days > 500 ~ "Relapse_over500",
+                             subcohort == "Relapse" & survival_days <= 500 ~ "Relapse_under500",
+                             subcohort == "Response_no_relapse" & survival_days > 500 ~ "Response_no_relapse_over500",
+                             subcohort == "Response_no_relapse" & survival_days <= 500 ~ "Response_no_relapse_under500",
+                             subcohort == "Paired_relapse_sample" ~ "Paired_relapse_sample"),
+          group_ = factor(group_, levels = c("Response_no_relapse_under500", "Response_no_relapse_over500",
+                                             "Refractory_under500", "Refractory_over500",
+                                             "Relapse_under500", "Relapse_over500",
+                                             "Paired_relapse_sample"))) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(signal, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2)))
+
+## Boxplot with no pvalue annotations
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("4 patient Ven signal (pval < 0.001) within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+stat_test_(plot_df %>% mutate(x = subcohort, y = signal))
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = -0.42)
+q2
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), test = "wilcox_test", y_start = -0.42)
+q2
+
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group_)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors_surv) +
+   ggtitle("4 patient Ven signal (pval < 0.001) within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+
+## jitter plot
+ggplot(plot_df, aes(x = survival_days, y = signal)) + geom_point() + facet_wrap(~subcohort_corr)
+ggplot(plot_df, aes(x = subcohort, y = signal, color = group)) + geom_jitter(size = 3) + 
+   ylab("Ven signal") + scale_color_manual(values = subcohort_colors) +
+   ggtitle("4 patient Ven signal (pval < 0.001) within Exp 28") +
+   theme(text = element_text(size = 15))
+plot_df = plot_df %>% 
+   arrange(signal) %>%
+   mutate(N = 1:nrow(.))
+## Rank plot
+ggplot(plot_df, aes(x = N, y = signal, color = group)) + geom_point(size = 4) +
+   ggtitle("4 patient Ven signal (pval < 0.001) within Exp 28 - Rank plot") + scale_color_manual(values = subcohort_colors) +
+   theme(text = element_text(size = 15))
+
+```
+
+
+Dec Ven - Untreated signal (exp25)
+
+
+```{r}
+
+############################## DV - UT signature ############################## 
+N_markers = 10
+pval_cutoff = 0.001
+var.equal = TRUE
+# method = "s2n_max_v2"
+method = "kmeans"
+## This is the model from exp25 separating Dec Ven from Untreated. (Resistant vs sensitive). Selects 10 markers using the k-means method
+if (!exists("yy10_DV")){
+   yy10_DV <- logistic_model(m_corrected[complete_DV_UT_features, ], "Treatment",
+                          pred_group = "DV", control_group = "UT", #combine_markers = TRUE,
+                          ## Tune-able parameters
+                          N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, var.equal = var.equal)
+}
+
+all_features_df_ <- yy10_DV$full_model$features
+xx = predict_helper(m_exp28, yy10_DV$full_model, case_group = "DV", control_group = "UT") %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   mutate(group_ = case_when(subcohort == "Refractory" & survival_days > 500 ~ "Refractory_over500",
+                             subcohort == "Refractory" & survival_days <= 500 ~ "Refractory_under500",
+                             subcohort == "Relapse" & survival_days > 500 ~ "Relapse_over500",
+                             subcohort == "Relapse" & survival_days <= 500 ~ "Relapse_under500",
+                             subcohort == "Response_no_relapse" & survival_days > 500 ~ "Response_no_relapse_over500",
+                             subcohort == "Response_no_relapse" & survival_days <= 500 ~ "Response_no_relapse_under500",
+                             subcohort == "Paired_relapse_sample" ~ "Paired_relapse_sample"),
+          group_ = factor(group_, levels = c("Response_no_relapse_under500", "Response_no_relapse_over500",
+                                             "Refractory_under500", "Refractory_over500",
+                                             "Relapse_under500", "Relapse_over500",
+                                             "Paired_relapse_sample"))) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(logistic_signal2, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2)))
+
+## Boxplot with no annotations
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = logistic_signal2, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("Dec-Ven signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("4 Patient Dec Ven signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+stat_test_(xx %>% mutate(x = subcohort, y = logistic_signal2))
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = 1.28)
+q2
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), test = "wilcox_test", y_start = 1.28)
+q2
+
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = logistic_signal2, fill = group_)) + geom_boxplot(width = 0.75) + 
+   ylab("Dec-Ven signal") + scale_fill_manual(values = subcohort_colors_surv) +
+   ggtitle("4 Patient Dec Ven signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+
+## Jitter plot
+ggplot(xx, aes(x = survival_days, y = logistic_signal2)) + geom_point() + facet_wrap(~subcohort_corr)
+ggplot(xx, aes(x = subcohort, y = logistic_signal2, color = group)) + geom_jitter(size = 3) + 
+   ylab("Dec-Ven signal") + scale_color_manual(values = subcohort_colors) +
+   ggtitle("4 Patient Dec Ven signal within Exp 28") +
+   theme(text = element_text(size = 15))
+plot_df = xx %>% 
+   arrange(logistic_signal2) %>%
+   mutate(N = 1:nrow(.))
+
+## Rank plot
+ggplot(plot_df, aes(x = N, y = logistic_signal2, color = group)) + geom_point(size = 4) +
+   ggtitle("4 Patient Ven Dec signal - Rank plot") + scale_color_manual(values = subcohort_colors) + ylab("signal") +
+   theme(text = element_text(size = 15)) 
+
+## Use all possible markers to predict signal
+DV_markers = read.table("Extracting signatures/4patients_DV_UT_diffexp.txt", sep = "\t") %>%
+   filter(logFC > 0, t_test_pval < 0.001) %>% arrange(adj.P.Val)
+UT_markers = read.table("Extracting signatures/4patients_DV_UT_diffexp.txt", sep = "\t") %>%
+   filter(logFC < 0, t_test_pval < 0.001) %>% arrange(adj.P.Val)
+
+plot_df = predict_helper_(m_exp28, case_markers = DV_markers$feature,
+                          control_markers = UT_markers$feature) %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   mutate(group_ = case_when(subcohort == "Refractory" & survival_days > 500 ~ "Refractory_over500",
+                             subcohort == "Refractory" & survival_days <= 500 ~ "Refractory_under500",
+                             subcohort == "Relapse" & survival_days > 500 ~ "Relapse_over500",
+                             subcohort == "Relapse" & survival_days <= 500 ~ "Relapse_under500",
+                             subcohort == "Response_no_relapse" & survival_days > 500 ~ "Response_no_relapse_over500",
+                             subcohort == "Response_no_relapse" & survival_days <= 500 ~ "Response_no_relapse_under500",
+                             subcohort == "Paired_relapse_sample" ~ "Paired_relapse_sample"),
+          group_ = factor(group_, levels = c("Response_no_relapse_under500", "Response_no_relapse_over500",
+                                             "Refractory_under500", "Refractory_over500",
+                                             "Relapse_under500", "Relapse_over500",
+                                             "Paired_relapse_sample"))) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(signal, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2)))
+
+## Boxplot with no pvalue annotations
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("4 patient Dec Ven signal (pval < 0.001) within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+stat_test_(plot_df %>% mutate(x = subcohort, y = signal))
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = 0.97)
+q2
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), test = "wilcox_test", y_start = 0.97)
+q2
+
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group_)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors_surv) +
+   ggtitle("4 patient Dec Ven signal (pval < 0.001) within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+
+## Jitter plot
+ggplot(plot_df, aes(x = survival_days, y = signal)) + geom_point() + facet_wrap(~subcohort_corr)
+ggplot(plot_df, aes(x = subcohort, y = signal, color = group)) + geom_jitter(size = 3) + 
+   ylab("Ven signal") + scale_color_manual(values = subcohort_colors) +
+   ggtitle("4 patient Dec Ven signal (pval < 0.001) within Exp 28") +
+   theme(text = element_text(size = 15))
+plot_df = plot_df %>% 
+   arrange(signal) %>%
+   mutate(N = 1:nrow(.))
+## Rank plot
+ggplot(plot_df, aes(x = N, y = signal, color = group)) + geom_point(size = 4) +
+   ggtitle("4 patient Dec Ven signal (pval < 0.001) within Exp 28 - Rank plot") + scale_color_manual(values = subcohort_colors) +
+   theme(text = element_text(size = 15))
+
+```
+
+
+CD14 vs CD34 signature from Sorted Cell dataset
+
+
+```{r}
+############################## Sorted Cell (Belinda) signature ############################## 
+## Belinda's signature computed by Belinda
+plot_df = read.csv("Exp28_scoredUsingSortedSigs_from_Belinda.csv") %>%
+   filter(Signature == "Sorted") %>%
+   left_join(., p_data, by = c("sampleID" = "sample_name")) %>%
+   mutate(signal = WV)  %>%
+   mutate(group_ = case_when(subcohort == "Refractory" & survival_days > 500 ~ "Refractory_over500",
+                             subcohort == "Refractory" & survival_days <= 500 ~ "Refractory_under500",
+                             subcohort == "Relapse" & survival_days > 500 ~ "Relapse_over500",
+                             subcohort == "Relapse" & survival_days <= 500 ~ "Relapse_under500",
+                             subcohort == "Response_no_relapse" & survival_days > 500 ~ "Response_no_relapse_over500",
+                             subcohort == "Response_no_relapse" & survival_days <= 500 ~ "Response_no_relapse_under500",
+                             subcohort == "Paired_relapse_sample" ~ "Paired_relapse_sample"),
+          group_ = factor(group_, levels = c("Response_no_relapse_under500", "Response_no_relapse_over500",
+                                             "Refractory_under500", "Refractory_over500",
+                                             "Relapse_under500", "Relapse_over500",
+                                             "Paired_relapse_sample"))) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(signal, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2)))
+plot_df$CD34 = exprs(m_exp28)["CD34", plot_df$sampleID]
+plot_df$CD14 = exprs(m_exp28)["CD14", plot_df$sampleID]
+plot_df$cd14_cd34 = plot_df$CD14 - plot_df$CD34
+
+## Boxplot with no pvalue annotations
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("Sorted cell unrefined signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+stat_test_(plot_df %>% mutate(x = subcohort, y = signal))
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = 1285)
+q2
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), test = "wilcox_test", y_start = 1285)
+q2
+
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group_)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors_surv) +
+   ggtitle("Sorted cell unrefined signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+
+## Jitter plot
+ggplot(plot_df, aes(x = survival_days, y = signal)) + geom_point() + facet_wrap(~subcohort_corr)
+ggplot(plot_df, aes(x = subcohort, y = signal, color = group)) + geom_jitter(size = 3) + 
+   ylab("signal") + scale_color_manual(values = subcohort_colors) +
+   ggtitle("Sorted cell unrefined signal within Exp 28") +
+   theme(text = element_text(size = 15))
+plot_df = plot_df %>% 
+   arrange(signal) %>%
+   mutate(N = 1:nrow(.))
+## Rank plot
+ggplot(plot_df, aes(x = N, y = signal, color = group)) + geom_point(size = 4) +
+   ggtitle("Sorted cell unrefined signal within Exp 28 - Rank plot") + scale_color_manual(values = subcohort_colors) +
+   theme(text = element_text(size = 15))
+
+
+
+plot_df = read.csv("Exp28_scoredUsingSortedSigs_from_Belinda.csv") %>%
+   filter(Signature == "Sorted_25") %>%
+   left_join(., p_data, by = c("sampleID" = "sample_name")) %>%
+   mutate(signal = WV) %>%
+   mutate(group_ = case_when(subcohort == "Refractory" & survival_days > 500 ~ "Refractory_over500",
+                             subcohort == "Refractory" & survival_days <= 500 ~ "Refractory_under500",
+                             subcohort == "Relapse" & survival_days > 500 ~ "Relapse_over500",
+                             subcohort == "Relapse" & survival_days <= 500 ~ "Relapse_under500",
+                             subcohort == "Response_no_relapse" & survival_days > 500 ~ "Response_no_relapse_over500",
+                             subcohort == "Response_no_relapse" & survival_days <= 500 ~ "Response_no_relapse_under500",
+                             subcohort == "Paired_relapse_sample" ~ "Paired_relapse_sample"),
+          group_ = factor(group_, levels = c("Response_no_relapse_under500", "Response_no_relapse_over500",
+                                             "Refractory_under500", "Refractory_over500",
+                                             "Relapse_under500", "Relapse_over500",
+                                             "Paired_relapse_sample"))) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(signal, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2)))
+plot_df$CD34 = exprs(m_exp28)["CD34", plot_df$sampleID]
+plot_df$CD14 = exprs(m_exp28)["CD14", plot_df$sampleID]
+plot_df$cd14_cd34 = plot_df$CD14 - plot_df$CD34
+
+## Boxplot with no pvalue annotations
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors) +
+   ggtitle("Sorted cell refined signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+stat_test_(plot_df %>% mutate(x = subcohort, y = signal))
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = 15.3)
+q2
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"), test = "wilcox_test")
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), test = "wilcox_test", y_start = 15.3)
+q2
+
+q = ggplot(plot_df %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = group_)) + geom_boxplot(width = 0.75) + 
+   ylab("signal") + scale_fill_manual(values = subcohort_colors_surv) +
+   ggtitle("Sorted cell refined signal within Exp 28") +
+   theme(text = element_text(size = 15))
+q
+## Jitter plot
+ggplot(plot_df, aes(x = survival_days, y = signal)) + geom_point() + facet_wrap(~subcohort_corr)
+ggplot(plot_df, aes(x = subcohort, y = signal, color = group)) + geom_jitter(size = 3) + 
+   ylab("signal") + scale_color_manual(values = subcohort_colors) +
+   ggtitle("Sorted cell refined signal within Exp 28") +
+   theme(text = element_text(size = 15))
+plot_df = plot_df %>% 
+   arrange(signal) %>%
+   mutate(N = 1:nrow(.))
+## Rank plot
+ggplot(plot_df, aes(x = N, y = signal, color = group)) + geom_point(size = 4) +
+   ggtitle("Sorted cell refined signal within Exp 28 - Rank plot") + scale_color_manual(values = subcohort_colors) +
+   theme(text = element_text(size = 15))
+
+```
+
+
+Heatmaps
+
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+col_fun = colorRamp2(c(0, 1500), c("white", "black"))
+
+## Helper function to plot heatmaps given a set of features. The row_period parameter allows for labeling of the rows without cluttering.
+## row_period = N will annotate every 'Nth' row, if plotting 400 features row_period should be around ~15
+plot_heatmap_ <- function(chosen_features, plot_name, row_period = 1, remove_missing_ = FALSE, m = m_exp28){
+   if (remove_missing_){
+      chosen_features = intersect(features_50perc, chosen_features)
+   } else {
+      chosen_features = intersect(featureNames(m), chosen_features)
+   }
+   mat <- exprs(m)[chosen_features, ]
+   mat <- sweep(mat, 1, apply(mat, 1, median, na.rm = T), FUN = '-')
+   giveNAs = which(is.na(as.matrix(dist(mat))),arr.ind=TRUE) %>% rownames() %>% table() %>% sort(decreasing = TRUE)
+   mat <- mat[!(rownames(mat) %in% names(giveNAs)), ]
+   
+   
+   
+   column_ann = HeatmapAnnotation(subcohort = factor(m$subcohort, 
+                                                     levels = names(subcohort_colors)), 
+                                  vital_status = factor(m$vitalStatus, levels = names(vital_colors)), 
+                                  survival_days = m$survival_days,
+                                  col = list(subcohort = subcohort_colors,
+                                             vital_status = vital_colors,
+                                             survival_days = col_fun),
+                                  annotation_legend_param = list(subcohort = list(legend_height = unit(5, "cm"),
+                                                                                  labels_gp = grid::gpar(fontsize = 14),
+                                                                                  title_gp = grid::gpar(fontsize = 16)),
+                                                                 vital_status = list(legend_height = unit(2, "cm"),
+                                                                                     labels_gp = grid::gpar(fontsize = 14),
+                                                                                     title_gp = grid::gpar(fontsize = 16))))
+   
+   
+   row_labs = rownames(mat)
+   row_dend = hclust(dist(mat), method = "ward.D") %>% as.dendrogram()
+   if (row_period > 1){
+      row_labs[order.dendrogram(row_dend)[(1:nrow(mat) %% row_period) != 1]] = ""
+   } 
+   row_ann = rowAnnotation(site = anno_text(row_labs, 
+                                            which = "row", 
+                                            gp = gpar(fontsize = 13, col = "black"),
+                                            just = "left",
+                                            offset = unit(0.7, "mm")))
+   
+   
+   
+   plot_title <- plot_name %>% gsub("_", " ", .)
+   plot_path <- paste(plot_name, "_sites.png")
+   png(file = plot_path, width = 1000, height = 900)
+   ht <- Heatmap(mat, top_annotation = column_ann, cluster_columns = TRUE, column_title = plot_title, 
+                 row_names_gp = grid::gpar(fontsize = 16), column_title_gp = grid::gpar(fontsize = 25),
+                 cluster_rows = row_dend, right_annotation = row_ann, show_row_names = FALSE,
+                 heatmap_legend_param = list(legend_height = unit(5, "cm"),
+                                             labels_gp = grid::gpar(fontsize = 13),
+                                             title_gp = grid::gpar(fontsize = 16),
+                                             title = ""))
+   draw(ht)
+   dev.off()
+}
+
+```
+
+Plotting heatmaps of most differentially expressed features
+The contrasts are: Refractory vs Response no relapse, Relapse vs Response no relapse.
+
+Also plotting heatmaps using the markers for each signature. Exp25 V - Ut, DV - UT, and Sorted cells signature.
+
+```{r}
+## Relapse vs Response_no_relapse top 30 features
+chosen_features = diffexp_1 %>%
+   filter(feature %in% features_50perc) %>%
+   mutate(sign = logFC > 0) %>%
+   group_by(sign) %>% arrange(t_test_pval) %>%
+   slice(1:15) %>% ungroup()
+
+plot_heatmap_(chosen_features$feature, "Relapse_vs_Response_no_relapse_top_30_diffexp")
+
+## Refractory vs Response_no_relapse top 30 features
+chosen_features = diffexp_2 %>%
+   filter(feature %in% features_50perc) %>%
+   mutate(sign = logFC > 0) %>%
+   group_by(sign) %>% arrange(t_test_pval) %>%
+   slice(1:15) %>% ungroup()
+
+plot_heatmap_(chosen_features$feature, "Refractory_vs_Response_no_relapse_top_30_diffexp")
+
+## 4 patient Ven signature 16 features
+chosen_features = yy10_V$full_model$features
+plot_heatmap_(chosen_features$feature, "Ex Vivo Ven Resistance signature", remove_missing_ = TRUE)
+
+chosen_features = yy10_V$full_model$features
+plot_heatmap_(chosen_features$feature %>% intersect(., complete_features), 
+              "Ex Vivo Ven Resistance signature (complete features)", remove_missing_ = TRUE)
+
+chosen_features = read.table("Extracting signatures/4patients_V_UT_diffexp.txt", sep = "\t") %>%
+   filter(t_test_pval < 0.001) %>% arrange(adj.P.Val)
+plot_heatmap_(chosen_features$feature %>% intersect(., complete_features), 
+              "Ex Vivo Ven Resistance signature (unrefined)", remove_missing_ = TRUE)
+
+
+## 4 patient Dec Ven signature 20 features
+chosen_features = yy10_DV$full_model$features
+plot_heatmap_(chosen_features$feature, "Ex Vivo Dec Ven Resistance signature", remove_missing_ = TRUE)
+
+chosen_features = yy10_DV$full_model$features
+plot_heatmap_(chosen_features$feature %>% intersect(., complete_features), 
+              "Ex Vivo Dec Ven Resistance signature (complete features)", remove_missing_ = TRUE)
+
+chosen_features = read.table("Extracting signatures/4patients_DV_UT_diffexp.txt", sep = "\t") %>%
+   filter(t_test_pval < 0.001) %>% arrange(adj.P.Val)
+plot_heatmap_(chosen_features$feature %>% intersect(., complete_features), 
+              "Ex Vivo Dec Ven Resistance signature (unrefined)", remove_missing_ = TRUE)
+
+
+## Sorted cells, BeatAML refined signature
+belinda_sig_25 = c("NCF2", "FCGRT", "KCTD12", "CD93", "TLR8", "NCF1", "MEFV", "PPP1R18", "THEMIS2", 
+                   "ARAP1", "LRRC25", "IFI30", "AP1B1", "MYO1F", "MTA1", "TNFAIP2", "LRP1", "NADK", 
+                   "HCK", "UNC119", "EHBP1L1", "GTF2I", "LDB1", "ATP6V1C1", "GIMAP8")
+plot_heatmap_(belinda_sig_25, "Sorted cells, BeatAML refined signature")
+
+chosen_features <- belinda_features %>% filter(adj.P.Val < 0.05)
+plot_heatmap_(chosen_features$Gene %>% intersect(., complete_features), "Sorted cells, BeatAML unrefined signature",
+              row_period = 25)
+
+
+BCL2_features = c("BCL2", "MCL1", "BCL2L1", "BCL6", "BAX", "BBC3", "BCL2A1", "BEX3", "PMAIP", "BIM")
+plot_heatmap_(BCL2_features, "BCL2 features")
+plot_features(m_exp28, BCL2_features, color_by = "subcohort")
+
+## Send matrix to Jeff
+xx = read.csv2("Aggregation_report.pg_matrix.tsv", sep = "\t")
+mat_df_raw = xx[, c(3, 5:45)] %>% as.data.frame()  ## Take Gene name and samples
+colnames(mat_df_raw) = sub("^.*WorkDir1\\.", "", colnames(mat_df_raw))
+colnames(mat_df_raw) = sub("_FAIMS_.*$", "", colnames(mat_df_raw))
+colnames(mat_df_raw)
+## Rolling up, since there are duplicate gene names. Taking log2 then mean to rollup.
+mat_df_raw = mat_df_raw %>%
+   tidyr::pivot_longer(-Genes, names_to = "sample_name", values_to = "value") %>%
+   mutate(value = as.numeric(value)) %>%
+   group_by(Genes, sample_name) %>%
+   mutate(value_rollup = exp(mean(log(value)))) %>% ungroup() %>%
+   select(Genes, sample_name, value_rollup) %>% unique() %>%
+   tidyr::pivot_wider(names_from = "sample_name", values_from = "value_rollup")
+mat_df_raw = mat_df_raw %>% filter(Genes != "")
+mat_raw = mat_df_raw[, -1] %>% as.matrix()
+rownames(mat_raw) = mat_df_raw$Genes
+
+p_tada = t(p_data %>% select(subcohort, vitalStatus, survival_days)) %>% as.data.frame()
+p_tada = p_tada[, plot_order]
+
+chosen_features = c("BCL2A1", "BCL2L1", "BCL6", "MCL1", "BCL2", "BAX", "BBC3")
+plot_order = c(36, 16, 20, 33, 18, 29, 25, 31, 23, 04, 13, 32, 12, 37, 28,
+               41, 34, 30, 03, 07, 27, 40, 26, 02, 10, 19, 11, 39, 14, 01, 
+               35, 22, 24, 38, 21, 08, 15, 05, 17, 06, 09)
+mat = exprs(m_exp28)[chosen_features, plot_order] %>% as.data.frame() %>%
+   rbind(p_tada, .)
+mat_raw = mat_raw[chosen_features, plot_order] %>% as.data.frame() %>%
+   rbind(p_tada, .)
+mat_centered = sweep(exprs(m_exp28)[chosen_features, plot_order], 1, 
+                     apply(exprs(m_exp28)[chosen_features, plot_order], 1, median, na.rm = T), FUN = '-') %>% 
+   as.data.frame() %>%
+   rbind(p_tada, .)
+
+openxlsx::write.xlsx(list("BCL2_proteins" = mat, 
+                          "BCL2_proteins_centered" = mat_centered,
+                          "BCL2_proteins_raw" = mat_raw,
+                          "metadata" = pData(m_exp28) %>% select(sample_name, everything())), 
+                     file = "BCL2_proteins.xlsx", rowNames = TRUE)
+
+
+
+hallmark_features = t2g_hallmark %>%
+   filter(gs_name == "HALLMARK_MYC_TARGETS_V1") %>% unique()
+plot_heatmap_(hallmark_features$gene_symbol, "MYC targets V1", row_period = 4, remove_missing_ = TRUE)
+
+BCL2_features = c("BCL2", "BIK", "BAK1", "BAD", "BCL2L11",
+                  "TP53", "PMAIP1", "BECN", "BNIP3", 
+                  "MCL1", "BCL2L1", "BCL6", "BAX", "BBC3", 
+                  "BCL2A1", "BEX3", "PMAIP", "BIM") %>% unique()
+plot_heatmap_(BCL2_features, "BCL2 features (including stringdb)")
+
+
+
+## Relapse (survival less than 500 days) vs Response_no_relapse (survival for more than 500 days) top 30 features
+chosen_features = diffexp_3 %>%
+   filter(contrast == "relapse_short-response_long") %>%
+   filter(feature %in% features_50perc) %>%
+   mutate(sign = logFC > 0) %>%
+   group_by(sign) %>% arrange(t_test_pval) %>%
+   slice(1:15) %>% ungroup()
+two_groups_samples = pData(m_exp28) %>%
+   filter(group_surv %in% c("response_long", "relapse_short")) %>% pull(sample_name)
+two_groups_samples_ = pData(m_exp28) %>%
+   filter(subcohort %in% c("Relapse", "Response_no_relapse")) %>% pull(sample_name)
+
+plot_heatmap_(chosen_features$feature, "Relapse (less than 500) vs Response no relapse (more than 500) top 30 features")
+plot_heatmap_(chosen_features$feature, "Relapse (less than 500) vs Response no relapse (more than 500) top 30 features 2",
+              m = m_exp28[, two_groups_samples])
+plot_heatmap_(chosen_features$feature, "Relapse (less than 500) vs Response no relapse (more than 500) top 30 features 3",
+              m = m_exp28[, two_groups_samples_])
+
+
+## Refractory vs Response_no_relapse (survival for more than 500 days) top 30 features
+chosen_features = diffexp_3 %>%
+   filter(contrast == "Refractory-response_long") %>%
+   filter(feature %in% features_50perc) %>%
+   mutate(sign = logFC > 0) %>%
+   group_by(sign) %>% arrange(t_test_pval) %>%
+   slice(1:15) %>% ungroup()
+two_groups_samples = pData(m_exp28) %>%
+   filter(group_surv %in% c("response_long", "Refractory")) %>% pull(sample_name)
+two_groups_samples_ = pData(m_exp28) %>%
+   filter(subcohort %in% c("Refractory", "Response_no_relapse")) %>% pull(sample_name)
+
+plot_heatmap_(chosen_features$feature, "Refractory vs Response no relapse (more than 500) top 30 features")
+plot_heatmap_(chosen_features$feature, "Refractory vs Response no relapse (more than 500) top 30 features 2",
+              m = m_exp28[, two_groups_samples])
+plot_heatmap_(chosen_features$feature, "Refractory vs Response no relapse (more than 500) top 30 features 3",
+              m = m_exp28[, two_groups_samples_])
+
+```
+
+
+
+
+
+
+
+

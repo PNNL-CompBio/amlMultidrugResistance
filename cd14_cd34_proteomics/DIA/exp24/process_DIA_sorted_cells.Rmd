@@ -1,0 +1,86 @@
+
+
+
+```{r}
+library(dplyr)
+library(MSnSet.utils)
+library(msigdbr)
+library(ggupset)
+library(ComplexUpset)
+library(stringr)
+library(ggplot2)
+library(VennDiagram)
+
+source("../../../synapseUtil.R")
+
+# crosstab_prot <- read.table("crosstab_PTRC_wrkpckg5469_august_DIA_nolib.txt", sep = "\t")
+crosstab_prot <- read.table(syn$get('syn70198003')$path, sep = "\t")
+table(grepl(";", rownames(crosstab_prot)))
+
+crosstab_prot <- crosstab_prot[!grepl(";", rownames(crosstab_prot)), ]
+## I go here to map these https://www.uniprot.org/id-mapping 
+write.table(rownames(crosstab_prot), quote = F, file = "dia_sorted_cells_proteins.txt", col.names = F, row.names = F)
+conv_df <- read.table("idmapping_2024_09_26.tsv", sep = "\t", header = T) %>%
+   group_by(From) %>%
+   mutate(total = n()) %>% ungroup() %>%
+   group_by(To) %>% mutate(total_2 = n()) %>% ungroup()
+
+conv_df_unique <- conv_df %>%
+   group_by(From) %>% slice(1)
+
+# Q3LFD5, Q6ZSR9 are not mapped by Uniprot. We use merge to exclude this results from crosstab_df
+crosstab_df <- crosstab_prot %>% as.data.frame() %>%
+   mutate(From = rownames(crosstab_prot)) %>%
+   merge(conv_df_unique, by = "From") %>%
+   mutate(feature = To) %>% select(-From, -To, -total, -total_2)
+
+
+## log transforming then taking the mean samplewise if two proteins map to the same gene
+# crosstab_df <- crosstab_df %>% 
+#    filter(feature != "MOCS2")
+crosstab_df <- crosstab_df %>%
+   tidyr::pivot_longer(-feature, values_to = "value", names_to = "sample") %>%
+   mutate(value = log2(value)) %>%
+   tidyr::pivot_wider(names_from = "sample", values_from = "value", values_fn = mean) 
+crosstab <- crosstab_df %>%
+   select(-feature) %>% 
+   as.matrix()
+
+rownames(crosstab) <- crosstab_df$feature
+meta <- data.frame(sample = colnames(crosstab)) %>%
+   mutate(group = sub("^.*_", "", sample),
+          patient = sub("_.*$", "", sample))
+rownames(meta) <- meta$sample
+m <- MSnSet(exprs = crosstab, pData = meta)
+   
+
+hist(rowSums(is.na(exprs(m))))
+
+m <- m[rowSums(is.na(exprs(m))) < 24, ]
+hist(rowSums(is.na(exprs(m))))
+col_medians <- apply(exprs(m), 2, median, na.rm = T)
+exprs(m) <- sweep(exprs(m), 2, col_medians, FUN = '-')
+
+ 
+plot_pca(m, phenotype = "group")
+plot_pca(m, phenotype = "patient")
+write.table(exprs(m), "sorted_cells_dia_5469.txt", sep = "\t", quote = F)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

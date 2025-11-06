@@ -1,0 +1,112 @@
+
+
+
+```{r}
+#library(dplyr)
+library(MSnSet.utils)
+library(msigdbr)
+library(ggupset)
+library(ComplexUpset)
+library(stringr)
+#library(ggplot2)
+library(VennDiagram)
+library(tidyverse)
+
+source("../../../Github/camilo_helper/helper_scripts.R")
+
+
+# SamO crosstab creation and contaminant removal post DIA-NN
+
+  #protein level data taken from DIA-NN pg matrix output. see log file for parameter information
+  DIA_august<-read_tsv("PTRC_wrkpckg5469_august_report.pg_matrix.tsv")
+  
+  
+  #remove contaminants
+  DIA_august<-DIA_august %>% filter(!str_detect(Protein.Ids,"Contaminant|contaminant"))
+  
+  
+  #protein level crosstab for Camilo handoff
+  crosstab_format<-function(c_pro){
+    
+    #abundance columns
+    abund_cols<-colnames(c_pro[grep("mzML",names(c_pro))])
+    
+    #sample info
+    sinfo<-data.frame(sampleID=colnames(c_pro[abund_cols]))
+    sinfo$new_sampleID<-gsub("D.*DIA_[0-9]{2}-|_[0-9]{2}_FAIMS.*","",sinfo$sampleID)
+    
+    #intensity
+    edata<-c_pro %>% select(Protein.Group,abund_cols) %>% pivot_longer(cols=abund_cols,values_to="intensity",names_to="sampleID") %>% 
+      #combine with shortened names above (takes less time then str_extract)
+      left_join(sinfo,by="sampleID") %>% select(-sampleID) %>% pivot_wider(names_from=new_sampleID,values_from=intensity)
+    
+    #protein aggregation table
+    crosstab_prot_agg<-data.frame(edata,row.names = "Protein.Group")
+    
+    return(crosstab_prot_agg)
+  }
+  
+  DIA_august<-crosstab_format(DIA_august)
+  
+  
+  # Save cross-tab
+  write.table(DIA_august, file = "crosstab_PTRC_wrkpckg5469_august_DIA_nolib.txt",
+              sep = "\t", quote = FALSE, row.names = TRUE,col.names = TRUE)
+
+
+#CamiloP processing
+
+crosstab_prot <- read.table("crosstab_PTRC_wrkpckg5469_august_DIA_nolib.txt", sep = "\t")
+table(grepl(";", rownames(crosstab_prot)))
+
+crosstab_prot <- crosstab_prot[!grepl(";", rownames(crosstab_prot)), ]
+## I go here to map these https://www.uniprot.org/id-mapping 
+write.table(rownames(crosstab_prot), quote = F, file = "dia_sorted_cells_proteins.txt", col.names = F, row.names = F)
+conv_df <- read.table("idmapping_2024_09_26.tsv", sep = "\t", header = T) %>%
+   group_by(From) %>%
+   mutate(total = n()) %>% ungroup() %>%
+   group_by(To) %>% mutate(total_2 = n()) %>% ungroup()
+
+conv_df_unique <- conv_df %>%
+   group_by(From) %>% slice(1)
+
+# Q3LFD5, Q6ZSR9 are not mapped by Uniprot. We use merge to exclude this results from crosstab_df
+crosstab_df <- crosstab_prot %>% as.data.frame() %>%
+   mutate(From = rownames(crosstab_prot)) %>%
+   merge(conv_df_unique, by = "From") %>%
+   mutate(feature = To) %>% select(-From, -To, -total, -total_2)
+
+
+## log transforming then taking the mean samplewise if two proteins map to the same gene
+# crosstab_df <- crosstab_df %>% 
+#    filter(feature != "MOCS2")
+crosstab_df <- crosstab_df %>%
+   tidyr::pivot_longer(-feature, values_to = "value", names_to = "sample") %>%
+   mutate(value = log2(value)) %>%
+   tidyr::pivot_wider(names_from = "sample", values_from = "value", values_fn = mean) 
+crosstab <- crosstab_df %>%
+   select(-feature) %>% 
+   as.matrix()
+
+rownames(crosstab) <- crosstab_df$feature
+meta <- data.frame(sample = colnames(crosstab)) %>%
+   mutate(group = sub("^.*_", "", sample),
+          patient = sub("_.*$", "", sample))
+rownames(meta) <- meta$sample
+m <- MSnSet(exprs = crosstab, pData = meta)
+   
+
+hist(rowSums(is.na(exprs(m))))
+
+m <- m[rowSums(is.na(exprs(m))) < 24, ]
+hist(rowSums(is.na(exprs(m))))
+col_medians <- apply(exprs(m), 2, median, na.rm = T)
+exprs(m) <- sweep(exprs(m), 2, col_medians, FUN = '-')
+
+ 
+plot_pca(m, phenotype = "group")
+plot_pca(m, phenotype = "patient")
+write.table(exprs(m), "sorted_cells_dia_5469.txt", sep = "\t", quote = F)
+
+
+```

@@ -1,0 +1,345 @@
+---
+title: "2.5-process_KSTAR_input.Rmd"
+output: html_document
+date: "2022-11-14"
+---
+
+
+
+
+---
+title: "Ex22 Phospho proteomics"
+output: html_document
+---
+
+The phospho proteomics pipeline uses the R package [PlexedPiper](https://github.com/vladpetyuk/PlexedPiper). It also requires a connection to the DMS to access data packages.
+
+```{r, echo=F}
+library(knitr)
+knitr::opts_chunk$set(message=F, warning=F)
+t0 <- Sys.time(); print(t0)
+```
+
+```{r setup}
+library(PlexedPiper)
+library(dplyr)
+library(PNNL.DMS.utils)
+library(Biostrings)
+library(tidyverse)
+
+
+data_package_num <- 5392
+data_folder <- "data/phospho_data"
+crosstab_prefix <- "Exp24"
+
+## Use protein level
+path_to_global_crosstab <- "data/global_data/Exp24_crosstab_global_prot_original.txt"
+
+dir.create(data_folder)
+
+```
+
+
+
+# Study design
+
+Study design information in PlexedPiper is encoded in three tables: fractions, samples, and references. 
+These tables can be made using metadata and should be stored on the DMS before processing.
+
+
+```{r read_study_design}
+fractions <- read.table("study_design/phospho_study_design/fractions.txt", sep = "\t", header = T)
+samples <- read.table("study_design/phospho_study_design/samples.txt", sep = "\t", header = T)
+references <- read.table("study_design/phospho_study_design/references.txt", sep = "\t", header = T)
+
+```
+
+
+# Process MS-GF+ data
+
+MS-GF+ data is processed in several steps. First, read MS-GF+ output from the DMS. (This step can take a while).
+
+```{r read_msgf_data}
+msgf_data_path <- file.path(data_folder, "msgfData_original.RData")
+if (file.exists(msgf_data_path)) {
+  load(msgf_data_path)
+} else {
+  msnid <- read_msgf_data_from_DMS(data_package_num)
+  save(msnid, file=msgf_data_path)
+}
+show(msnid)
+
+```
+
+
+## AScore
+
+
+```{r ascore}
+ascore <- read_AScore_results_from_DMS(data_package_num)
+msnid <- best_PTM_location_by_ascore(msnid, ascore)
+msnid <- apply_filter(msnid, "grepl(\"\\\\*\", peptide)")
+
+```
+
+
+## Correct peak selection and peptide FDR
+We use the target-decoy search strategy method described in [(Elias 2010)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2922680/). 
+Filtering is done first at peptide level, then at protein level, both with max FDR of 1%.
+
+
+```{r}
+## peak selection & Peptide filter
+msnid <- correct_peak_selection(msnid)   ## optional for phospho
+msnid <- filter_msgf_data_peptide_level(msnid, 0.01)
+show(msnid)
+
+```
+
+
+
+## Parsimonious inference
+
+To reduce number of protein identifications, we use a parsimonious inference algorithm described in 
+[(Zhang et al. 2007)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2810678/).
+
+
+```{r parsimonious_inference}
+global_crosstab <- read.table(path_to_global_crosstab)
+
+psms(msnid)$accession <- sub("^.*\\|(.*)\\|.*$", "\\1", psms(msnid)$accession)
+table(rownames(global_crosstab) %in% psms(msnid)$accession)
+
+msnid <- infer_parsimonious_accessions(msnid, unique_only=FALSE,
+                                       prior = rownames(global_crosstab))
+show(msnid)
+
+```
+
+
+## Remove decoys
+
+
+```{r apply_decoy_filter}
+msnid <- apply_filter(msnid, "!isDecoy")
+show(msnid)
+
+```
+
+
+## Map mod sites
+
+
+
+```{r map_mod_sites}
+library(Biostrings)
+
+options(timeout = 120)
+path_to_FASTA <- path_to_FASTA_used_by_DMS(data_package_num)
+
+mySequences <- readAAStringSet(path_to_FASTA)
+extraction_pttrn <- paste0(".*", "\\|([^|-]+)(-\\d+)?\\|", ".*")
+names(mySequences) <- sub(extraction_pttrn, "\\1", names(mySequences))
+
+path_to_FASTA_remapped <- gsub("\\.fasta.*", "_remapped.fasta", 
+  path_to_FASTA)
+writeXStringSet(mySequences, path_to_FASTA_remapped, compress = FALSE)
+
+fst <- readAAStringSet(path_to_FASTA_remapped)
+msnid <- map_mod_sites(msnid, fst, 
+                       accession_col = "accession", 
+                       peptide_mod_col = "peptide", 
+                       mod_char = "*",
+                       site_delimiter = "lower")
+# msnid <- apply_filter(msnid, "!is.na(PepLocFirst)")
+head(psms(msnid))
+
+save(msnid, file=file.path(data_folder, "msgfData_filtered_prot.RData"))
+
+```
+
+
+# Process MASIC data
+
+Output from the MASIC software is read from DMS, then filtered by inteference score.
+
+
+```{r read_masic}
+masic_data_path <- file.path(data_folder, "masicData_original.RData")
+
+if (file.exists(masic_data_path)) {
+  load(masic_data_path)
+} else {
+  masic_data <- read_masic_data_from_DMS(data_package_num,
+                                       interference_score = TRUE)
+  save(masic_data, file=masic_data_path)
+}
+
+nrow(masic_data)
+
+```
+
+
+```{r filter_masic}
+masic_data <- filter_masic_data(masic_data,
+                                interference_score_threshold = 0.5,
+                                s2n_threshold = 0)
+save(masic_data, file=file.path(data_folder, "masicData_filtered.RData"))
+
+nrow(masic_data)
+```
+
+
+# Create crosstab
+
+The quantitative crosstab combines MS/MS identifications with reporter ion intensities. 
+Abundances are taken relative to the reference channel and then log-transformed.
+
+
+
+```{r create_phospho_peptide_crosstab, eval=FALSE, include=FALSE}
+aggregation_level <- c("SiteID", "peptide")
+
+# remove non-samples (empty), but keep references
+samples <- samples[samples$ReporterAlias != "EMPTY", ]
+
+# if more than 1 reference per plex:
+# debug(create_crosstab)
+# once in debug environment, run:
+# debug(converting_to_relative_to_reference)
+# because there is more than 1 reference on the plex, after line 35 run: 
+# quant_data_i_w <- dcast(quant_data_i, Specie ~ ReporterAlias, fun.aggregate = mean, value.var = "Abundance")
+
+crosstab <- create_crosstab(msnid, masic_data,
+                            aggregation_level,
+                            fractions, samples, references)
+
+## Turns phosphorylation site letter into lower case.
+helper_f <- function(pep_seq){
+  iterations = 0
+  while (grepl("\\*", pep_seq) & iterations < 5){
+    left <- sub("(^[A-Z, a-z]+)\\*.*", "\\1", pep_seq) %>%
+      sub("(^.*)(.{1}$)", "\\1\\L\\2", ., perl = TRUE)
+    rest <- sub("^[A-Z, a-z]+\\*", "", pep_seq)
+    # print(left)
+    # print(rest)
+    pep_seq <- paste0(left, rest)
+    iterations = iterations + 1
+  } 
+  
+  if (iterations == 5){
+    print("HERE")
+  }
+  
+  return(pep_seq)
+}
+
+crosstab <- crosstab %>%
+  as.data.frame() %>%
+  dplyr::mutate(feature = rownames(.),
+         peptide = sub("^.*@(.*$)", "\\1", feature),
+         SiteID = sub("(^.*)@.*$", "\\1", feature)) %>%
+  dplyr::mutate(peptide = gsub("#", "", peptide),
+         peptide = gsub("^.{2}", "", peptide),
+         peptide = gsub(".{2}$", "", peptide),
+         Peptide_kstar = sapply(peptide, helper_f),
+         Protein_kstar = sub("(^.*)-[A-Z, a-z, 0-9].*", "\\1", SiteID)) %>%
+  select(-feature, peptide) %>%
+  select(SiteID, Peptide_kstar, Protein_kstar, everything())
+
+colnames(crosstab) <- sub("(^[0-9]+$)", "data:\\1", colnames(crosstab))
+
+dim(crosstab)
+write.table(crosstab,
+            file=file.path(data_folder, paste(crosstab_prefix, "crosstab_phospho_siteID_prot_original.txt", sep="_")),
+            sep="\t")
+
+```
+
+
+
+```{r}
+helper_f <- function(pep_seq){
+  iterations = 0
+  while (grepl("\\*", pep_seq) & iterations < 5){
+    left <- sub("(^[A-Z, a-z]+)\\*.*", "\\1", pep_seq) %>%
+      sub("(^.*)(.{1}$)", "\\1\\L\\2", ., perl = TRUE)
+    rest <- sub("^[A-Z, a-z]+\\*", "", pep_seq)
+    # print(left)
+    # print(rest)
+    pep_seq <- paste0(left, rest)
+    iterations = iterations + 1
+  } 
+  
+  if (iterations == 5){
+    print("HERE")
+  }
+  
+  return(pep_seq)
+}
+
+peptide_kstar <- psms(msnid) %>%
+  select(SiteID, peptide) %>%
+  dplyr::mutate(peptide = gsub("#", "", peptide),
+         peptide = gsub("^.{2}", "", peptide),
+         peptide = gsub(".{2}$", "", peptide),
+         Peptide_kstar = sapply(peptide, helper_f),
+         Protein_kstar = sub("(^.*)-[A-Z, a-z, 0-9].*", "\\1", SiteID))
+
+peptide_kstar <- peptide_kstar %>%
+  mutate(left = sub("(^[A-Z]+)[a-z]+.*$", "\\1", Peptide_kstar),
+         right = sub("^.*[a-z]+([A-Z]+$)", "\\1", Peptide_kstar),
+         min = pmin(nchar(left), nchar(right))) %>%
+  group_by(SiteID) %>%
+  filter(min == max(min)) %>%
+  dplyr::slice(1) %>%
+  ungroup() %>% unique()
+
+aggregation_level <- c("SiteID")
+
+debug(create_crosstab)
+# once in debug environment, run:
+# debug(converting_to_relative_to_reference)
+# because there is more than 1 reference on the plex, after line 35 run: 
+# quant_data_i_w <- dcast(quant_data_i, Specie ~ ReporterAlias, fun.aggregate = mean, value.var = "Abundance")
+
+crosstab <- create_crosstab(msnid, masic_data,
+                            aggregation_level,
+                            fractions, samples, references)
+
+colnames(crosstab) <- sub("(^[0-9]+$)", "data:\\1", colnames(crosstab))
+
+crosstab <- as.data.frame(crosstab) %>%
+  mutate(SiteID = rownames(.)) %>%
+  left_join(., peptide_kstar %>% select(SiteID, Peptide_kstar, Protein_kstar), by = "SiteID")
+
+crosstab <- crosstab %>% select(SiteID, Peptide_kstar, Protein_kstar, everything())
+rownames(crosstab) <- crosstab$SiteID
+
+dim(crosstab)
+write.table(crosstab,
+            file=file.path(data_folder, paste(crosstab_prefix, "crosstab_phospho_siteID_prot_original.txt", sep="_")),
+            sep="\t")
+
+```
+
+
+```{r}
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
