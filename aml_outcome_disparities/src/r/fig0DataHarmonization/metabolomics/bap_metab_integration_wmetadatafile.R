@@ -8,7 +8,7 @@ library(plotly)
 library(synapser)
 synapser::synLogin()
 
-here::i_am("BeatAMLPilot_Integration/bap_metab_integration.R")
+#here::i_am("amlMultidrugResistance/src/r/bap_metab_integration.R")
 
 # Here we explore integration of BeatAML and Pilot Metabolomics datasets via
 # ComBat, which is an approach that has historically done best in this regard. 
