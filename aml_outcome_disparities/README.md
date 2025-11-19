@@ -25,4 +25,4 @@ primarily black cohort from Ohio. The batch correction code can be found below (
 - Proteins and phosphosites: Where is this?
 - Acetyl cites: ???
 
-  The results of the batch correction should be documented in the initial manuscript figures under [analysis/Figure1](analysis/Figure 1). 
+  The results of the batch correction should be documented in the initial manuscript figures under [analysis/Fig1](analysis/Fig1). 
