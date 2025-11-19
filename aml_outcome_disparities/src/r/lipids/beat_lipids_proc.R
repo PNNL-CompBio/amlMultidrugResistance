@@ -4,14 +4,14 @@ library(ggplot2)
 library(synapser)
 library(here)
 
-i_am("BeatAMLPilot_Integration/beat_lipids_proc.R")
+#i_am("BeatAMLPilot_Integration/beat_lipids_proc.R")
 
 synapser::synLogin()
 
 ##### Data Processing ---------------------------------------------------------
 #### Import ------------------------------------------------------------------
 
-data_filenames <- list.files(here("BeatAMLPilot_Integration","data"))
+#data_filenames <- list.files(here("BeatAMLPilot_Integration","data"))
 
 # Neg ---------------------------------------------------------------------
 
@@ -24,7 +24,8 @@ colnames(lneg_dat) <- make.names(colnames(lneg_dat))
 
 # Note: Had to use local datafile here because JK had modified it to include additional
 # lipid classes. (See email from JK on 8/14/2025 with subject line "PTRC aligned with BEAT - POS")
-lpos_dat <- readxl::read_excel(path = here("BeatAMLPilot_Integration", "data", data_filenames[grepl("BEAT_AML_", data_filenames, ignore.case = TRUE)]),
+lpos_dat <- readxl::read_excel(path = here("BeatAMLPilot_Integration", "data", 
+                                           data_filenames[grepl("BEAT_AML_", data_filenames, ignore.case = TRUE)]),
                                sheet = "POS_with_QCs")
 colnames(lpos_dat) <- make.names(colnames(lpos_dat))
 
