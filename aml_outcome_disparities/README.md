@@ -15,3 +15,14 @@ Additionally we plan to integrate data from the Stiff et al paper above.
 
 ## Project goals
 The goal of this project is to understand why known biomarkers of AML prognosis fail to predict response in black patients. 
+
+## Data processing
+The first step of this analysis is to ensure that we can merge two cohorts together: the Beat AML patient cohort together with the
+primarily black cohort from Ohio. The batch correction code can be found below (add what is missing):
+
+- Lipids: [src/r/lipids/](src/r/lipids)
+- Metabolites: [src/r/metab](src/r/metab)
+- Proteins and phosphosites: Where is this?
+- Acetyl cites: ???
+
+  The results of the batch correction should be documented in the initial manuscript figures under [analysis/Figure1](analysis/Figure 1). 
