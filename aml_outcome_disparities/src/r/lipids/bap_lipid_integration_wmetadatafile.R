@@ -6,7 +6,8 @@ library(here)
 library(ggplot2)
 library(plotly)
 library(synapser)
-#here::i_am("BeatAMLPilot_Integration/bap_lipid_integration_wmetadatafile.R")
+
+here::i_am("src/r/metab/bap_metab_integration.R")
 
 synapser::synLogin()
 
@@ -78,7 +79,7 @@ sample_exp_metadata <- readxl::read_xlsx(synGet('syn68522106')$path) |>
 
 # See beat_lipids_proc for why local file is used. Essentially, more extensive preprocessing
 # for lipidomics data was required.
-ba_something <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,
+ba_something <- readxl::read_xlsx( here("beataml_lipids_log2_sum.xlsx"),
   #here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_log2_sum.xlsx"),
                              sheet = "Negative") %>%
   dplyr::select(-dplyr::contains("CPTAC4")) %>% # removes QC columns
@@ -88,12 +89,12 @@ ba_something <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,
   dplyr::mutate(SampleID = as.numeric(SampleID.abbrev)) |>
   dplyr::left_join(ba_meta, by = 'SampleID') 
 
-ba_lneg <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,
+ba_lneg <- readxl::read_xlsx( here("beataml_lipids_log2_sum.xlsx"),
 #                             here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_log2_sum.xlsx"),
                              sheet = "Negative") %>%
   dplyr::select(-dplyr::contains("CPTAC4"))
 
-ba_lpos <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,
+ba_lpos <- readxl::read_xlsx( here("beataml_lipids_log2_sum.xlsx"),
                              #here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_log2_sum.xlsx"),
                                  sheet = "Positive") %>%
   dplyr::select(-dplyr::contains("CPTAC4"))
@@ -411,7 +412,7 @@ pos_pi_match_cands_df <- pos_pi_match_cands_df %>%
 
 # Negative ----------------------------------------------------------
 
-neg_align_data <- readxl::read_xlsx(synapser::synGet('syn71210151')$path)
+neg_align_data <- readxl::read_xlsx(synapser::synGet('syn71719074')$path)
   #here("BeatAMLPilot_Integration", "data", "PTRC_lipids_NEG_aligned_with_BEAT.xlsx"))
 colnames(neg_align_data) <- make.names(colnames(neg_align_data))
 
@@ -522,7 +523,7 @@ ba_pm_lpos_norm_temp <- as.lipidData(e_data = ba_pm_lpos_norm$e_data %>%
                                      is_normalized = TRUE,
                                      data_types = "Positive")
 
-ba_pm_comb <- combine_lipidData(ba_pm_lneg_norm_temp, ba_pm_lpos_norm_temp,
+ba_pm_comb <- combine_omicsData(ba_pm_lneg_norm_temp, ba_pm_lpos_norm_temp,
                                 retain_filters = TRUE)
 rm(ba_pm_lneg_norm_temp, ba_pm_lpos_norm_temp)
 
@@ -568,7 +569,7 @@ pi_pm_lpos_norm_temp <- as.lipidData(e_data = pi_pm_lpos_norm$e_data %>%
                                      is_normalized = TRUE,
                                      data_types = "Positive")
 
-pi_pm_comb <- combine_lipidData(pi_pm_lneg_norm_temp, pi_pm_lpos_norm_temp,
+pi_pm_comb <- combine_omicsData(pi_pm_lneg_norm_temp, pi_pm_lpos_norm_temp,
                                 retain_filters = TRUE)
 rm(pi_pm_lneg_norm_temp, pi_pm_lpos_norm_temp)
 

@@ -4,7 +4,7 @@ library(ggplot2)
 library(synapser)
 library(here)
 
-#i_am("BeatAMLPilot_Integration/beat_lipids_proc.R")
+i_am("src/r/lipids/beat_lipids_proc.R")
 
 synapser::synLogin()
 
