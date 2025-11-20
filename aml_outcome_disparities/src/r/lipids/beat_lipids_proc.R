@@ -16,7 +16,7 @@ synapser::synLogin()
 # Neg ---------------------------------------------------------------------
 
 ## Skip first row since contains fdata
-lneg_dat <- readxl::read_excel(path = synapser::synGet('syn52121001')$path,
+lneg_dat <- readxl::read_excel(path = synapser::synGet('syn71718883')$path,
                                sheet = "NEG_with_QCs_v2")
 colnames(lneg_dat) <- make.names(colnames(lneg_dat))
 
@@ -24,8 +24,9 @@ colnames(lneg_dat) <- make.names(colnames(lneg_dat))
 
 # Note: Had to use local datafile here because JK had modified it to include additional
 # lipid classes. (See email from JK on 8/14/2025 with subject line "PTRC aligned with BEAT - POS")
-lpos_dat <- readxl::read_excel(path = here("BeatAMLPilot_Integration", "data", 
-                                           data_filenames[grepl("BEAT_AML_", data_filenames, ignore.case = TRUE)]),
+lpos_dat <- readxl::read_excel(path = synapser::synGet('syn71718883')$path,
+                                 # here("BeatAMLPilot_Integration", "data", 
+                                      #     data_filenames[grepl("BEAT_AML_", data_filenames, ignore.case = TRUE)]),
                                sheet = "POS_with_QCs")
 colnames(lpos_dat) <- make.names(colnames(lpos_dat))
 
@@ -1134,14 +1135,14 @@ lpos_sum_export_dat <- pm_lpos_sum$e_data %>%
 
 writexl::write_xlsx(x = list(`Negative` = lneg_sum_export_dat ,
                              `Positive` = lpos_sum_export_dat),
-                    path = here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_log2_sum.xlsx"))
-saveRDS(lneg_sum_export_dat, here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_neg_log2_sum.rds"))
-saveRDS(lpos_sum_export_dat, here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_pos_log2_sum.rds"))
+                    path = here("beataml_lipids_log2_sum.xlsx"))
+saveRDS(lneg_sum_export_dat, here("beataml_lipids_neg_log2_sum.rds"))
+saveRDS(lpos_sum_export_dat, here("beataml_lipids_pos_log2_sum.rds"))
 
 
 # -------------------------------------------------------------------------
 
 # Save fdat
-saveRDS(lneg_fdat, here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_neg_fdat.rds"))
-saveRDS(lpos_fdat, here("BeatAMLPilot_Integration", "data", "processed", "beataml_lipids_pos_fdat.rds"))
+saveRDS(lneg_fdat, here("beataml_lipids_neg_fdat.rds"))
+saveRDS(lpos_fdat, here("beataml_lipids_pos_fdat.rds"))
 

@@ -8,7 +8,7 @@ library(plotly)
 library(synapser)
 synapser::synLogin()
 
-here::i_am("BeatAMLPilot_Integration/bap_metab_integration.R")
+here::i_am("bap_metab_integration.R")
 
 # Here we explore integration of BeatAML and Pilot Metabolomics datasets via
 # ComBat, which is an approach that has historically done best in this regard. 
@@ -977,7 +977,7 @@ ba_pm_hn_norm_temp <- as.lipidData(e_data = ba_pm_hn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "HILIC Negative")
 
-ba_pm_hcomb <- combine_lipidData(ba_pm_hp_norm_temp, ba_pm_hn_norm_temp,
+ba_pm_hcomb <- combine_omicsData(ba_pm_hp_norm_temp, ba_pm_hn_norm_temp,
                               retain_filters = TRUE)
 rm(ba_pm_hp_norm_temp, ba_pm_hn_norm_temp)
 
@@ -1003,7 +1003,7 @@ ba_pm_rn_norm_temp <- as.lipidData(e_data = ba_pm_rn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "RP Negative")
 
-ba_pm_rcomb <- combine_lipidData(ba_pm_rp_norm_temp, ba_pm_rn_norm_temp,
+ba_pm_rcomb <- combine_omicsData(ba_pm_rp_norm_temp, ba_pm_rn_norm_temp,
                               retain_filters = TRUE)
 rm(ba_pm_rp_norm_temp, ba_pm_rn_norm_temp)
 
@@ -1059,7 +1059,7 @@ pi_pm_hn_norm_temp <- as.lipidData(e_data = pi_pm_hn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "HILIC Negative")
 
-pi_pm_hcomb <- combine_lipidData(pi_pm_hp_norm_temp, pi_pm_hn_norm_temp,
+pi_pm_hcomb <- combine_omicsData(pi_pm_hp_norm_temp, pi_pm_hn_norm_temp,
                                  retain_filters = TRUE)
 rm(pi_pm_hp_norm_temp, pi_pm_hn_norm_temp)
 
@@ -1085,7 +1085,7 @@ pi_pm_rn_norm_temp <- as.lipidData(e_data = pi_pm_rn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "RP Negative")
 
-pi_pm_rcomb <- combine_lipidData(pi_pm_rp_norm_temp, pi_pm_rn_norm_temp,
+pi_pm_rcomb <- combine_omicsData(pi_pm_rp_norm_temp, pi_pm_rn_norm_temp,
                                  retain_filters = TRUE)
 rm(pi_pm_rp_norm_temp, pi_pm_rn_norm_temp)
 
@@ -1249,7 +1249,7 @@ pm_common_rcomb_combat <- bc_combat(omicsData = pm_common_rcomb, use_groups = FA
 ba_pm_hcomb <- group_designation(ba_pm_hcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(ba_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_beataml_hi_rmd.png"), units="in",
+png(here("figures", "outlier_beataml_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1259,7 +1259,7 @@ dev.off()
 pi_pm_hcomb <- group_designation(pi_pm_hcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(pi_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_pilot_hi_rmd.png"), units="in",
+png(here("figures", "outlier_pilot_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1269,7 +1269,7 @@ dev.off()
 pm_common_hcomb <- group_designation(pm_common_hcomb, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_nobc_hi_rmd.png"), units="in",
+png(here("figures", "outlier_nobc_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1279,7 +1279,7 @@ dev.off()
 pm_common_hcomb_combat <- group_designation(pm_common_hcomb_combat, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_hcomb_combat)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_combat_hi_rmd.png"), units="in",
+png(here("figures", "outlier_combat_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1293,7 +1293,7 @@ dev.off()
 ba_pm_hcomb <- group_designation(ba_pm_hcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(ba_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "beataml_hi_pca.png"), units="in",
+png(here("figures", "beataml_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: BeatAML")
 dev.off()
@@ -1303,7 +1303,7 @@ dev.off()
 pi_pm_hcomb <- group_designation(pi_pm_hcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(pi_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "pilot_hi_pca.png"), units="in",
+png(here("figures", "pilot_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: Pilot")
 dev.off()
@@ -1312,7 +1312,7 @@ dev.off()
 
 mypca <- dim_reduction(pm_common_hcomb)
 
-png(here("BeatAMLPilot_Integration", "figures", "nobc_hi_pca.png"), units="in",
+png(here("figures", "nobc_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_hcomb, color_by = "study", 
      title_lab = "HILIC: No Batch-Correction")+theme(text=element_text(size=21))
@@ -1322,7 +1322,7 @@ dev.off()
 
 mypca <- dim_reduction(pm_common_hcomb_combat)
 
-png(here("BeatAMLPilot_Integration", "figures", "combat_hi_pca.png"), units="in",
+png(here("figures", "combat_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_hcomb_combat, color_by = "study", 
      title_lab = "HILIC: ComBat")+theme(text=element_text(size=21))
@@ -1627,7 +1627,7 @@ whichsig_combat_hitest_race %>%
 ba_pm_rcomb <- group_designation(ba_pm_rcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(ba_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_beataml_r_rmd.png"), units="in",
+png(here("figures", "outlier_beataml_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1637,7 +1637,7 @@ dev.off()
 pi_pm_rcomb <- group_designation(pi_pm_rcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(pi_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_pilot_r_rmd.png"), units="in",
+png(here("figures", "outlier_pilot_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1647,7 +1647,7 @@ dev.off()
 pm_common_rcomb <- group_designation(pm_common_rcomb, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_nobc_r_rmd.png"), units="in",
+png(here("figures", "outlier_nobc_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1657,7 +1657,7 @@ dev.off()
 pm_common_rcomb_combat <- group_designation(pm_common_rcomb_combat, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_rcomb_combat)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_combat_r_rmd.png"), units="in",
+png(here("figures", "outlier_combat_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1671,7 +1671,7 @@ dev.off()
 ba_pm_rcomb <- group_designation(ba_pm_rcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(ba_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "beataml_r_pca.png"), units="in",
+png(here("figures", "beataml_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: BeatAML")
 dev.off()
@@ -1681,7 +1681,7 @@ dev.off()
 pi_pm_rcomb <- group_designation(pi_pm_rcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(pi_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "pilot_r_pca.png"), units="in",
+png(here("figures", "pilot_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: Pilot")
 dev.off()
@@ -1690,7 +1690,7 @@ dev.off()
 
 mypca <- dim_reduction(pm_common_rcomb)
 
-png(here("BeatAMLPilot_Integration", "figures", "nobc_r_pca.png"), units="in",
+png(here("figures", "nobc_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_rcomb, color_by = "study", 
      title_lab = "RP: No Batch-Correction")+theme(text=element_text(size=21))
@@ -1700,7 +1700,7 @@ dev.off()
 
 mypca <- dim_reduction(pm_common_rcomb_combat)
 
-png(here("BeatAMLPilot_Integration", "figures", "combat_r_pca.png"), units="in",
+png(here("figures", "combat_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_rcomb_combat, color_by = "study", 
      title_lab = "RP: ComBat")+theme(text=element_text(size=21))

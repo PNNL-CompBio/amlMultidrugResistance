@@ -17,21 +17,17 @@ for processing.
 
 ### Black patient metabolite analysis
 
-The black patient files can be found *** WHERE??*** of the
+The black patient files can be found 
+[on synapse](https://www.synapse.org/Synapse:syn68710369) in the
 Experiment 26 directory. 
-
-*** Javi please specific initial files to start with ***
-
-All datafiles are pulled directly from synapse - I did not process any raw datafiles for this analysis.
 
 ## Batch correction steps
 
-*** Javi what order do I run the scripts in? ***
-
-Both scripts do the same thing, however one uses a metadatafile that you prepared (i.e. bap_metab_integration_wmetadatafile.R). Running only one of the scripts is necessary.
+The batch correction is handled in a single script 
+[bap_metab_integration_wmetadatafile.R]()
 
 ## Final combined data
 
-*** Javi what file is the combined metabolomics data? ***
-
-The final combined dataset isn't written out anywhere, but it is created in lines 1142-1290 in bap_metab_integration_wmetadatafile.R (or lines 1092-1240 in bap_metab_integration.R)
+The final combined dataset isn't written out anywhere, but it is created in 
+lines 1142-1290 in bap_metab_integration_wmetadatafile.R
+(or lines 1092-1240 in bap_metab_integration.R)

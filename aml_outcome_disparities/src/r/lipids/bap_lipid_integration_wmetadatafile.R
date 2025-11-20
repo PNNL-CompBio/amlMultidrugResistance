@@ -102,8 +102,7 @@ ba_lpos <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,
 ## Pilot Data -------------------------------------------------------
 
 
-pi_lneg <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,
-                             #here("BeatAMLPilot_Integration", "data", "processed", "ptrc_lipids_log2_sum.xlsx"),
+pi_lneg <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,#here("BeatAMLPilot_Integration", "data", "processed", "ptrc_lipids_log2_sum.xlsx"),
                              sheet = 'Negative')
 
 pi_lpos <- readxl::read_xlsx(synapser::synGet('syn71210151')$path,
