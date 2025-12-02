@@ -8,7 +8,7 @@ library(plotly)
 library(synapser)
 synapser::synLogin()
 
-here::i_am("BeatAMLPilot_Integration/bap_metab_integration.R")
+here::i_am("bap_metab_integration.R")
 
 # Here we explore integration of BeatAML and Pilot Metabolomics datasets via
 # ComBat, which is an approach that has historically done best in this regard. 
@@ -20,6 +20,18 @@ here::i_am("BeatAMLPilot_Integration/bap_metab_integration.R")
 
 
 ### Data Import -------------------------------------------------------------
+
+
+## Potentially Correct Metadata for BeatAML+Pilot -------------------------------------------------------------------------
+
+beatpilot_metadata <- read.csv(synapser::synGet('syn69692583')$path) %>%
+  dplyr::select(Accession:Study) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(Age2 = Age,
+                Sex2 = Sex,
+                Race2 = Race,
+                source2 = source,
+                Study2 = Study)
 
 ## BeatAML Data -----------------------------------------------------
 
@@ -72,7 +84,7 @@ ba_metab_hp <- readxl::read_xlsx(synapser::synGet('syn53678273')$path, sheet = "
   setNames(gsub("Blank_BEAT_AML_022", "Blank_BEAT_AML_02_2", colnames(.), ignore.case = TRUE))
 
 ba_metab_hn <- readxl::read_xlsx(synapser::synGet('syn53678273')$path, sheet = "HILIC Negative") %>%
-setNames(make.names(colnames(.))) %>%
+  setNames(make.names(colnames(.))) %>%
   setNames(gsub("_HILIC_NEG", "", colnames(.), ignore.case = TRUE)) %>%
   setNames(gsub("Blank_BEAT_AML_012", "Blank_BEAT_AML_01_2", colnames(.), ignore.case = TRUE)) %>%
   setNames(gsub("Blank_BEAT_AML_022", "Blank_BEAT_AML_02_2", colnames(.), ignore.case = TRUE)) %>%
@@ -114,7 +126,7 @@ pi_metab_rp <- readxl::read_xlsx(mfile, sheet = 'RP Positive') %>%
 
 pi_metab_rn <- readxl::read_xlsx(mfile, sheet = 'RP Negative') %>%
   setNames(make.names(colnames(.))) %>%
-  setNames(gsub("_RP_Neg", "", colnames(.), ignore.case = TRUE))
+  setNames(gsub("_RP_Neg","", colnames(.), ignore.case = TRUE))
 
 # -------------------------------------------------------------------------
 
@@ -157,6 +169,16 @@ pi_metadat <- readxl::read_xlsx(synGet('syn68835814')$path) %>%
   dplyr::mutate(SampleID = gsub("Exp26", "exp26", SampleID))
 
 all(pi_metadat$Accession %in% sample_exp_metadata$Accession)
+
+
+# # Update beatpilot_metadata with sample IDs -------------------------------------------------------------------------
+# 
+# beatpilot_metadata <- beatpilot_metadata %>%
+#   dplyr::left_join(ba_meta %>%
+#                      dplyr::select(Accession, SampleID) %>%
+#                      dplyr::mutate(SampleID = as.character(SampleID))) %>%
+#   dplyr::left_join(pi_metadat %>%
+#                      dplyr::select(Accession, SampleID), by = "Accession")
 
 ### Data Processing ---------------------------------------------------------
 
@@ -260,15 +282,19 @@ ba_metab_hp_fdat <- data.frame(SampleID = colnames(ba_metab_hp_edat)[-1]) %>%
   })) %>%
   dplyr::left_join(ba_meta %>%
                      dplyr::rename(link_id = SampleID)) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(ba_meta %>%
+                                        dplyr::select(Accession, SampleID) %>%
+                                        dplyr::rename(link_id = SampleID))) %>%
   dplyr::mutate(study = ifelse(is.na(study), "BeatAML", study)) %>%
   # For now, select subset of variables that are in common with pilot fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
     Race %in% c("Black", "HispNative", "Asian") ~ "Non-white",
     TRUE ~ Race
-  ), Race_mod = factor(Race_mod, levels = c("White", "Non-white")))
+  ), Race_mod = factor(Race_mod, levels = c("White", "Non-white"))) 
 
 # Check consistency of edat and fdat names
 all(ba_metab_hp_fdat$SampleID %in% colnames(ba_metab_hp_edat)[-1])
@@ -299,9 +325,13 @@ ba_metab_hn_fdat <- data.frame(SampleID = colnames(ba_metab_hn_edat)[-1]) %>%
   })) %>%
   dplyr::left_join(ba_meta %>%
                      dplyr::rename(link_id = SampleID)) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(ba_meta %>%
+                                        dplyr::select(Accession, SampleID) %>%
+                                        dplyr::rename(link_id = SampleID))) %>%
   dplyr::mutate(study = ifelse(is.na(study), "BeatAML", study)) %>%
   # For now, select subset of variables that are in common with pilot fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
@@ -338,9 +368,13 @@ ba_metab_rp_fdat <- data.frame(SampleID = colnames(ba_metab_rp_edat)[-1]) %>%
   })) %>%
   dplyr::left_join(ba_meta %>%
                      dplyr::rename(link_id = SampleID)) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(ba_meta %>%
+                                        dplyr::select(Accession, SampleID) %>%
+                                        dplyr::rename(link_id = SampleID))) %>%
   dplyr::mutate(study = ifelse(is.na(study), "BeatAML", study)) %>%
   # For now, select subset of variables that are in common with pilot fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
@@ -376,9 +410,13 @@ ba_metab_rn_fdat <- data.frame(SampleID = colnames(ba_metab_rn_edat)[-1]) %>%
   })) %>%
   dplyr::left_join(ba_meta %>%
                      dplyr::rename(link_id = SampleID)) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(ba_meta %>%
+                                        dplyr::select(Accession, SampleID) %>%
+                                        dplyr::rename(link_id = SampleID))) %>%
   dplyr::mutate(study = ifelse(is.na(study), "BeatAML", study)) %>%
   # For now, select subset of variables that are in common with pilot fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
@@ -505,8 +543,11 @@ pi_metab_hp_fdat <- data.frame(SampleID = colnames(pi_metab_hp_edat)[-1]) %>%
   })) %>%
   dplyr::mutate(study = "pilot") %>%
   dplyr::left_join(pi_metadat) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(pi_metadat %>%
+                                        dplyr::select(Accession, SampleID))) %>%
   # For now, select subset of variables that are in common with BeatAML fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
@@ -545,8 +586,11 @@ pi_metab_hn_fdat <- data.frame(SampleID = colnames(pi_metab_hn_edat)[-1]) %>%
   })) %>%
   dplyr::mutate(study = "pilot") %>%
   dplyr::left_join(pi_metadat) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(pi_metadat %>%
+                                        dplyr::select(Accession, SampleID))) %>%
   # For now, select subset of variables that are in common with BeatAML fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
@@ -586,8 +630,11 @@ pi_metab_rp_fdat <- data.frame(SampleID = colnames(pi_metab_rp_edat)[-1]) %>%
   })) %>%
   dplyr::mutate(study = "pilot") %>%
   dplyr::left_join(pi_metadat) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(pi_metadat %>%
+                                        dplyr::select(Accession, SampleID))) %>%
   # For now, select subset of variables that are in common with BeatAML fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
@@ -627,8 +674,11 @@ pi_metab_rn_fdat <- data.frame(SampleID = colnames(pi_metab_rn_edat)[-1]) %>%
   })) %>%
   dplyr::mutate(study = "pilot") %>%
   dplyr::left_join(pi_metadat) %>%
+  dplyr::left_join(beatpilot_metadata %>% 
+                     dplyr::left_join(pi_metadat %>%
+                                        dplyr::select(Accession, SampleID))) %>%
   # For now, select subset of variables that are in common with BeatAML fdata
-  dplyr::select(SampleID, Age, Sex, Race, study) %>%
+  dplyr::select(SampleID, Age, Age2, Sex, Sex2, Race, Race2, study) %>%
   dplyr::mutate(Race_mod = dplyr::case_when(
     Race == "Unknown" ~ NA,
     Race == "NA" ~ NA,
@@ -671,9 +721,9 @@ temp_ba <- ba_pm_hp$e_meta %>%
   dplyr::mutate(cohort = 1) %>%
   dplyr::mutate(round_RT = round(RT..min., 2),
                 round_mz = round(m.z, 2)) %>%
-  dplyr::mutate(match_Name = "", 
-                match_Name_og = "",
-                match_Standardized.name = "",
+  dplyr::mutate(match_Name = ", 
+                match_Name_og = ",
+                match_Standardized.name = ",
                 match_m.z = NA,
                 match_RT..min. = NA) %>%
   dplyr::relocate(match_Name, .after = Name) %>%
@@ -717,7 +767,7 @@ for(i in 1:nrow(temp_ba)){
 }
 
 bapi_matchkey_hp <- temp_ba %>%
-  dplyr::filter(match_Name != "")
+  dplyr::filter(match_Name != ")
 
 rm(cand_pi_matches, temp_ba, temp_pi)
 
@@ -737,9 +787,9 @@ temp_ba <- ba_pm_hn$e_meta %>%
   dplyr::mutate(cohort = 1) %>%
   dplyr::mutate(round_RT = round(RT..min., 2),
                 round_mz = round(m.z, 2)) %>%
-  dplyr::mutate(match_Name = "", 
-                match_Name_og = "",
-                match_Standardized.name = "",
+  dplyr::mutate(match_Name = ", 
+                match_Name_og = ",
+                match_Standardized.name = ",
                 match_m.z = NA,
                 match_RT..min. = NA) %>%
   dplyr::relocate(match_Name, .after = Name) %>%
@@ -783,7 +833,7 @@ for(i in 1:nrow(temp_ba)){
 }
 
 bapi_matchkey_hn <- temp_ba %>%
-  dplyr::filter(match_Name != "")
+  dplyr::filter(match_Name != ")
 
 rm(cand_pi_matches, temp_ba, temp_pi)
 
@@ -803,9 +853,9 @@ temp_ba <- ba_pm_rp$e_meta %>%
   dplyr::mutate(cohort = 1) %>%
   dplyr::mutate(round_RT = round(RT..min., 2),
                 round_mz = round(m.z, 2)) %>%
-  dplyr::mutate(match_Name = "", 
-                match_Name_og = "",
-                match_Standardized.name = "",
+  dplyr::mutate(match_Name = ", 
+                match_Name_og = ",
+                match_Standardized.name = ",
                 match_m.z = NA,
                 match_RT..min. = NA) %>%
   dplyr::relocate(match_Name, .after = Name) %>%
@@ -849,7 +899,7 @@ for(i in 1:nrow(temp_ba)){
 }
 
 bapi_matchkey_rp <- temp_ba %>%
-  dplyr::filter(match_Name != "")
+  dplyr::filter(match_Name != ")
 
 rm(cand_pi_matches, temp_ba, temp_pi)
 
@@ -869,9 +919,9 @@ temp_ba <- ba_pm_rn$e_meta %>%
   dplyr::mutate(cohort = 1) %>%
   dplyr::mutate(round_RT = round(RT..min., 2),
                 round_mz = round(m.z, 2)) %>%
-  dplyr::mutate(match_Name = "", 
-                match_Name_og = "",
-                match_Standardized.name = "",
+  dplyr::mutate(match_Name = ", 
+                match_Name_og = ",
+                match_Standardized.name = ",
                 match_m.z = NA,
                 match_RT..min. = NA) %>%
   dplyr::relocate(match_Name, .after = Name) %>%
@@ -915,7 +965,7 @@ for(i in 1:nrow(temp_ba)){
 }
 
 bapi_matchkey_rn <- temp_ba %>%
-  dplyr::filter(match_Name != "")
+  dplyr::filter(match_Name != ")
 
 rm(cand_pi_matches, temp_ba, temp_pi)
 
@@ -977,8 +1027,8 @@ ba_pm_hn_norm_temp <- as.lipidData(e_data = ba_pm_hn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "HILIC Negative")
 
-ba_pm_hcomb <- combine_lipidData(ba_pm_hp_norm_temp, ba_pm_hn_norm_temp,
-                              retain_filters = TRUE)
+ba_pm_hcomb <- combine_omicsData(ba_pm_hp_norm_temp, ba_pm_hn_norm_temp,
+                                 retain_filters = TRUE)
 rm(ba_pm_hp_norm_temp, ba_pm_hn_norm_temp)
 
 
@@ -1003,8 +1053,8 @@ ba_pm_rn_norm_temp <- as.lipidData(e_data = ba_pm_rn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "RP Negative")
 
-ba_pm_rcomb <- combine_lipidData(ba_pm_rp_norm_temp, ba_pm_rn_norm_temp,
-                              retain_filters = TRUE)
+ba_pm_rcomb <- combine_omicsData(ba_pm_rp_norm_temp, ba_pm_rn_norm_temp,
+                                 retain_filters = TRUE)
 rm(ba_pm_rp_norm_temp, ba_pm_rn_norm_temp)
 
 # Pilot -------------------------------------------------------------------
@@ -1059,7 +1109,7 @@ pi_pm_hn_norm_temp <- as.lipidData(e_data = pi_pm_hn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "HILIC Negative")
 
-pi_pm_hcomb <- combine_lipidData(pi_pm_hp_norm_temp, pi_pm_hn_norm_temp,
+pi_pm_hcomb <- combine_omicsData(pi_pm_hp_norm_temp, pi_pm_hn_norm_temp,
                                  retain_filters = TRUE)
 rm(pi_pm_hp_norm_temp, pi_pm_hn_norm_temp)
 
@@ -1085,7 +1135,7 @@ pi_pm_rn_norm_temp <- as.lipidData(e_data = pi_pm_rn_norm$e_data,
                                    is_normalized = TRUE,
                                    data_types = "RP Negative")
 
-pi_pm_rcomb <- combine_lipidData(pi_pm_rp_norm_temp, pi_pm_rn_norm_temp,
+pi_pm_rcomb <- combine_omicsData(pi_pm_rp_norm_temp, pi_pm_rn_norm_temp,
                                  retain_filters = TRUE)
 rm(pi_pm_rp_norm_temp, pi_pm_rn_norm_temp)
 
@@ -1108,14 +1158,14 @@ bapi_matchkey_rcomb <- rbind.data.frame(bapi_matchkey_rp,
 my_filt <- custom_filter(ba_pm_hcomb, 
                          e_data_keep = bapi_matchkey_hcomb$Name)
 ba_pm_hcomb <- applyFilt(filter_object = my_filt,
-                           omicsData = ba_pm_hcomb)
+                         omicsData = ba_pm_hcomb)
 
 
 # Pilot
 my_filt <- custom_filter(pi_pm_hcomb, 
                          e_data_keep = bapi_matchkey_hcomb$match_Name)
 pi_pm_hcomb <- applyFilt(filter_object = my_filt,
-                           omicsData = pi_pm_hcomb)
+                         omicsData = pi_pm_hcomb)
 
 
 # Rename the formatted_name in Pilot to match that of BeatAML
@@ -1139,9 +1189,9 @@ edat_common_hcomb <- ba_pm_hcomb$e_data %>%
   dplyr::left_join(pi_pm_hcomb$e_data, by = "Name")
 
 fdat_common_hcomb <- rbind.data.frame(ba_pm_hcomb$f_data %>%
-                                      dplyr::mutate(batchid = 1),
-                                   pi_pm_hcomb$f_data %>%
-                                      dplyr::mutate(batchid = 2))
+                                        dplyr::mutate(batchid = 1),
+                                      pi_pm_hcomb$f_data %>%
+                                        dplyr::mutate(batchid = 2))
 
 emeta_common_hcomb <- ba_pm_hcomb$e_meta %>%
   dplyr::left_join(pi_pm_hcomb$e_meta, by = "Name") %>%
@@ -1152,14 +1202,14 @@ emeta_common_hcomb <- ba_pm_hcomb$e_meta %>%
 # setdiff(names(edat_common_hcomb)[-1], fdat_common_hcomb$SampleID)
 
 pm_common_hcomb <- as.lipidData(e_data = edat_common_hcomb, 
-                             f_data = fdat_common_hcomb,
-                             e_meta = emeta_common_hcomb,
-                             emeta_cname = "Name",
-                             edata_cname = "Name", 
-                             fdata_cname = "SampleID",
-                             data_scale = "log2",
-                             data_types = "HILIC",
-                             is_normalized = TRUE)
+                                f_data = fdat_common_hcomb,
+                                e_meta = emeta_common_hcomb,
+                                emeta_cname = "Name",
+                                edata_cname = "Name", 
+                                fdata_cname = "SampleID",
+                                data_scale = "log2",
+                                data_types = "HILIC",
+                                is_normalized = TRUE)
 
 # Several samples (13 specifically: 12 Beat AML, 1 Pilot) have been removed due to
 # missing race information
@@ -1249,7 +1299,7 @@ pm_common_rcomb_combat <- bc_combat(omicsData = pm_common_rcomb, use_groups = FA
 ba_pm_hcomb <- group_designation(ba_pm_hcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(ba_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_beataml_hi_rmd.png"), units="in",
+png(here("figures", "outlier_beataml_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1259,7 +1309,7 @@ dev.off()
 pi_pm_hcomb <- group_designation(pi_pm_hcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(pi_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_pilot_hi_rmd.png"), units="in",
+png(here("figures", "outlier_pilot_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1269,7 +1319,7 @@ dev.off()
 pm_common_hcomb <- group_designation(pm_common_hcomb, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_nobc_hi_rmd.png"), units="in",
+png(here("figures", "outlier_nobc_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1279,7 +1329,7 @@ dev.off()
 pm_common_hcomb_combat <- group_designation(pm_common_hcomb_combat, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_hcomb_combat)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_combat_hi_rmd.png"), units="in",
+png(here("figures", "outlier_combat_hi_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1293,7 +1343,7 @@ dev.off()
 ba_pm_hcomb <- group_designation(ba_pm_hcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(ba_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "beataml_hi_pca.png"), units="in",
+png(here("figures", "beataml_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: BeatAML")
 dev.off()
@@ -1303,7 +1353,7 @@ dev.off()
 pi_pm_hcomb <- group_designation(pi_pm_hcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(pi_pm_hcomb)
-png(here("BeatAMLPilot_Integration", "figures", "pilot_hi_pca.png"), units="in",
+png(here("figures", "pilot_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: Pilot")
 dev.off()
@@ -1312,20 +1362,20 @@ dev.off()
 
 mypca <- dim_reduction(pm_common_hcomb)
 
-png(here("BeatAMLPilot_Integration", "figures", "nobc_hi_pca.png"), units="in",
+png(here("figures", "nobc_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_hcomb, color_by = "study", 
-     title_lab = "HILIC: No Batch-Correction")+theme(text=element_text(size=21))
+     title_lab = "HP: No Batch-Correction")+theme(text=element_text(size=21))
 dev.off()
 
 # Combined, BC ------------------------------------------------------------
 
 mypca <- dim_reduction(pm_common_hcomb_combat)
 
-png(here("BeatAMLPilot_Integration", "figures", "combat_hi_pca.png"), units="in",
+png(here("figures", "combat_hi_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_hcomb_combat, color_by = "study", 
-     title_lab = "HILIC: ComBat")+theme(text=element_text(size=21))
+     title_lab = "HP: ComBat")+theme(text=element_text(size=21))
 dev.off()
 
 # -------------------------------------------------------------------------
@@ -1447,35 +1497,6 @@ whichsig_nobc_hitest_study <- nobc_hitest_study %>%
   dplyr::filter(`Flag_A_pilot_vs_BeatAML` != 0)
 
 # Combined, BC ------------------------------------------------------------
-
-temp <- pm_common_hcomb_combat
-sampkeep <- temp$f_data %>%
-  dplyr::filter(Race %in% c("White", "Black")) %>%
-  .$SampleID
-myfilt <- custom_filter(temp, f_data_keep = sampkeep)
-temp <- applyFilt(myfilt, temp)
-
-temp <- group_designation(temp, main_effects = c("Race"))
-gdf <- attr(temp, "group_DF") %>% 
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>% 
-                                      dplyr::filter(Group == "White") %>% .$Group),
-                        Test    = c(gdf %>% 
-                                      dplyr::filter(Group == "Black") %>% .$Group))
-combat_hitest_race <- imd_anova(omicsData = temp,
-                                comparisons = gdf_comps,
-                                test_method = "anova",
-                                pval_adjust_a_multcomp = "none",
-                                pval_thresh = 0.05)
-
-writexl::write_xlsx(x = list(`Black vs White` = combat_hitest_race %>%
-                               dplyr::left_join(temp$e_meta %>%
-                                                  dplyr::select(Name, Name_og.beataml) %>%
-                                                  dplyr::rename(unformatted_name = Name_og.beataml)) %>%
-                               dplyr::relocate(unformatted_name, .after = Name)),
-                    path = here::here("beataml_pilot_bvsw_hilic_metabolites.xlsx"))
-
 
 pm_common_hcomb_combat_temp <- group_designation(pm_common_hcomb_combat, main_effects = c("Race_mod"))
 gdf <- attr(pm_common_hcomb_combat_temp, "group_DF") %>% 
@@ -1627,7 +1648,7 @@ whichsig_combat_hitest_race %>%
 ba_pm_rcomb <- group_designation(ba_pm_rcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(ba_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_beataml_r_rmd.png"), units="in",
+png(here("figures", "outlier_beataml_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1637,7 +1658,7 @@ dev.off()
 pi_pm_rcomb <- group_designation(pi_pm_rcomb, main_effects = c("study"))
 
 myrmd <- rmd_filter(pi_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_pilot_r_rmd.png"), units="in",
+png(here("figures", "outlier_pilot_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1647,7 +1668,7 @@ dev.off()
 pm_common_rcomb <- group_designation(pm_common_rcomb, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_nobc_r_rmd.png"), units="in",
+png(here("figures", "outlier_nobc_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1657,7 +1678,7 @@ dev.off()
 pm_common_rcomb_combat <- group_designation(pm_common_rcomb_combat, main_effects = c("study"), batch_id = "batchid")
 
 myrmd <- rmd_filter(pm_common_rcomb_combat)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_combat_r_rmd.png"), units="in",
+png(here("figures", "outlier_combat_r_rmd.png"), units="in",
     width=10, height=7, res=300)
 plot(myrmd, pvalue_threshold = 0.00001)
 dev.off()
@@ -1671,7 +1692,7 @@ dev.off()
 ba_pm_rcomb <- group_designation(ba_pm_rcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(ba_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "beataml_r_pca.png"), units="in",
+png(here("figures", "beataml_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: BeatAML")
 dev.off()
@@ -1681,7 +1702,7 @@ dev.off()
 pi_pm_rcomb <- group_designation(pi_pm_rcomb, main_effects = c("study"))
 
 mypca <- dim_reduction(pi_pm_rcomb)
-png(here("BeatAMLPilot_Integration", "figures", "pilot_r_pca.png"), units="in",
+png(here("figures", "pilot_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, pvalue_threshold = 0.00001, title_lab = "HP: Pilot")
 dev.off()
@@ -1690,20 +1711,20 @@ dev.off()
 
 mypca <- dim_reduction(pm_common_rcomb)
 
-png(here("BeatAMLPilot_Integration", "figures", "nobc_r_pca.png"), units="in",
+png(here("figures", "nobc_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_rcomb, color_by = "study", 
-     title_lab = "RP: No Batch-Correction")+theme(text=element_text(size=21))
+     title_lab = "HP: No Batch-Correction")+theme(text=element_text(size=21))
 dev.off()
 
 # Combined, BC ------------------------------------------------------------
 
 mypca <- dim_reduction(pm_common_rcomb_combat)
 
-png(here("BeatAMLPilot_Integration", "figures", "combat_r_pca.png"), units="in",
+png(here("figures", "combat_r_pca.png"), units="in",
     width=10, height=7, res=300)
 plot(mypca, omicsData = pm_common_rcomb_combat, color_by = "study", 
-     title_lab = "RP: ComBat")+theme(text=element_text(size=21))
+     title_lab = "HP: ComBat")+theme(text=element_text(size=21))
 dev.off()
 
 # -------------------------------------------------------------------------
@@ -1721,10 +1742,10 @@ gdf_comps <- data.frame(Control = c(gdf %>%
                         Test    = c(gdf %>% 
                                       dplyr::filter(Group == "White") %>% .$Group))
 ba_rtest_race <- imd_anova(omicsData = ba_pm_rcomb_temp, 
-                            comparisons = gdf_comps,
-                            test_method = "anova", 
-                            pval_adjust_a_multcomp = "holm", 
-                            pval_thresh = 0.05)
+                           comparisons = gdf_comps,
+                           test_method = "anova", 
+                           pval_adjust_a_multcomp = "holm", 
+                           pval_thresh = 0.05)
 
 summary(ba_rtest_race)$sig_table %>%
   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
@@ -1755,10 +1776,10 @@ gdf_comps <- data.frame(Control = c(gdf %>%
                         Test    = c(gdf %>% 
                                       dplyr::filter(Group == "White") %>% .$Group))
 pi_rtest_race <- imd_anova(omicsData = pi_pm_rcomb_temp,
-                            comparisons = gdf_comps,
-                            test_method = "anova",
-                            pval_adjust_a_multcomp = "holm",
-                            pval_thresh = 0.05)
+                           comparisons = gdf_comps,
+                           test_method = "anova",
+                           pval_adjust_a_multcomp = "holm",
+                           pval_thresh = 0.05)
 
 summary(pi_rtest_race)$sig_table %>%
   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
@@ -1789,15 +1810,15 @@ gdf_comps <- data.frame(Control = c(gdf %>%
                         Test    = c(gdf %>% 
                                       dplyr::filter(Group == "White") %>% .$Group))
 nobc_rtest_race <- imd_anova(omicsData = pm_common_rcomb_temp,
-                              comparisons = gdf_comps,
-                              test_method = "anova",
-                              pval_adjust_a_multcomp = "holm",
-                              pval_thresh = 0.05)
+                             comparisons = gdf_comps,
+                             test_method = "anova",
+                             pval_adjust_a_multcomp = "holm",
+                             pval_thresh = 0.05)
 summary(nobc_rtest_race)$sig_table %>%
   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
                                                             round(.x/dim(nobc_rtest_race)[1]*100,2), "%)"))) %>%
-  dplyr::mutate(Comparison = gsub("X", "", Comparison))
+  dplyr::mutate(Comparison = gsub("X","", Comparison))
 whichsig_nobc_rtest_race <- nobc_rtest_race %>%
   dplyr::select(Name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
   dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
@@ -1811,10 +1832,10 @@ gdf_comps <- data.frame(Control = c(gdf %>%
                         Test    = c(gdf %>% 
                                       dplyr::filter(Group == "pilot") %>% .$Group))
 nobc_rtest_study <- imd_anova(omicsData = pm_common_rcomb_temp,
-                               comparisons = gdf_comps,
-                               test_method = "anova",
-                               pval_adjust_a_multcomp = "holm",
-                               pval_thresh = 0.05)
+                              comparisons = gdf_comps,
+                              test_method = "anova",
+                              pval_adjust_a_multcomp = "holm",
+                              pval_thresh = 0.05)
 summary(nobc_rtest_study)$sig_table %>%
   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
@@ -1826,35 +1847,6 @@ whichsig_nobc_rtest_study <- nobc_rtest_study %>%
 
 # Combined, BC ------------------------------------------------------------
 
-temp <- pm_common_rcomb_combat
-sampkeep <- temp$f_data %>%
-  dplyr::filter(Race %in% c("White", "Black")) %>%
-  .$SampleID
-myfilt <- custom_filter(temp, f_data_keep = sampkeep)
-temp <- applyFilt(myfilt, temp)
-
-temp <- group_designation(temp, main_effects = c("Race"))
-gdf <- attr(temp, "group_DF") %>% 
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>% 
-                                      dplyr::filter(Group == "White") %>% .$Group),
-                        Test    = c(gdf %>% 
-                                      dplyr::filter(Group == "Black") %>% .$Group))
-combat_rtest_race <- imd_anova(omicsData = temp,
-                                comparisons = gdf_comps,
-                                test_method = "anova",
-                                pval_adjust_a_multcomp = "none",
-                                pval_thresh = 0.05)
-
-writexl::write_xlsx(x = list(`Black vs White` = combat_rtest_race %>%
-                               dplyr::left_join(temp$e_meta %>%
-                                                  dplyr::select(Name, Name_og.beataml) %>%
-                                                  dplyr::rename(unformatted_name = Name_og.beataml)) %>%
-                               dplyr::relocate(unformatted_name, .after = Name)),
-                    path = here::here("beataml_pilot_bvsw_rp_metabolites.xlsx"))
-
-
 pm_common_rcomb_combat_temp <- group_designation(pm_common_rcomb_combat, main_effects = c("Race_mod"))
 gdf <- attr(pm_common_rcomb_combat_temp, "group_DF") %>% 
   dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
@@ -1864,10 +1856,10 @@ gdf_comps <- data.frame(Control = c(gdf %>%
                         Test    = c(gdf %>% 
                                       dplyr::filter(Group == "White") %>% .$Group))
 combat_rtest_race <- imd_anova(omicsData = pm_common_rcomb_combat_temp,
-                                comparisons = gdf_comps,
-                                test_method = "anova",
-                                pval_adjust_a_multcomp = "holm",
-                                pval_thresh = 0.05)
+                               comparisons = gdf_comps,
+                               test_method = "anova",
+                               pval_adjust_a_multcomp = "holm",
+                               pval_thresh = 0.05)
 summary(combat_rtest_race)$sig_table %>%
   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
@@ -1886,10 +1878,10 @@ gdf_comps <- data.frame(Control = c(gdf %>%
                         Test    = c(gdf %>% 
                                       dplyr::filter(Group == "pilot") %>% .$Group))
 combat_rtest_study <- imd_anova(omicsData = pm_common_rcomb_combat_temp,
-                                 comparisons = gdf_comps,
-                                 test_method = "anova",
-                                 pval_adjust_a_multcomp = "holm",
-                                 pval_thresh = 0.05)
+                                comparisons = gdf_comps,
+                                test_method = "anova",
+                                pval_adjust_a_multcomp = "holm",
+                                pval_thresh = 0.05)
 summary(combat_rtest_study)$sig_table %>%
   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
