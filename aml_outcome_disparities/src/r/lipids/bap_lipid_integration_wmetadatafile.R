@@ -665,6 +665,10 @@ pm_common_comb <- group_designation(pm_common_comb, main_effects = c("study"), b
 
 pm_common_comb_combat <- bc_combat(omicsData = pm_common_comb, use_groups = FALSE)
 
+write.csv(pm_common_comb$e_data, here("src","r","lipids","Processed_Data","normalized_edata_lipid.csv"), row.names = FALSE)
+write.csv(pm_common_comb_combat$e_data, here("src","r","lipids","Processed_Data","normalized_combat_edata_lipid.csv"), row.names = FALSE)
+write.csv(pm_common_comb$f_data, here("src","r","lipids","Processed_Data","f_data_lipid.csv"), row.names = FALSE)
+write.csv(pm_common_comb$e_meta, here("src","r","lipids","Processed_Data","e_meta_lipid.csv"), row.names = FALSE)
 # -------------------------------------------------------------------------
 
 
