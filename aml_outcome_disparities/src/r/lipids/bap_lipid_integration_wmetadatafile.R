@@ -8,7 +8,7 @@ library(plotly)
 library(synapser)
 
 here::i_am("src/r/metab/bap_metab_integration.R")
-
+token = ""
 synapser::synLogin(authToken = token)
 
 # Here we explore integration of BeatAML and Pilot Lipidoimcs datasets via
@@ -669,355 +669,371 @@ write.csv(pm_common_comb$e_data, here("src","r","lipids","Processed_Data","norma
 write.csv(pm_common_comb_combat$e_data, here("src","r","lipids","Processed_Data","normalized_combat_edata_lipid.csv"), row.names = FALSE)
 write.csv(pm_common_comb$f_data, here("src","r","lipids","Processed_Data","f_data_lipid.csv"), row.names = FALSE)
 write.csv(pm_common_comb$e_meta, here("src","r","lipids","Processed_Data","e_meta_lipid.csv"), row.names = FALSE)
-# -------------------------------------------------------------------------
 
-
-### Analyses -------------------------------------------------------------------
-
-## RMD Outlier Assessment --------------------------------------------------
-
-# BeatAML -----------------------------------------------------------------
-
-ba_pm_comb <- group_designation(ba_pm_comb, main_effects = c("study"))
-
-myrmd <- rmd_filter(ba_pm_comb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_beataml_lipid_rmd.png"), units="in",
-    width=10, height=7, res=300)
-plot(myrmd, pvalue_threshold = 0.00001)
-dev.off()
-
-# Pilot -------------------------------------------------------------------
-
-pi_pm_comb <- group_designation(pi_pm_comb, main_effects = c("study"))
-
-myrmd <- rmd_filter(pi_pm_comb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_pilot_lipid_rmd.png"), units="in",
-    width=10, height=7, res=300)
-plot(myrmd, pvalue_threshold = 0.00001)
-dev.off()
-
-# Combined, No BC ---------------------------------------------------------
-
-pm_common_comb <- group_designation(pm_common_comb, main_effects = c("study"), batch_id = "batchid")
-
-myrmd <- rmd_filter(pm_common_comb)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_nobc_lipid_rmd.png"), units="in",
-    width=10, height=7, res=300)
-plot(myrmd, pvalue_threshold = 0.00001)
-dev.off()
-
-# Combined, BC ------------------------------------------------------------
-
-pm_common_comb_combat <- group_designation(pm_common_comb_combat, main_effects = c("study"), batch_id = "batchid")
-
-myrmd <- rmd_filter(pm_common_comb_combat)
-png(here("BeatAMLPilot_Integration", "figures", "outlier_combat_lipid_rmd.png"), units="in",
-    width=10, height=7, res=300)
-plot(myrmd, pvalue_threshold = 0.00001)
-dev.off()
-
-# -------------------------------------------------------------------------
-
-## PCA --------------------------------------------------------------------
-
-# BeatAML -----------------------------------------------------------------
-
-ba_pm_comb <- group_designation(ba_pm_comb, main_effects = c("study"))
-
-mypca <- dim_reduction(ba_pm_comb)
-png(here("BeatAMLPilot_Integration", "figures", "beataml_lipid_pca.png"), units="in",
-    width=10, height=7, res=300)
-plot(mypca, pvalue_threshold = 0.00001, title_lab = "Lipids: BeatAML")
-dev.off()
-
-# Pilot -------------------------------------------------------------------
-
-pi_pm_comb <- group_designation(pi_pm_comb, main_effects = c("study"))
-
-mypca <- dim_reduction(pi_pm_comb)
-png(here("BeatAMLPilot_Integration", "figures", "pilot_lipid_pca.png"), units="in",
-    width=10, height=7, res=300)
-plot(mypca, pvalue_threshold = 0.00001, title_lab = "Lipids: Pilot")
-dev.off()
-
-# Combined, No BC ---------------------------------------------------------
-
-mypca <- dim_reduction(pm_common_comb)
-
-png(here("BeatAMLPilot_Integration", "figures", "nobc_lipid_pca.png"), units="in",
-    width=10, height=7, res=300)
-plot(mypca, omicsData = pm_common_comb, color_by = "study",
-     title_lab = "Lipids: No Batch-Correction")+theme(text=element_text(size=21))
-dev.off()
-
-# Combined, BC ------------------------------------------------------------
-
-mypca <- dim_reduction(pm_common_comb_combat)
-
-png(here("BeatAMLPilot_Integration", "figures", "combat_lipid_pca.png"), units="in",
-    width=10, height=7, res=300)
-plot(mypca, omicsData = pm_common_comb_combat, color_by = "study",
-     title_lab = "Lipids: ComBat")+theme(text=element_text(size=21))
-dev.off()
-
-# -------------------------------------------------------------------------
-
-## ANOVA -------------------------------------------------------------------
-
-# BeatAML -----------------------------------------------------------------
-
-ba_pm_comb_temp <- group_designation(ba_pm_comb, main_effects = c("Race_mod"))
-gdf <- attr(ba_pm_comb_temp, "group_DF") %>%
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>%
-                                      dplyr::filter(Group == "Non-white") %>% .$Group),
-                        Test    = c(gdf %>%
-                                      dplyr::filter(Group == "White") %>% .$Group))
-ba_hitest_race <- imd_anova(omicsData = ba_pm_comb_temp,
-                            comparisons = gdf_comps,
-                            test_method = "anova",
-                            pval_adjust_a_multcomp = "holm",
-                            pval_thresh = 0.05)
-
-summary(ba_hitest_race)$sig_table %>%
-  dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
-  dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
-                                                            round(.x/dim(ba_hitest_race)[1]*100,2), "%)"))) %>%
-  dplyr::mutate(Comparison = gsub("X", "", Comparison))
-
-whichsig_ba_hitest_race <- ba_hitest_race %>%
-  dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
-  dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
-
-# ba_pm_comb_temp <- group_designation(ba_pm_comb, main_effects = c("study"))
+synapser::synLogin(authToken = token)
+synapser::synStore(
+   synapser::File(path = here("src","r","lipids","Processed_Data","normalized_edata_lipid.csv"),parentId="syn71210014")
+)
+synapser::synStore(
+   synapser::File(path = here("src","r","lipids","Processed_Data","normalized_combat_edata_lipid.csv"),parentId="syn71210014")
+)
+synapser::synStore(
+   synapser::File(path = here("src","r","lipids","Processed_Data","f_data_lipid.csv"),parentId="syn71210014")
+)
+synapser::synStore(
+   synapser::File(path = here("src","r","lipids","Processed_Data","e_meta_lipid.csv"),parentId="syn71210014")
+)
+# EVERYTHING PAST THIS POINT IS ANALYSIS AND COMMENTED OUT
 #
-# ba_hitest_study <- imd_anova(omicsData = ba_pm_comb_temp,
-#                              test_method = "anova",
-#                              pval_adjust_a_multcomp = "holm",
-#                              pval_thresh = 0.05)
-# summary(ba_hitest_study)
-
-# Pilot -------------------------------------------------------------------
-
-pi_pm_comb_temp <- group_designation(pi_pm_comb, main_effects = c("Race_mod"))
-gdf <- attr(pi_pm_comb_temp, "group_DF") %>%
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>%
-                                      dplyr::filter(Group == "Non-white") %>% .$Group),
-                        Test    = c(gdf %>%
-                                      dplyr::filter(Group == "White") %>% .$Group))
-pi_hitest_race <- imd_anova(omicsData = pi_pm_comb_temp,
-                            comparisons = gdf_comps,
-                            test_method = "anova",
-                            pval_adjust_a_multcomp = "holm",
-                            pval_thresh = 0.05)
-
-summary(pi_hitest_race)$sig_table %>%
-  dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
-  dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
-                                                            round(.x/dim(pi_hitest_race)[1]*100,2), "%)"))) %>%
-  dplyr::mutate(Comparison = gsub("X", "", Comparison))
-
-whichsig_pi_hitest_race <- pi_hitest_race %>%
-  dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
-  dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
-
-# pi_pm_comb_temp <- group_designation(pi_pm_comb, main_effects = c("study"))
+# # -------------------------------------------------------------------------
 #
-# pi_hitest_study <- imd_anova(omicsData = pi_pm_comb_temp,
-#                              test_method = "anova",
-#                              pval_adjust_a_multcomp = "holm",
-#                              pval_thresh = 0.05)
-# summary(pi_hitest_study)
-
-# Combined, No BC ---------------------------------------------------------
-
-pm_common_comb_temp <- group_designation(pm_common_comb, main_effects = c("Race_mod"))
-gdf <- attr(pm_common_comb_temp, "group_DF") %>%
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>%
-                                      dplyr::filter(Group == "Non-white") %>% .$Group),
-                        Test    = c(gdf %>%
-                                      dplyr::filter(Group == "White") %>% .$Group))
-nobc_hitest_race <- imd_anova(omicsData = pm_common_comb_temp,
-                              comparisons = gdf_comps,
-                              test_method = "anova",
-                              pval_adjust_a_multcomp = "holm",
-                              pval_thresh = 0.05)
-summary(nobc_hitest_race)$sig_table %>%
-  dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
-  dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
-                                                            round(.x/dim(nobc_hitest_race)[1]*100,2), "%)"))) %>%
-  dplyr::mutate(Comparison = gsub("X", "", Comparison))
-whichsig_nobc_hitest_race <- nobc_hitest_race %>%
-  dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
-  dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
-
-pm_common_comb_temp <- group_designation(pm_common_comb, main_effects = c("study"))
-gdf <- attr(pm_common_comb_temp, "group_DF") %>%
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>%
-                                      dplyr::filter(Group == "beataml") %>% .$Group),
-                        Test    = c(gdf %>%
-                                      dplyr::filter(Group == "pilot") %>% .$Group))
-nobc_hitest_study <- imd_anova(omicsData = pm_common_comb_temp,
-                               comparisons = gdf_comps,
-                               test_method = "anova",
-                               pval_adjust_a_multcomp = "holm",
-                               pval_thresh = 0.05)
-summary(nobc_hitest_study)$sig_table %>%
-  dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
-  dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
-                                                            round(.x/dim(nobc_hitest_study)[1]*100,2), "%)"))) %>%
-  dplyr::mutate(Comparison = gsub("X", "", Comparison))
-whichsig_nobc_hitest_study <- nobc_hitest_study %>%
-  dplyr::select(formatted_name, `P_value_A_pilot_vs_beataml`, `Flag_A_pilot_vs_beataml`) %>%
-  dplyr::filter(`Flag_A_pilot_vs_beataml` != 0)
-
-# Combined, BC ------------------------------------------------------------
-
-pm_common_comb_combat_temp <- group_designation(pm_common_comb_combat, main_effects = c("Race_mod"))
-gdf <- attr(pm_common_comb_combat_temp, "group_DF") %>%
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>%
-                                      dplyr::filter(Group == "Non-white") %>% .$Group),
-                        Test    = c(gdf %>%
-                                      dplyr::filter(Group == "White") %>% .$Group))
-combat_hitest_race <- imd_anova(omicsData = pm_common_comb_combat_temp,
-                                comparisons = gdf_comps,
-                                test_method = "anova",
-                                pval_adjust_a_multcomp = "holm",
-                                pval_thresh = 0.05)
-summary(combat_hitest_race)$sig_table %>%
-  dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
-  dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
-                                                            round(.x/dim(combat_hitest_race)[1]*100,2), "%)"))) %>%
-  dplyr::mutate(Comparison = gsub("X", "", Comparison))
-whichsig_combat_hitest_race <- combat_hitest_race %>%
-  dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
-  dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
-
-pm_common_comb_combat_temp <- group_designation(pm_common_comb_combat, main_effects = c("study"))
-gdf <- attr(pm_common_comb_combat_temp, "group_DF") %>%
-  dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
-  dplyr::distinct()
-gdf_comps <- data.frame(Control = c(gdf %>%
-                                      dplyr::filter(Group == "beataml") %>% .$Group),
-                        Test    = c(gdf %>%
-                                      dplyr::filter(Group == "pilot") %>% .$Group))
-combat_hitest_study <- imd_anova(omicsData = pm_common_comb_combat_temp,
-                                 comparisons = gdf_comps,
-                                 test_method = "anova",
-                                 pval_adjust_a_multcomp = "holm",
-                                 pval_thresh = 0.05)
-summary(combat_hitest_study)$sig_table %>%
-  dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
-  dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
-                                                            round(.x/dim(combat_hitest_study)[1]*100,2), "%)"))) %>%
-  dplyr::mutate(Comparison = gsub("X", "", Comparison))
-whichsig_combat_hitest_study <- combat_hitest_study %>%
-  dplyr::select(formatted_name, `P_value_A_pilot_vs_beataml`, `Flag_A_pilot_vs_beataml`) %>%
-  dplyr::filter(`Flag_A_pilot_vs_beataml` != 0)
-
-# -------------------------------------------------------------------------
-
-## Significant Set Comparisons ---------------------------------------------
-
-# BeatAML vs Pilot --------------------------------------------------------
-
-# Commonly significant, Race Comparison
-intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name)
-
-# Uniquely significant, BeatAML, Race Comparison
-whichsig_ba_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Uniquely significant, Pilot, Race Comparison
-whichsig_pi_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# BeatAML vs Combined, No BC ----------------------------------------------
-
-# Commonly significant, Race Comparison
-intersect(whichsig_ba_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name)
-
-# Uniquely significant, BeatAML, Race Comparison
-whichsig_ba_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Uniquely significant, Combined No BC, Race Comparison
-whichsig_nobc_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# BeatAML vs Combined, BC -------------------------------------------------
-
-# Commonly significant, Race Comparison
-intersect(whichsig_ba_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name)
-
-# Uniquely significant, BeatAML, Race Comparison
-whichsig_ba_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Uniquely significant, Combined BC, Race Comparison
-whichsig_combat_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Pilot vs Combined, No BC ----------------------------------------------
-
-# Commonly significant, Race Comparison
-intersect(whichsig_pi_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name)
-
-# Uniquely significant, Pilot, Race Comparison
-whichsig_pi_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Uniquely significant, Combined No BC, Race Comparison
-whichsig_nobc_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Pilot vs Combined, BC -------------------------------------------------
-
-# Commonly significant, Race Comparison
-intersect(whichsig_pi_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name)
-
-# Uniquely significant, Pilot, Race Comparison
-whichsig_pi_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Uniquely significant, Combined BC, Race Comparison
-whichsig_combat_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Combined, No BC vs Combined, BC -------------------------------------------------
-
-# Commonly significant, Race Comparison
-intersect(whichsig_nobc_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name)
-
-# Uniquely significant, Combined No BC, Race Comparison
-whichsig_nobc_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_nobc_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# Uniquely significant, Combined BC, Race Comparison
-whichsig_combat_hitest_race %>%
-  dplyr::filter(!(formatted_name %in% intersect(whichsig_nobc_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
-  .$formatted_name
-
-# -------------------------------------------------------------------------
-
-
+#
+# ### Analyses -------------------------------------------------------------------
+#
+# ## RMD Outlier Assessment --------------------------------------------------
+#
+# # BeatAML -----------------------------------------------------------------
+#
+# ba_pm_comb <- group_designation(ba_pm_comb, main_effects = c("study"))
+#
+# myrmd <- rmd_filter(ba_pm_comb)
+# png(here("BeatAMLPilot_Integration", "figures", "outlier_beataml_lipid_rmd.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(myrmd, pvalue_threshold = 0.00001)
+# dev.off()
+#
+# # Pilot -------------------------------------------------------------------
+#
+# pi_pm_comb <- group_designation(pi_pm_comb, main_effects = c("study"))
+#
+# myrmd <- rmd_filter(pi_pm_comb)
+# png(here("BeatAMLPilot_Integration", "figures", "outlier_pilot_lipid_rmd.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(myrmd, pvalue_threshold = 0.00001)
+# dev.off()
+#
+# # Combined, No BC ---------------------------------------------------------
+#
+# pm_common_comb <- group_designation(pm_common_comb, main_effects = c("study"), batch_id = "batchid")
+#
+# myrmd <- rmd_filter(pm_common_comb)
+# png(here("BeatAMLPilot_Integration", "figures", "outlier_nobc_lipid_rmd.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(myrmd, pvalue_threshold = 0.00001)
+# dev.off()
+#
+# # Combined, BC ------------------------------------------------------------
+#
+# pm_common_comb_combat <- group_designation(pm_common_comb_combat, main_effects = c("study"), batch_id = "batchid")
+#
+# myrmd <- rmd_filter(pm_common_comb_combat)
+# png(here("BeatAMLPilot_Integration", "figures", "outlier_combat_lipid_rmd.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(myrmd, pvalue_threshold = 0.00001)
+# dev.off()
+#
+# # -------------------------------------------------------------------------
+#
+# ## PCA --------------------------------------------------------------------
+#
+# # BeatAML -----------------------------------------------------------------
+#
+# ba_pm_comb <- group_designation(ba_pm_comb, main_effects = c("study"))
+#
+# mypca <- dim_reduction(ba_pm_comb)
+# png(here("BeatAMLPilot_Integration", "figures", "beataml_lipid_pca.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(mypca, pvalue_threshold = 0.00001, title_lab = "Lipids: BeatAML")
+# dev.off()
+#
+# # Pilot -------------------------------------------------------------------
+#
+# pi_pm_comb <- group_designation(pi_pm_comb, main_effects = c("study"))
+#
+# mypca <- dim_reduction(pi_pm_comb)
+# png(here("BeatAMLPilot_Integration", "figures", "pilot_lipid_pca.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(mypca, pvalue_threshold = 0.00001, title_lab = "Lipids: Pilot")
+# dev.off()
+#
+# # Combined, No BC ---------------------------------------------------------
+#
+# mypca <- dim_reduction(pm_common_comb)
+#
+# png(here("BeatAMLPilot_Integration", "figures", "nobc_lipid_pca.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(mypca, omicsData = pm_common_comb, color_by = "study",
+#      title_lab = "Lipids: No Batch-Correction")+theme(text=element_text(size=21))
+# dev.off()
+#
+# # Combined, BC ------------------------------------------------------------
+#
+# mypca <- dim_reduction(pm_common_comb_combat)
+#
+# png(here("BeatAMLPilot_Integration", "figures", "combat_lipid_pca.png"), units="in",
+#     width=10, height=7, res=300)
+# plot(mypca, omicsData = pm_common_comb_combat, color_by = "study",
+#      title_lab = "Lipids: ComBat")+theme(text=element_text(size=21))
+# dev.off()
+#
+# # -------------------------------------------------------------------------
+#
+# ## ANOVA -------------------------------------------------------------------
+#
+# # BeatAML -----------------------------------------------------------------
+#
+# ba_pm_comb_temp <- group_designation(ba_pm_comb, main_effects = c("Race_mod"))
+# gdf <- attr(ba_pm_comb_temp, "group_DF") %>%
+#   dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
+#   dplyr::distinct()
+# gdf_comps <- data.frame(Control = c(gdf %>%
+#                                       dplyr::filter(Group == "Non-white") %>% .$Group),
+#                         Test    = c(gdf %>%
+#                                       dplyr::filter(Group == "White") %>% .$Group))
+# ba_hitest_race <- imd_anova(omicsData = ba_pm_comb_temp,
+#                             comparisons = gdf_comps,
+#                             test_method = "anova",
+#                             pval_adjust_a_multcomp = "holm",
+#                             pval_thresh = 0.05)
+#
+# summary(ba_hitest_race)$sig_table %>%
+#   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
+#   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
+#                                                             round(.x/dim(ba_hitest_race)[1]*100,2), "%)"))) %>%
+#   dplyr::mutate(Comparison = gsub("X", "", Comparison))
+#
+# whichsig_ba_hitest_race <- ba_hitest_race %>%
+#   dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
+#   dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
+#
+# # ba_pm_comb_temp <- group_designation(ba_pm_comb, main_effects = c("study"))
+# #
+# # ba_hitest_study <- imd_anova(omicsData = ba_pm_comb_temp,
+# #                              test_method = "anova",
+# #                              pval_adjust_a_multcomp = "holm",
+# #                              pval_thresh = 0.05)
+# # summary(ba_hitest_study)
+#
+# # Pilot -------------------------------------------------------------------
+#
+# pi_pm_comb_temp <- group_designation(pi_pm_comb, main_effects = c("Race_mod"))
+# gdf <- attr(pi_pm_comb_temp, "group_DF") %>%
+#   dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
+#   dplyr::distinct()
+# gdf_comps <- data.frame(Control = c(gdf %>%
+#                                       dplyr::filter(Group == "Non-white") %>% .$Group),
+#                         Test    = c(gdf %>%
+#                                       dplyr::filter(Group == "White") %>% .$Group))
+# pi_hitest_race <- imd_anova(omicsData = pi_pm_comb_temp,
+#                             comparisons = gdf_comps,
+#                             test_method = "anova",
+#                             pval_adjust_a_multcomp = "holm",
+#                             pval_thresh = 0.05)
+#
+# summary(pi_hitest_race)$sig_table %>%
+#   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
+#   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
+#                                                             round(.x/dim(pi_hitest_race)[1]*100,2), "%)"))) %>%
+#   dplyr::mutate(Comparison = gsub("X", "", Comparison))
+#
+# whichsig_pi_hitest_race <- pi_hitest_race %>%
+#   dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
+#   dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
+#
+# # pi_pm_comb_temp <- group_designation(pi_pm_comb, main_effects = c("study"))
+# #
+# # pi_hitest_study <- imd_anova(omicsData = pi_pm_comb_temp,
+# #                              test_method = "anova",
+# #                              pval_adjust_a_multcomp = "holm",
+# #                              pval_thresh = 0.05)
+# # summary(pi_hitest_study)
+#
+# # Combined, No BC ---------------------------------------------------------
+#
+# pm_common_comb_temp <- group_designation(pm_common_comb, main_effects = c("Race_mod"))
+# gdf <- attr(pm_common_comb_temp, "group_DF") %>%
+#   dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
+#   dplyr::distinct()
+# gdf_comps <- data.frame(Control = c(gdf %>%
+#                                       dplyr::filter(Group == "Non-white") %>% .$Group),
+#                         Test    = c(gdf %>%
+#                                       dplyr::filter(Group == "White") %>% .$Group))
+# nobc_hitest_race <- imd_anova(omicsData = pm_common_comb_temp,
+#                               comparisons = gdf_comps,
+#                               test_method = "anova",
+#                               pval_adjust_a_multcomp = "holm",
+#                               pval_thresh = 0.05)
+# summary(nobc_hitest_race)$sig_table %>%
+#   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
+#   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
+#                                                             round(.x/dim(nobc_hitest_race)[1]*100,2), "%)"))) %>%
+#   dplyr::mutate(Comparison = gsub("X", "", Comparison))
+# whichsig_nobc_hitest_race <- nobc_hitest_race %>%
+#   dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
+#   dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
+#
+# pm_common_comb_temp <- group_designation(pm_common_comb, main_effects = c("study"))
+# gdf <- attr(pm_common_comb_temp, "group_DF") %>%
+#   dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
+#   dplyr::distinct()
+# gdf_comps <- data.frame(Control = c(gdf %>%
+#                                       dplyr::filter(Group == "beataml") %>% .$Group),
+#                         Test    = c(gdf %>%
+#                                       dplyr::filter(Group == "pilot") %>% .$Group))
+# nobc_hitest_study <- imd_anova(omicsData = pm_common_comb_temp,
+#                                comparisons = gdf_comps,
+#                                test_method = "anova",
+#                                pval_adjust_a_multcomp = "holm",
+#                                pval_thresh = 0.05)
+# summary(nobc_hitest_study)$sig_table %>%
+#   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
+#   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
+#                                                             round(.x/dim(nobc_hitest_study)[1]*100,2), "%)"))) %>%
+#   dplyr::mutate(Comparison = gsub("X", "", Comparison))
+# whichsig_nobc_hitest_study <- nobc_hitest_study %>%
+#   dplyr::select(formatted_name, `P_value_A_pilot_vs_beataml`, `Flag_A_pilot_vs_beataml`) %>%
+#   dplyr::filter(`Flag_A_pilot_vs_beataml` != 0)
+#
+# # Combined, BC ------------------------------------------------------------
+#
+# pm_common_comb_combat_temp <- group_designation(pm_common_comb_combat, main_effects = c("Race_mod"))
+# gdf <- attr(pm_common_comb_combat_temp, "group_DF") %>%
+#   dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
+#   dplyr::distinct()
+# gdf_comps <- data.frame(Control = c(gdf %>%
+#                                       dplyr::filter(Group == "Non-white") %>% .$Group),
+#                         Test    = c(gdf %>%
+#                                       dplyr::filter(Group == "White") %>% .$Group))
+# combat_hitest_race <- imd_anova(omicsData = pm_common_comb_combat_temp,
+#                                 comparisons = gdf_comps,
+#                                 test_method = "anova",
+#                                 pval_adjust_a_multcomp = "holm",
+#                                 pval_thresh = 0.05)
+# summary(combat_hitest_race)$sig_table %>%
+#   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
+#   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
+#                                                             round(.x/dim(combat_hitest_race)[1]*100,2), "%)"))) %>%
+#   dplyr::mutate(Comparison = gsub("X", "", Comparison))
+# whichsig_combat_hitest_race <- combat_hitest_race %>%
+#   dplyr::select(formatted_name, `P_value_A_White_vs_Non-white`, `Flag_A_White_vs_Non-white`) %>%
+#   dplyr::filter(`Flag_A_White_vs_Non-white` != 0)
+#
+# pm_common_comb_combat_temp <- group_designation(pm_common_comb_combat, main_effects = c("study"))
+# gdf <- attr(pm_common_comb_combat_temp, "group_DF") %>%
+#   dplyr::select(-SampleID) %>% # Remove replicate identifier; only retain design information
+#   dplyr::distinct()
+# gdf_comps <- data.frame(Control = c(gdf %>%
+#                                       dplyr::filter(Group == "beataml") %>% .$Group),
+#                         Test    = c(gdf %>%
+#                                       dplyr::filter(Group == "pilot") %>% .$Group))
+# combat_hitest_study <- imd_anova(omicsData = pm_common_comb_combat_temp,
+#                                  comparisons = gdf_comps,
+#                                  test_method = "anova",
+#                                  pval_adjust_a_multcomp = "holm",
+#                                  pval_thresh = 0.05)
+# summary(combat_hitest_study)$sig_table %>%
+#   dplyr::mutate(Comparison = gsub("_vs_", " vs ", Comparison)) %>%
+#   dplyr::mutate(dplyr::across(dplyr::matches(":"), ~ paste0(.x, " (",
+#                                                             round(.x/dim(combat_hitest_study)[1]*100,2), "%)"))) %>%
+#   dplyr::mutate(Comparison = gsub("X", "", Comparison))
+# whichsig_combat_hitest_study <- combat_hitest_study %>%
+#   dplyr::select(formatted_name, `P_value_A_pilot_vs_beataml`, `Flag_A_pilot_vs_beataml`) %>%
+#   dplyr::filter(`Flag_A_pilot_vs_beataml` != 0)
+#
+# # -------------------------------------------------------------------------
+#
+# ## Significant Set Comparisons ---------------------------------------------
+#
+# # BeatAML vs Pilot --------------------------------------------------------
+#
+# # Commonly significant, Race Comparison
+# intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name)
+#
+# # Uniquely significant, BeatAML, Race Comparison
+# whichsig_ba_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Uniquely significant, Pilot, Race Comparison
+# whichsig_pi_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # BeatAML vs Combined, No BC ----------------------------------------------
+#
+# # Commonly significant, Race Comparison
+# intersect(whichsig_ba_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name)
+#
+# # Uniquely significant, BeatAML, Race Comparison
+# whichsig_ba_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Uniquely significant, Combined No BC, Race Comparison
+# whichsig_nobc_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # BeatAML vs Combined, BC -------------------------------------------------
+#
+# # Commonly significant, Race Comparison
+# intersect(whichsig_ba_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name)
+#
+# # Uniquely significant, BeatAML, Race Comparison
+# whichsig_ba_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Uniquely significant, Combined BC, Race Comparison
+# whichsig_combat_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_ba_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Pilot vs Combined, No BC ----------------------------------------------
+#
+# # Commonly significant, Race Comparison
+# intersect(whichsig_pi_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name)
+#
+# # Uniquely significant, Pilot, Race Comparison
+# whichsig_pi_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_pi_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Uniquely significant, Combined No BC, Race Comparison
+# whichsig_nobc_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_nobc_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Pilot vs Combined, BC -------------------------------------------------
+#
+# # Commonly significant, Race Comparison
+# intersect(whichsig_pi_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name)
+#
+# # Uniquely significant, Pilot, Race Comparison
+# whichsig_pi_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Uniquely significant, Combined BC, Race Comparison
+# whichsig_combat_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_pi_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Combined, No BC vs Combined, BC -------------------------------------------------
+#
+# # Commonly significant, Race Comparison
+# intersect(whichsig_nobc_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name)
+#
+# # Uniquely significant, Combined No BC, Race Comparison
+# whichsig_nobc_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_nobc_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # Uniquely significant, Combined BC, Race Comparison
+# whichsig_combat_hitest_race %>%
+#   dplyr::filter(!(formatted_name %in% intersect(whichsig_nobc_hitest_race$formatted_name, whichsig_combat_hitest_race$formatted_name))) %>%
+#   .$formatted_name
+#
+# # -------------------------------------------------------------------------
+#
+#

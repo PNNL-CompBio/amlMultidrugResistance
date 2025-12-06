@@ -7,7 +7,7 @@ library(here)
 here::i_am("src/r/lipids/beat_lipids_proc.R")
 
 # token = USE AUTHENTICATION TOKEN HERE
-
+token = ""
 synapser::synLogin(authToken = token)
 
 ##### Data Processing ---------------------------------------------------------
