@@ -21,25 +21,25 @@ The black patient files can be found
 [in the lipids folder](https://www.synapse.org/Synapse:syn71210014) of the
 Experiment 26 directory. 
 
-*** Javi please specific initial files to start with ***
-
 beat_lipids_proc.R: BEAT_AML_aligned_lipids_for_stats 2-2025-08-14.xlsx
 data_processing_code/ptrc_lipids_proc.R: PTRC_lipids_POS_for_stats_aligned_with_BEAT.xlsx, 
 PTRC_lipids_NEG_aligned_with_BEAT.xlsx, PTRC_run_order.xlsx
 
 ## Batch correction steps
 
-*** Javi what order do I run the scripts in? ***
-
-beat_lipids_proc.R should be run first to process the beat aml lipidomics data; 
-data_processing_code/ptrc_lipids_proc.R should be run to process the ptrc lipidomics data.
-bap_lipid_integration_wmetadatafile.R for the integration and analysis.  
-
+For lipids, beat_lipids_proc.R should be run first to process the beat aml lipidomics data.
+After processing that data, the file bap_lipid_integration_wmetadatafile.R should be ran.
+In this file, data are preprocessed, normalized, integrated, and batch corrected.
 
 ## Final combined data
 
-*** Javi what file is the combined lipidomics data? ***
+There are four csv files generated for the lipid data:
 
-The final combined data (beat aml + ptrc) is not written out anywhere,
-but it is created between lines 576-668 in bap_lipid_integration_wmetadatafile.R
+- normalized_e_data_lipid.csv (normalized log2 abundance values)
+- normalized_combat_edata_lipid.csv (normalized log2 abundance values that have been batch corrected via ComBat)
+- f_data_lipid.csv (sample information)
+- e_meta_lipid.csv (biomolecule information)
+
+These files can be found [in the lipids folder](https://www.synapse.org/Synapse:syn71210014) of the
+Experiment 26 directory. 
 
