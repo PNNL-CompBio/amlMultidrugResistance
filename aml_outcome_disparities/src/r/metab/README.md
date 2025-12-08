@@ -28,6 +28,17 @@ The batch correction is handled in a single script
 
 ## Final combined data
 
-The final combined dataset isn't written out anywhere, but it is created in 
-lines 1142-1290 in bap_metab_integration_wmetadatafile.R
-(or lines 1092-1240 in bap_metab_integration.R)
+There are four csv files generated for the each metabolite mode data for a total of eight csv files:
+
+- hilic_normalized_e_data_lipid.csv (normalized log2 abundance values)
+- hilic_normalized_combat_edata_lipid.csv (normalized log2 abundance values that have been batch corrected via ComBat)
+- hilic_f_data_lipid.csv (sample information)
+- hilic_e_meta_lipid.csv (biomolecule information)
+- rp_normalized_e_data_lipid.csv (normalized log2 abundance values)
+- rp_normalized_combat_edata_lipid.csv (normalized log2 abundance values that have been batch corrected via ComBat)
+- rp_f_data_lipid.csv (sample information)
+- rp_e_meta_lipid.csv (biomolecule information)
+
+These files can be found [in the metabolites folder](https://www.synapse.org/Synapse:syn71850016) of the
+Experiment 26 directory. 
+
