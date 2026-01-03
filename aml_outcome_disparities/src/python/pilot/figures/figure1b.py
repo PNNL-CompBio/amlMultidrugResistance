@@ -1,22 +1,15 @@
 """Plots figure 1b: Preliminary Volcano Plots"""
 
-from pilot.figures.figure_setup import get_setup
-from pilot.data_import import (
-    import_acetyl,
-    import_global,
-    import_lipids,
-    import_meta,
-    import_metabolites,
-    import_phospho,
-    import_rna,
-    syn_login,
-)
-from pilot.gene_analysis import calculate_fc, volcano_plot
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import scale
+
+from pilot.data_import import (import_acetyl, import_global, import_lipids,
+                               import_meta, import_metabolites, import_phospho,
+                               import_rna, syn_login)
+from pilot.figures.figure_setup import get_setup
+from pilot.gene_analysis import calculate_fc, volcano_plot
 
 
 def main():

@@ -1,21 +1,14 @@
 """Plots figure 1a: PCA for batch comparison."""
 
-from pilot.figures.figure_setup import confidence_ellipse, get_setup
-from pilot.data_import import (
-    import_acetyl,
-    import_global,
-    import_lipids,
-    import_meta,
-    import_metabolites,
-    import_phospho,
-    import_rna,
-    syn_login,
-)
-
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import scale
 from statsmodels.multivariate.pca import PCA
+
+from pilot.data_import import (import_acetyl, import_global, import_lipids,
+                               import_meta, import_metabolites, import_phospho,
+                               import_rna, syn_login)
+from pilot.figures.figure_setup import confidence_ellipse, get_setup
 
 
 def main():
