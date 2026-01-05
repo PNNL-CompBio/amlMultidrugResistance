@@ -1,10 +1,13 @@
 library(Biostrings)
 library(dplyr)
+library(here)
 library(MSnSet.utils)
 library(synapser)
 
 here::i_am("src/r/proteomics/proteomic_batch_correction.R")
-token ""
+# Assumes an authorization token for Synapse is stored in the root directory
+# with name 'auth_token.txt'
+token <- readLines(here("auth_token.txt"), warn = FALSE)
 synapser::synLogin(authToken = token)
 
 #' Proteomic batch correction
@@ -103,3 +106,5 @@ combat_proteomics <- function(phospho = TRUE, output_path = NULL) {
   )
 }
 
+combat_proteomics(phospho = TRUE)
+combat_proteomics(phospho = FALSE)
