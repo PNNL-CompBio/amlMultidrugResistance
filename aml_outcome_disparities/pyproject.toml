@@ -10,7 +10,6 @@ dependencies = [
     "gseapy>=1.1.9",
     "igraph>=0.11.9",
     "inmoose>=0.8.1",
-    "isort>=6.0.1",
     "leidenalg>=0.10.2",
     "matplotlib>=3.10.5",
     "mygene>=3.2.2",
@@ -22,6 +21,7 @@ dependencies = [
     "scikit-learn>=1.7.1",
     "scipy>=1.15.3",
     "seaborn>=0.13.2",
+    "setuptools>=80.9.0",
     "statsmodels>=0.14.5",
     "synapseclient>=4.9.0",
 ]

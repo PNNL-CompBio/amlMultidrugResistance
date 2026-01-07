@@ -11,6 +11,7 @@ from matplotlib.patches import Ellipse
 from numpy.typing import ArrayLike
 from statsmodels.regression.linear_model import RegressionResults
 
+matplotlib.use("AGG")
 matplotlib.rcParams["axes.labelsize"] = 8
 matplotlib.rcParams["axes.linewidth"] = 0.6
 matplotlib.rcParams["axes.titlesize"] = 10

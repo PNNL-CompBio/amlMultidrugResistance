@@ -1,15 +1,13 @@
 """Plots figure 1b: Preliminary Volcano Plots"""
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import scale
-
 from pilot.data_import import (import_acetyl, import_global, import_lipids,
                                import_meta, import_metabolites, import_phospho,
                                import_rna, syn_login)
 from pilot.figures.figure_setup import get_setup
 from pilot.gene_analysis import calculate_fc, volcano_plot
+from sklearn.preprocessing import scale
 
 
 def main():
@@ -102,7 +100,7 @@ def main():
             xlabel="log2(Fold Change)", ylabel="-log10(p)", title=dataset_name
         )
 
-    plt.show()
+    fig.savefig("figure1b.svg")
 
 
 if __name__ == "__main__":

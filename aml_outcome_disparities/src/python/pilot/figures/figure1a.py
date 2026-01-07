@@ -1,14 +1,12 @@
 """Plots figure 1a: PCA for batch comparison."""
 
-import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.preprocessing import scale
-from statsmodels.multivariate.pca import PCA
-
 from pilot.data_import import (import_acetyl, import_global, import_lipids,
                                import_meta, import_metabolites, import_phospho,
                                import_rna, syn_login)
 from pilot.figures.figure_setup import confidence_ellipse, get_setup
+from sklearn.preprocessing import scale
+from statsmodels.multivariate.pca import PCA
 
 
 def main():
@@ -147,7 +145,7 @@ def main():
         ax.set(xlabel="PC 1", ylabel="PC 2", title=f"{dataset_name}: Race")
         ax.legend()
 
-    plt.show()
+    fig.savefig("figure1a.svg")
 
 
 if __name__ == "__main__":
