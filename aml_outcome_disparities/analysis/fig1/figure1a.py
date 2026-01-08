@@ -1,14 +1,29 @@
 """Plots figure 1a: PCA for batch comparison."""
 
-import matplotlib.pyplot as plt
+import sys
+from os.path import abspath, dirname, join
+
+sys.path.append(
+    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
+)
+
 import pandas as pd
 from sklearn.preprocessing import scale
 from statsmodels.multivariate.pca import PCA
 
-from pilot.data_import import (import_acetyl, import_global, import_lipids,
-                               import_meta, import_metabolites, import_phospho,
-                               import_rna, syn_login)
+from pilot.data_import import (
+    import_acetyl,
+    import_global,
+    import_lipids,
+    import_meta,
+    import_metabolites,
+    import_phospho,
+    import_rna,
+    syn_login,
+)
 from pilot.figures.figure_setup import confidence_ellipse, get_setup
+
+FILE_DIR = dirname(abspath(__file__))
 
 
 def main():
@@ -147,7 +162,7 @@ def main():
         ax.set(xlabel="PC 1", ylabel="PC 2", title=f"{dataset_name}: Race")
         ax.legend()
 
-    plt.show()
+    fig.savefig(join(FILE_DIR, "figure1a.svg"))
 
 
 if __name__ == "__main__":

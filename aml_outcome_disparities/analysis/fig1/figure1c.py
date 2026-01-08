@@ -1,6 +1,12 @@
 """Plots figure 1c: Cell Type Score Comparisons"""
 
-import matplotlib.pyplot as plt
+import sys
+from os.path import abspath, dirname, join
+
+sys.path.append(
+    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
+)
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -11,6 +17,7 @@ from pilot.data_import import import_meta, import_rna, syn_login
 from pilot.figures.figure_setup import get_setup
 from pilot.gene_analysis import cell_type_scores
 
+FILE_DIR = dirname(abspath(__file__))
 RACE_COLORS = {"Black": "tab:red", "White": "tab:purple"}
 
 
@@ -115,7 +122,7 @@ def main():
             transform=ax.transAxes,
         )
 
-    plt.show()
+    fig.savefig(join(FILE_DIR, "figure1a.svg"))
 
 
 if __name__ == "__main__":
