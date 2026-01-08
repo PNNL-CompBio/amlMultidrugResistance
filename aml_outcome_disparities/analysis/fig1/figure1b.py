@@ -27,7 +27,7 @@ from pilot.gene_analysis import calculate_fc, volcano_plot
 FILE_DIR = dirname(abspath(__file__))
 
 
-def main():
+def make_figure():
     # Import data
     syn = syn_login()
     meta = import_meta(syn)
@@ -117,8 +117,8 @@ def main():
             xlabel="log2(Fold Change)", ylabel="-log10(p)", title=dataset_name
         )
 
-    fig.savefig(join(FILE_DIR, "figure1a.svg"))
+    return fig
 
 
 if __name__ == "__main__":
-    main()
+    make_figure()

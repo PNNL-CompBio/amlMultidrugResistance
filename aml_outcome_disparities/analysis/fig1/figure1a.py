@@ -26,7 +26,7 @@ from pilot.figures.figure_setup import confidence_ellipse, get_setup
 FILE_DIR = dirname(abspath(__file__))
 
 
-def main():
+def make_figure():
     # Import data
     syn = syn_login()
     meta = import_meta(syn)
@@ -162,8 +162,8 @@ def main():
         ax.set(xlabel="PC 1", ylabel="PC 2", title=f"{dataset_name}: Race")
         ax.legend()
 
-    fig.savefig(join(FILE_DIR, "figure1a.svg"))
+    return fig
 
 
 if __name__ == "__main__":
-    main()
+    make_figure()

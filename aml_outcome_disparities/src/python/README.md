@@ -48,6 +48,11 @@ directory.
    `Transcript length (including UTRs and CDS)` and `Gene stable ID`.
     * TODO: Move this to an automated .xml-based import for reproducibility.
 
+Data on Synapse is downloaded directly through Synapse's Python client. To use, you'll need to include a `.txt` file 
+with a personal access token that you can generate [here](
+https://accounts.synapse.org/authenticated/personalaccesstokens). Once generated, save the token to `auth_token.txt` in
+the `src/python/` directory.
+
 ## Code Execution
 
 Files within the `pilot/` directory contain useful tools for analysis and data importation that are *not* intended 
@@ -62,6 +67,7 @@ environment:
 uv run /path/to/figure.py
 ```
 
-Figure scripts within the `aml_outcome_disparities/analysis/` will save `.svg` files matching their name to their
-directory. Each Python-based figure script has been configured to add scripts from the `pilot/` directory to the current 
-path, so the above `uv run` command can be executed from any location within this repository.
+Each Python-based figure script has been configured to add scripts from the `pilot/` directory to the current 
+path, so the above `uv run` command can be executed from any location within this repository. Alternatively, you can 
+view the output of each figure script within the notebooks in the `aml_outcome_disparities/analysis/` directory that 
+will automatically run and display the outputs of each figure script.

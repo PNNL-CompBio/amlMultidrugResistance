@@ -21,7 +21,7 @@ FILE_DIR = dirname(abspath(__file__))
 RACE_COLORS = {"Black": "tab:red", "White": "tab:purple"}
 
 
-def main():
+def make_figure():
     # Import rna
     syn = syn_login()
     rna = import_rna(syn)
@@ -122,8 +122,8 @@ def main():
             transform=ax.transAxes,
         )
 
-    fig.savefig(join(FILE_DIR, "figure1a.svg"))
+    return fig
 
 
 if __name__ == "__main__":
-    main()
+    make_figure()

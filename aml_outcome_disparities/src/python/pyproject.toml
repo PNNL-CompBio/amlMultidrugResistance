@@ -11,6 +11,7 @@ dependencies = [
     "igraph>=0.11.9",
     "inmoose>=0.8.1",
     "isort>=6.0.1",
+    "jupyter>=1.1.1",
     "leidenalg>=0.10.2",
     "matplotlib>=3.10.5",
     "mygene>=3.2.2",
