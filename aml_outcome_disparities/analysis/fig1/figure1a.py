@@ -35,7 +35,12 @@ def make_figure():
     phospho = import_phospho(syn, pre_corrected=False)
     global_prot = import_global(syn, pre_corrected=True)
     acetyl = import_acetyl(syn)
-    rna = import_rna(syn, return_symbols=False)
+    rna = import_rna(
+        syn,
+        return_symbols=True,
+        batch_correct=True,
+        tpm=True
+    )
 
     cohort_colors = pd.Series(
         {
@@ -162,6 +167,7 @@ def make_figure():
         ax.set(xlabel="PC 1", ylabel="PC 2", title=f"{dataset_name}: Race")
         ax.legend()
 
+    fig.savefig("figure1a.png")
     return fig
 
 
