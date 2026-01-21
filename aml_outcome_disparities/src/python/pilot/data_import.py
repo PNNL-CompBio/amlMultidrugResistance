@@ -155,7 +155,7 @@ def import_rna(
     syn: sc.Synapse | None = None,
     return_symbols: bool = True,
     batch_correct: bool = True,
-    tpm: bool = True
+    tpm: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads and TPMs RNA data.
@@ -223,10 +223,7 @@ def import_rna(
         # Load in meta-data for larger cohort, including patients outside
         # pilot study
         meta = import_meta(syn, aux_meta=True)
-        meta = meta.loc[
-            ~meta.loc[:, "Race"].isin(["Declined", "Unknown"]),
-            :
-        ]
+        meta = meta.loc[~meta.loc[:, "Race"].isin(["Declined", "Unknown"]), :]
 
         # Only keep patients with meta-data
         ptrc = ptrc.loc[:, ptrc.columns.intersection(meta.index)]
@@ -238,7 +235,7 @@ def import_rna(
         data = pycombat_seq(
             data,
             meta.loc[:, "Study"].values,
-            covar_mod=(meta.loc[:, "Race"] == "Black").astype(int).values
+            covar_mod=(meta.loc[:, "Race"] == "Black").astype(int).values,
         )
         ptrc = data.loc[:, ptrc.columns]
         pilot = data.loc[:, pilot.columns]
@@ -327,8 +324,7 @@ def import_phospho(
 
 
 def import_meta(
-    syn: sc.Synapse | None = None,
-    aux_meta: bool = False
+    syn: sc.Synapse | None = None, aux_meta: bool = False
 ) -> pd.DataFrame:
     """
     Loads merged meta-data from Synapse.
@@ -364,9 +360,7 @@ def import_meta(
     if aux_meta:
         # Import additional metadata from BeatAML study
         ba_aux = pd.read_excel(
-            syn.get("syn64126458").path,
-            index_col=0,
-            sheet_name="summary"
+            syn.get("syn64126458").path, index_col=0, sheet_name="summary"
         )
         ba_aux.columns = ba_aux.iloc[0, :]
         ba_aux = ba_aux.iloc[1:, :]
@@ -378,17 +372,16 @@ def import_meta(
             columns={
                 "ageAtDiagnosis": "Age",
                 "consensus_sex": "Sex",
-                "reportedRace": "Race"
+                "reportedRace": "Race",
             },
-            inplace=True
+            inplace=True,
         )
         ba_aux = ba_aux.loc[:, ["Age", "Sex", "Race"]]
         ba_aux.loc[:, ["Source", "Study"]] = "BeatAML"
 
         # Convert sample names to match BeatAML study sample IDs
         ptrc_conversion = pd.read_excel(
-            syn.get("syn64126463").path,
-            index_col=0
+            syn.get("syn64126463").path, index_col=0
         )
         ptrc_conversion.dropna(subset="dbgap_rnaseq_sample", inplace=True)
         ptrc_conversion = pd.Series(
@@ -397,28 +390,18 @@ def import_meta(
         )
         ba_aux.rename(index=ptrc_conversion, inplace=True)
         meta = pd.concat([meta, ba_aux])
-        meta = meta.loc[
-            ~meta.index.duplicated(keep="first"),
-            :
-        ]
+        meta = meta.loc[~meta.index.duplicated(keep="first"), :]
 
         # Rename columns to match pilot cohort format
-        pilot_aux = pd.read_excel(
-            syn.get("syn62750469").path,
-            index_col=0
-        )
+        pilot_aux = pd.read_excel(syn.get("syn62750469").path, index_col=0)
         pilot_aux.drop(pilot_aux.index.intersection(meta.index), inplace=True)
         pilot_aux.rename(
-            columns={
-                "Sex (1-male, 0-female)": "Sex",
-                "Race_label": "Race"
-            },
-            inplace=True
+            columns={"Sex (1-male, 0-female)": "Sex", "Race_label": "Race"},
+            inplace=True,
         )
         pilot_aux.loc[:, ["Source", "Study"]] = "pilotStudy"
         pilot_aux = pilot_aux.loc[
-            :,
-            pilot_aux.columns.intersection(meta.columns)
+            :, pilot_aux.columns.intersection(meta.columns)
         ]
         meta = pd.concat([meta, pilot_aux])
 
