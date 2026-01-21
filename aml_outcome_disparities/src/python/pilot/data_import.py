@@ -155,7 +155,7 @@ def import_rna(
     syn: sc.Synapse | None = None,
     return_symbols: bool = True,
     batch_correct: bool = True,
-    tpm: bool = True,
+    tpm: bool = True
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads and TPMs RNA data.
@@ -178,7 +178,7 @@ def import_rna(
 
     # Load data from Synapse
     ptrc = pd.read_csv(syn.get("syn64126462").path, index_col=0, sep="\t")
-    ptrc = ptrc.iloc[:, 3:]
+    ptrc = ptrc.iloc[:, 3:].astype(float)
     pilot = pd.read_csv(syn.get("syn68820229").path, index_col=0, sep="\t")
 
     # Convert experiment IDs to universal Accession IDs
@@ -220,10 +220,26 @@ def import_rna(
 
     # Correct raw counts via ComBat-Seq prior to normalization or TPM
     if batch_correct:
+        # Load in meta-data for larger cohort, including patients outside
+        # pilot study
+        meta = import_meta(syn, aux_meta=True)
+        meta = meta.loc[
+            ~meta.loc[:, "Race"].isin(["Declined", "Unknown"]),
+            :
+        ]
+
+        # Only keep patients with meta-data
+        ptrc = ptrc.loc[:, ptrc.columns.intersection(meta.index)]
+        pilot = pilot.loc[:, pilot.columns.intersection(meta.index)]
         data = pd.concat([ptrc, pilot], axis=1)
-        batches = np.zeros(data.shape[1])
-        batches[-pilot.shape[1] :] = 1
-        data = pycombat_seq(data, batches)
+        meta = meta.loc[data.columns, :]
+
+        # Batch correct, including race as a covariate to preserve
+        data = pycombat_seq(
+            data,
+            meta.loc[:, "Study"].values,
+            covar_mod=(meta.loc[:, "Race"] == "Black").astype(int).values
+        )
         ptrc = data.loc[:, ptrc.columns]
         pilot = data.loc[:, pilot.columns]
 
@@ -310,13 +326,18 @@ def import_phospho(
     return ptrc.T, pilot.T
 
 
-def import_meta(syn: sc.Synapse | None = None) -> pd.DataFrame:
+def import_meta(
+    syn: sc.Synapse | None = None,
+    aux_meta: bool = False
+) -> pd.DataFrame:
     """
     Loads merged meta-data from Synapse.
 
     Args:
         syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
             new one if None.
+        aux_meta (bool, default: False): Load auxiliary meta-data for patients
+            not included in manuscript analyses.
 
     Returns:
          pd.DataFrame: Updated meta-data across cohorts
@@ -339,6 +360,67 @@ def import_meta(syn: sc.Synapse | None = None) -> pd.DataFrame:
     # Drop duplicates
     meta = meta.loc[~meta.index.duplicated(keep="first"), :]
     meta = meta.rename(columns={"source": "Source"})
+
+    if aux_meta:
+        # Import additional metadata from BeatAML study
+        ba_aux = pd.read_excel(
+            syn.get("syn64126458").path,
+            index_col=0,
+            sheet_name="summary"
+        )
+        ba_aux.columns = ba_aux.iloc[0, :]
+        ba_aux = ba_aux.iloc[1:, :]
+
+        # Rename columns to match format of pilot cohort
+        ba_aux.set_index("dbgap_rnaseq_sample", inplace=True, drop=True)
+        ba_aux = ba_aux.loc[~ba_aux.index.isna(), :]
+        ba_aux.rename(
+            columns={
+                "ageAtDiagnosis": "Age",
+                "consensus_sex": "Sex",
+                "reportedRace": "Race"
+            },
+            inplace=True
+        )
+        ba_aux = ba_aux.loc[:, ["Age", "Sex", "Race"]]
+        ba_aux.loc[:, ["Source", "Study"]] = "BeatAML"
+
+        # Convert sample names to match BeatAML study sample IDs
+        ptrc_conversion = pd.read_excel(
+            syn.get("syn64126463").path,
+            index_col=0
+        )
+        ptrc_conversion.dropna(subset="dbgap_rnaseq_sample", inplace=True)
+        ptrc_conversion = pd.Series(
+            ptrc_conversion.loc[:, "labId"].values,
+            index=ptrc_conversion.loc[:, "dbgap_rnaseq_sample"].values,
+        )
+        ba_aux.rename(index=ptrc_conversion, inplace=True)
+        meta = pd.concat([meta, ba_aux])
+        meta = meta.loc[
+            ~meta.index.duplicated(keep="first"),
+            :
+        ]
+
+        # Rename columns to match pilot cohort format
+        pilot_aux = pd.read_excel(
+            syn.get("syn62750469").path,
+            index_col=0
+        )
+        pilot_aux.drop(pilot_aux.index.intersection(meta.index), inplace=True)
+        pilot_aux.rename(
+            columns={
+                "Sex (1-male, 0-female)": "Sex",
+                "Race_label": "Race"
+            },
+            inplace=True
+        )
+        pilot_aux.loc[:, ["Source", "Study"]] = "pilotStudy"
+        pilot_aux = pilot_aux.loc[
+            :,
+            pilot_aux.columns.intersection(meta.columns)
+        ]
+        meta = pd.concat([meta, pilot_aux])
 
     return meta
 
