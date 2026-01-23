@@ -3,9 +3,7 @@
 import sys
 from os.path import abspath, dirname, join
 
-sys.path.append(
-    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
-)
+sys.path.append(join(dirname(dirname(dirname(abspath(__file__)))), "src", "python"))
 
 import pandas as pd
 from sklearn.preprocessing import scale
@@ -35,7 +33,7 @@ def make_figure():
     phospho = import_phospho(syn, pre_corrected=False)
     global_prot = import_global(syn, pre_corrected=True)
     acetyl = import_acetyl(syn)
-    rna = import_rna(syn, return_symbols=False)
+    rna = import_rna(syn, return_symbols=True, batch_correct=True, tpm=True)
 
     cohort_colors = pd.Series(
         {
@@ -52,9 +50,7 @@ def make_figure():
     )
 
     # Reformat acetyl
-    bridge_ids = (
-        phospho[1].loc[phospho[1].index.str.contains("Bridge"), :].index
-    )
+    bridge_ids = phospho[1].loc[phospho[1].index.str.contains("Bridge"), :].index
     bridge_ids = {bridge_id[:-7]: bridge_id for bridge_id in bridge_ids}
     acetyl.rename(index=bridge_ids, inplace=True)
     acetyl = (None, acetyl)

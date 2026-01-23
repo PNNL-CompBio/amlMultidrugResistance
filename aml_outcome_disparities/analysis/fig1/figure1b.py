@@ -3,9 +3,7 @@
 import sys
 from os.path import abspath, dirname, join
 
-sys.path.append(
-    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
-)
+sys.path.append(join(dirname(dirname(dirname(abspath(__file__)))), "src", "python"))
 
 import numpy as np
 import pandas as pd
@@ -40,9 +38,7 @@ def make_figure():
     races = meta.loc[:, "Race"]
 
     # Reformat acetyl
-    bridge_ids = (
-        phospho[1].loc[phospho[1].index.str.contains("Bridge"), :].index
-    )
+    bridge_ids = phospho[1].loc[phospho[1].index.str.contains("Bridge"), :].index
     bridge_ids = {bridge_id[:-7]: bridge_id for bridge_id in bridge_ids}
     acetyl.rename(index=bridge_ids, inplace=True)
     acetyl = (None, acetyl)
@@ -113,9 +109,7 @@ def make_figure():
             ma="right",
             va="top",
         )
-        ax.set(
-            xlabel="log2(Fold Change)", ylabel="-log10(p)", title=dataset_name
-        )
+        ax.set(xlabel="log2(Fold Change)", ylabel="-log10(p)", title=dataset_name)
 
     return fig
 
