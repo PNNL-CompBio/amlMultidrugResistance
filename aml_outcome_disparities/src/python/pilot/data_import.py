@@ -1,3 +1,5 @@
+import os.path
+import pickle
 import warnings
 from io import StringIO
 from os import PathLike
@@ -220,25 +222,38 @@ def import_rna(
 
     # Correct raw counts via ComBat-Seq prior to normalization or TPM
     if batch_correct:
-        # Load in meta-data for larger cohort, including patients outside
-        # pilot study
-        meta = import_meta(syn, aux_meta=True)
-        meta = meta.loc[~meta.loc[:, "Race"].isin(["Declined", "Unknown"]), :]
+        # Loads cached results (if this has been run previously) as ComBat-Seq
+        # can be time-intensive with race covariates included
+        if os.path.exists(join(REPO_PATH, "data", "rna_combat_seq.pkl")):
+            (ptrc, pilot) = pd.read_pickle(
+                join(REPO_PATH, "data", "rna_combat_seq.pkl")
+            )
+        else:
+            # Load in meta-data for larger cohort, including patients outside
+            # pilot study
+            meta = import_meta(syn, aux_meta=True)
+            meta = meta.loc[
+                ~meta.loc[:, "Race"].isin(["Declined", "Unknown"]), :
+            ]
 
-        # Only keep patients with meta-data
-        ptrc = ptrc.loc[:, ptrc.columns.intersection(meta.index)]
-        pilot = pilot.loc[:, pilot.columns.intersection(meta.index)]
-        data = pd.concat([ptrc, pilot], axis=1)
-        meta = meta.loc[data.columns, :]
+            # Only keep patients with meta-data
+            ptrc = ptrc.loc[:, ptrc.columns.intersection(meta.index)]
+            pilot = pilot.loc[:, pilot.columns.intersection(meta.index)]
+            data = pd.concat([ptrc, pilot], axis=1)
+            meta = meta.loc[data.columns, :]
 
-        # Batch correct, including race as a covariate to preserve
-        data = pycombat_seq(
-            data,
-            meta.loc[:, "Study"].values,
-            covar_mod=(meta.loc[:, "Race"] == "Black").astype(int).values,
-        )
-        ptrc = data.loc[:, ptrc.columns]
-        pilot = data.loc[:, pilot.columns]
+            # Batch correct, including race as a covariate to preserve
+            data = pycombat_seq(
+                data,
+                meta.loc[:, "Study"].values,
+                covar_mod=(meta.loc[:, "Race"] == "Black").astype(int).values,
+            )
+            ptrc = data.loc[:, ptrc.columns]
+            pilot = data.loc[:, pilot.columns]
+
+            # Store batch-corrected to .pkl for quicker loading
+            with open(join(REPO_PATH, "data", "rna_combat_seq.pkl"), "wb") as f:
+                pickle.dump((ptrc, pilot), f)
 
     # Converts to transcripts-per-million (TPM)
     if tpm:
