@@ -7,6 +7,8 @@ control 34m to control 34p for a total of 5 contrasts.
 Loading data
 
 ```{r}
+source("../synapseUtil.R")
+source("misc/helper_scripts.R")
 source("misc/loading_data.R")
 
 ```

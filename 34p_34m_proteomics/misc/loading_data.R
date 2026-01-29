@@ -7,8 +7,6 @@ library(MSnSet.utils)
 library(cowplot)
 
 
-
-source("misc/helper_scripts.R")
 boxplot_colors <- c("none 0h" = "grey",
                     "DMSO 0.5h" = "#A4FF9C",
                     "DMSO 6h" = "#5C9058",

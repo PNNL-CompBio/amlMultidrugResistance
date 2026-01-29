@@ -8,6 +8,8 @@ Loading data
 
 
 ```{r}
+source("../synapseUtil.R")
+source("misc/helper_scripts.R")
 source("misc/loading_data.R")
 
 
