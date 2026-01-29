@@ -118,7 +118,7 @@ logistic_model <- function(msnset, group_var, pred_group, N_markers, sample_pool
    
    return(list(prob = predProb, features = selected, top = rev(sort(table(unlist(selected)))), 
                auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred, 
-               full_model = list('model' = full_model, 'features' = new_feature_df),
+               full_model = list('model' = full_model, 'features' = new_feature_df)#,
                #cov_mats = cov_mats
                ))
 }

@@ -1,0 +1,50 @@
+---
+title: "Figure 2 Mutational comparisons"
+author: "Sara Gosline"
+date: "2025-11-05"
+output: html_document
+---
+
+The goal of this analysis is to look at differences across patients with 
+various mutational profiles to identify specific pathways altered in 
+mutational phenotypes. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(synapser)
+library(tidyverse)
+library(readxl)
+synapser::synLogin()
+```
+
+# Mutational profile (clinical)
+
+The first chunk of analysis comes from the clinical sequencing information, 
+which we have pulled below. 
+
+```{r mut data}
+
+mut_data <- readr::read_csv(synapser::synGet('syn69692583'))
+
+##while we're at it, pull other data sources
+
+```
+
+## Diffex proteins
+
+
+```{r diffex proteins, echo=FALSE}
+
+```
+
+## Diffex transcripts
+
+## Diffex metabolites
+
+## Diffex lipids
+
+## Diffex acetyl sites
+
+## Common analysis? 
+
+# Repeat with WES data? 

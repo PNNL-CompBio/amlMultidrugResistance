@@ -9,6 +9,7 @@ library(ggpubr)
 
 source("../drug_treated_samples/s2n_model.R")
 source("../drug_treated_samples/helper_scripts.R")
+source('../synapseUtil.R')
 
 syn <- synapseLogin()
 

@@ -1,0 +1,43 @@
+---
+title: "Figure 3 Cell Type Analysis"
+author: "Sara Gosline"
+date: "2025-11-05"
+output: html_document
+---
+
+
+The goal of this analysis is to align the samples to the monocytic/GMP/primitive
+axis and compare the populations of those patients with each phenotype
+and determine if there are any difference in markers.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(synapser)
+library(tidyverse)
+library(readxl)
+synapser::synLogin()
+
+```
+
+# Van Galen Signature makers
+
+The first cell type markers we will use are from the van galen dataset.
+We will pull the Xcell scores for these first.
+
+
+```{r vg signatures}
+
+
+```
+
+How are the patients distributed across cohorts/race? 
+
+## Differentially expressed proteins
+
+
+```{r pressure, echo=FALSE}
+
+```
+
+
+# Try again with LSC17? 
