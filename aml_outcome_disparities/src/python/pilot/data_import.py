@@ -12,6 +12,7 @@ import pandas as pd
 import requests
 import synapseclient as sc
 from inmoose.pycombat import pycombat_seq
+from synapseclient.entity import File
 
 # Suppress SettingWithCopyWarning
 # Seems to be a false warning for some import operations
@@ -222,13 +223,21 @@ def import_rna(
 
     # Correct raw counts via ComBat-Seq prior to normalization or TPM
     if batch_correct:
-        # Loads cached results (if this has been run previously) as ComBat-Seq
-        # can be time-intensive with race covariates included
-        if os.path.exists(join(REPO_PATH, "data", "rna_combat_seq.pkl")):
-            (ptrc, pilot) = pd.read_pickle(
-                join(REPO_PATH, "data", "rna_combat_seq.pkl")
-            )
-        else:
+        # Setup Synapse file objects
+        ptrc_file = File(
+            join(REPO_PATH, "data", "RNAseq_beataml_batch_corrected.csv"),
+            parentId="syn68820222"
+        )
+        pilot_file = File(
+            join(REPO_PATH, "data", "RNAseq_pilot_batch_corrected.csv"),
+            parentId="syn68820222"
+        )
+        try:
+            # Loads cached results (if this has been run previously) as
+            # ComBat-Seq can be time-intensive with race covariates included
+            ptrc = pd.read_csv(ptrc_file.path, index_col=0)
+            pilot = pd.read_csv(pilot_file.path, index_col=0)
+        except FileNotFoundError:
             # Load in meta-data for larger cohort, including patients outside
             # pilot study
             meta = import_meta(syn, aux_meta=True)
@@ -251,9 +260,13 @@ def import_rna(
             ptrc = data.loc[:, ptrc.columns]
             pilot = data.loc[:, pilot.columns]
 
-            # Store batch-corrected to .pkl for quicker loading
-            with open(join(REPO_PATH, "data", "rna_combat_seq.pkl"), "wb") as f:
-                pickle.dump((ptrc, pilot), f)
+            # Store locally
+            ptrc.to_csv(ptrc_file.path)
+            pilot.to_csv(pilot_file.path)
+
+            # Sync to Synapse
+            syn.store(ptrc_file)
+            syn.store(pilot_file)
 
     # Converts to transcripts-per-million (TPM)
     if tpm:
