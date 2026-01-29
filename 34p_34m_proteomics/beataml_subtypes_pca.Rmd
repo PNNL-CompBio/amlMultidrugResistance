@@ -1,0 +1,62 @@
+
+
+This script produces pca plots of the Braun data + BeatAML 210 cohort, 
+colored by subtype and Ven AUC response 
+
+
+Loading data
+
+```{r}
+source("misc/loading_data.R")
+
+
+```
+
+
+
+PCA plots of Braun samples (34-/34+) and BeatAML samples (210 cohort) together.
+We show both the PCA of 6000+ common features, as well as the PCA of the 14 cell type estimates from deconvolution (xcell + AML sig)
+
+
+
+```{r}
+## Comparison to BeatAML
+p_data = plyr::rbind.fill(pData(m_corrected_g) %>% select(sample = MeasurementName, Celltype, Treatment, Time, group), 
+                          beataml_meta %>% mutate(sample = Barcode.ID) %>% select(sample, Subtype)) %>%
+   mutate(Celltype = case_when(is.na(Celltype) ~ Subtype,
+                               TRUE ~ Celltype))
+rownames(p_data) = p_data$sample
+p_data[drug_data_df$Barcode.ID, "ven_auc"] = drug_data_df$auc
+
+mat1 = exprs(m_corrected_g)
+mat2 = exprs(m_beatAML)
+common_features = intersect(rownames(mat1), rownames(mat2))
+mat = cbind(mat1[common_features, ], mat2[common_features, ])
+m_combined = MSnSet(exprs = mat %>% as.matrix(), pData = p_data[colnames(mat), ])
+p = plot_pca(m_combined, phenotype = "Celltype") + scale_fill_manual(values = subtype_colors) + 
+   scale_color_manual(values = subtype_colors) + 
+   ggtitle("PCA of common features (6321 features)") + 
+   theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
+                      axis.text.x = element_text(angle = 30, vjust = 0.7),
+                      panel.background = element_rect(fill = "white", colour = NA),
+                      plot.background = element_rect(fill = "white", colour = NA),
+                      text = element_text(size = 15))
+# ggsave(plot = p, filename = "Braun_BeatAML_PCA.pdf", width = 8, height = 7)
+p
+p = plot_pca(m_combined, phenotype = "ven_auc") + geom_point(size = 3) +
+   scale_color_gradient(low = "blue", high = "firebrick3") + 
+   ggtitle("PCA of common features (6321 features)") + 
+   theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
+                      axis.text.x = element_text(angle = 30, vjust = 0.7),
+                      panel.background = element_rect(fill = "white", colour = NA),
+                      plot.background = element_rect(fill = "white", colour = NA),
+                      text = element_text(size = 15))
+# ggsave(plot = p, filename = "Braun_BeatAML_PCA2.pdf", width = 8, height = 7)
+p
+
+```
+
+
+
+
+

@@ -1,0 +1,136 @@
+
+This script computes the KSEA for 30min vs control and 6hrs vs control, 
+and produces a heatmap of the KSEApp estimate of kinase activity. The comparison
+is done within each cell type, giving 4 total. We also compare
+control 34m to control 34p for a total of 5 contrasts. 
+
+Loading data
+
+```{r}
+source("misc/loading_data.R")
+
+```
+
+Computing KSEA
+
+
+```{r}
+
+all_ksea <- data.frame()
+
+for (c_contrast in contrasts){
+   # c_contrast <- contrasts[[1]]
+   coef.str = "group"
+   plot_title <- gsub(coef.str, "", c_contrast) %>% gsub("_", " ", .) %>% gsub("-", " vs ", .)
+   # plot_title <- paste(prefix, plot_title)
+   group1 <- sub(" vs .*$", "", plot_title)
+   group2 <- sub("^.* vs ", "", plot_title)
+   plot_path <- gsub(" ", "_", plot_title) %>% paste0("KSEA_", ., paste0("_", "NetworKIN_Inf", ".jpg"))
+   tbl_path <- sub(".jpg", ".txt", plot_path)
+   
+   KSDB <- load_ksdb()
+   
+   if (!all(grepl(paste0("^", coef.str), c_contrast))){
+    print("Adding coef.str to contrast names")
+    
+    group1 <- sub("-.*$", "", c_contrast)
+    group2 <- sub("^.*-", "", c_contrast)
+    
+    c_contrast <- paste0(coef.str, group1, "-", coef.str, group2)
+   } else {
+    c_contrast = contrasts
+   }
+   
+   limma_res <- limma_contrasts(m_corrected_p, model.str = paste("~0 +", coef.str), 
+                               coef.str = coef.str, contrasts = c_contrast)
+   
+   fold_change <- limma_res$logFC
+   fold_change <- 2**fold_change
+   PX <- data.frame(Protein = "NULL", Gene = limma_res$feature, Peptide = "NULL", 
+                   Residue.Both = limma_res$feature, p = "NULL", FC = fold_change) %>%
+    dplyr::mutate(Residue.Both = sub("^.*-", "", Residue.Both)) %>%
+    dplyr::mutate(Residue.Both = gsub("[a-z]", ";", Residue.Both)) %>%
+    dplyr::mutate(Residue.Both = gsub(";$", "", Residue.Both),
+                  Gene = sub("^(.*)-.*$", "\\1", Gene))
+   
+   ksea_res <- KSEA.Scores(KSDB, PX, NetworKIN = TRUE, NetworKIN.cutoff = Inf) %>%
+    dplyr::select(Kinase.Gene, m, FDR, z.score) %>%
+    dplyr::rename(pathway = Kinase.Gene, enrichment = z.score,
+                  adj_p_val = FDR, set_size = m) %>%
+    dplyr::mutate(contrast = gsub(coef.str, "", c_contrast)) %>%
+    filter(set_size >= 3)
+   
+   all_ksea <- rbind(all_ksea, ksea_res)
+}
+```
+
+
+```{r}
+
+
+plot_df = all_ksea %>%
+   filter(adj_p_val < 0.05) %>%
+   arrange(adj_p_val) %>%
+   mutate(sign = enrichment > 0) %>%
+   group_by(contrast, sign) %>%
+   dplyr::slice(1:10) %>%
+   mutate(group_name = paste(contrast, pathway))
+padding_df = data.frame()
+for (Kinase in unique(plot_df$pathway)){
+   for (contrast in unique(plot_df$contrast)){
+      if (!(paste(contrast, Kinase) %in% plot_df$group_name)){
+         padding_df = rbind(padding_df,
+                            data.frame(pathway = Kinase, set_size = NA, adj_p_val = 1, enrichment = 0, contrast = contrast, sign = NA))
+      }
+   }
+}
+plot_df = rbind(plot_df, padding_df) %>%
+   mutate(contrast = factor(contrast, levels = c("none_0h_34m-none_0h_34p" , "Ven_0.5h_34m-DMSO_0.5h_34m", "Ven_6h_34m-DMSO_6h_34m",
+                                                 "Ven_0.5h_34p-DMSO_0.5h_34p", "Ven_6h_34p-DMSO_6h_34p"))) %>%
+   group_by(pathway) %>%
+   # mutate(size = abs(sum(enrichment))) %>% ungroup() %>%
+   mutate(size = max(abs(enrichment))) %>% ungroup() %>%
+   arrange(-size) %>%
+   mutate(pathway = factor(pathway, levels = unique(pathway)))
+
+plot_colors = c("#fe2154", "#aab2ff", "#5e6dff", "#fcca46", "#c08c03")
+names(plot_colors) = c("none_0h_34m-none_0h_34p", "Ven_0.5h_34m-DMSO_0.5h_34m", "Ven_6h_34m-DMSO_6h_34m",
+                       "Ven_0.5h_34p-DMSO_0.5h_34p", "Ven_6h_34p-DMSO_6h_34p")
+
+plot_df = plot_df %>%
+   mutate(enrichment = case_when(adj_p_val < 0.05 ~ enrichment,
+                                 TRUE ~ NA),
+          adj_p_val_ = -log10(adj_p_val),
+          adj_p_val_ = case_when(adj_p_val < 0.05 ~ adj_p_val_,
+                                 TRUE ~ NA),
+          contrast = case_when(contrast == "none_0h_34m-none_0h_34p" ~ "34m - 34p",
+                               TRUE ~ sub("-[^-]+$", "", contrast)),
+          contrast = factor(contrast, levels = c("34m - 34p", "Ven_0.5h_34p", "Ven_6h_34p", "Ven_0.5h_34m", "Ven_6h_34m")))
+p = ggplot(plot_df, aes(x = contrast, y = pathway, color = enrichment, size = adj_p_val_)) + geom_point() + 
+   scale_color_gradientn(
+    colors = c("blue", "white", "red"), # Vector of colors
+    values = c(0, 9/16, 1), # Corresponding positions (0 to 1)
+    limits = c(-9, 7)) + theme_minimal() + 
+   scale_size_continuous(range = c(2, 8), breaks = c(1.5, 5, 10), labels = c("0.05", "1e-5", "1e-10")) + 
+   theme(text = element_text(size = 15), axis.text.x = element_text(angle = 30, vjust = 0.6),
+         plot.title = element_text(hjust = 0.5),
+         panel.background = element_rect(fill = "white", colour = NA),
+         plot.background = element_rect(fill = "white", colour = NA)) + 
+   ggtitle("KSEA results")
+# ggsave(plot = p, filename = "KSEA_summary.pdf")
+p
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
