@@ -1,0 +1,49 @@
+library(Biobase)
+library(EnhancedVolcano)
+library(limma)
+
+#' LIMMA-based proteomic comparison
+#'
+#' Uses LIMMA to compare proteomic expression between black and white patients.
+#' @param data DataFrame with expression measurements.
+#' @param meta DataFrame with patient meta-data, including race.
+#' @return [list] with the following elements:
+#' \itemize{
+#'  \item results: LIMMA results object
+#'  \item volcano: Volcano plot comparing black & white patients
+#' }
+run_limma <- function(data, meta) {
+  # Build design matrix
+  design <- model.matrix(
+    ~0 + Race + Study + Age,
+    data = meta
+  )
+  
+  # Adjust PacificIslander category for syntax
+  colnames(design)[
+    which(colnames(design) == "RacePacific Islander")
+  ] = "RacePacificIslander"
+  
+  # Trim to patients with meta-data, format to expression matrix
+  data <- data[row.names(design),]
+  data <- t(as.matrix(data))
+  exp_set <- ExpressionSet(data)
+  cont.matrix <- makeContrasts(RaceBlack - RaceWhite, levels = design)
+  
+  # Fit LIMMA, get contrasts by race
+  data_fit <- lmFit(exp_set, design)
+  race_contrasts <- contrasts.fit(data_fit, cont.matrix)
+  race_contrasts <- eBayes(race_contrasts)
+  results <- topTable(race_contrasts, number = Inf, adjust.method = "BH")
+  
+  # Plots volcano
+  volcano = EnhancedVolcano(
+    results,
+    lab = rownames(results),
+    x = 'logFC',
+    y = 'adj.P.Val',
+    pCutoff = 1e-02
+  )
+  
+  return(list(results = results, volcano = volcano))
+}
