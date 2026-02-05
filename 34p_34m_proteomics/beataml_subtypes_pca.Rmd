@@ -29,8 +29,8 @@ p_data = plyr::rbind.fill(pData(m_corrected_g) %>% select(sample = MeasurementNa
 rownames(p_data) = p_data$sample
 p_data[drug_data_df$Barcode.ID, "ven_auc"] = drug_data_df$auc
 
-mat1 = exprs(m_corrected_g)
-mat2 = exprs(m_beatAML)
+mat1 = exprs(m_corrected_g) ##sorted cell data
+mat2 = exprs(m_beatAML)  ##BeatAML data for comparison
 common_features = intersect(rownames(mat1), rownames(mat2))
 mat = cbind(mat1[common_features, ], mat2[common_features, ])
 m_combined = MSnSet(exprs = mat %>% as.matrix(), pData = p_data[colnames(mat), ])

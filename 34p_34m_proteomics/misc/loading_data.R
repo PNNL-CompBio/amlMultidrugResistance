@@ -1,10 +1,24 @@
-library(PlexedPiper)
+
+if (!require("remotes", quietly = T)) install.packages("remotes")
+
+##some of these packages are less standard, so we check
+if (!require('PlexedPiper')) {
+  remotes::install_github("PNNL-Comp-Mass-Spec/PlexedPiper", build_vignettes = TRUE)
+}
+if (!require('PNNL.DMS.utils')) {
+  remotes::install_github('PNNL-Comp-Mass-Spec/PNNL.DMS.utils')
+}
+
+if (!require('MSnSet.utils')) {
+  remotes::install_github('PNNL-Comp-Mass-Spec/MSnSet.utils')
+}
+
+
 library(dplyr)
-library(PNNL.DMS.utils)
 library(Biostrings)
 library(tidyverse)
-library(MSnSet.utils)
 library(cowplot)
+
 
 
 boxplot_colors <- c("none 0h" = "grey",
@@ -19,6 +33,7 @@ subtype_colors = c("Subtype 1" = "#d85600",
                    "34+" = "firebrick",
                    "34-" = "steelblue")
 
+syn <- synapseLogin() ##log into synapse
 
 ## Load Braun data
 m_corrected_p <- readRDS(syn$get("syn72330920")$path)
