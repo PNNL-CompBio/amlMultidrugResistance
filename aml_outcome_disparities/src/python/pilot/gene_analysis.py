@@ -263,26 +263,24 @@ def get_has_scores():
     """
     data = pd.concat(import_global(), axis=0)
     data = data.loc[:, HAS_SCORES.index]
-    data = 2 ** data
+    data = 2**data
 
     has_scores = pd.DataFrame(
         0,
         dtype=float,
         index=data.index,
-        columns=["Weighted HAS", "Unweighted HAS"]
+        columns=["Weighted HAS", "Unweighted HAS"],
     )
 
     # Includes HAS coefficients
     has_scores.loc[:, "Weighted HAS"] = (
-            data * HAS_SCORES.loc[data.columns]
+        data * HAS_SCORES.loc[data.columns]
     ).mean(axis=1)
 
     # HAS score without coefficients
     # Not in-place, so the Weighted HAS score stays in data
     # PSAP is negatively associated with HAS, so removed
-    has_scores.loc[:, "Unweighted HAS"] = data.drop(
-        "PSAP", axis=1
-    ).mean(axis=1)
+    has_scores.loc[:, "Unweighted HAS"] = data.drop("PSAP", axis=1).mean(axis=1)
 
     return has_scores
 
@@ -398,12 +396,7 @@ def get_iscore():
 
         # Save to data directory
         with open(
-            join(
-                REPO_PATH,
-                "data",
-                "lasry_supplement.xlsx"
-            ),
-            "wb"
+            join(REPO_PATH, "data", "lasry_supplement.xlsx"), "wb"
         ) as xlsx_file:
             xlsx_file.write(response.content)
 
@@ -418,11 +411,10 @@ def get_iscore():
     iscore_genes = pd.read_excel(
         join(REPO_PATH, "data", "lasry_supplement.xlsx"),
         sheet_name="Supp11. Adult iScore genes",
-        index_col=0
+        index_col=0,
     )
     iscore_genes = iscore_genes.loc[
-        iscore_genes.index.intersection(data.columns),
-        "beta mean"
+        iscore_genes.index.intersection(data.columns), "beta mean"
     ]
     data = np.log2(data.loc[:, iscore_genes.index])
 

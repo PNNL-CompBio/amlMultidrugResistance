@@ -154,7 +154,7 @@ def import_rna(
     return_symbols: bool = True,
     batch_correct: bool = True,
     tpm: bool = True,
-    normalize: bool = False
+    normalize: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads and TPMs RNA data.
@@ -225,11 +225,11 @@ def import_rna(
         # Setup Synapse file objects
         ptrc_file = File(
             join(REPO_PATH, "data", "RNAseq_beataml_batch_corrected.csv"),
-            parentId="syn68820222"
+            parentId="syn68820222",
         )
         pilot_file = File(
             join(REPO_PATH, "data", "RNAseq_pilot_batch_corrected.csv"),
-            parentId="syn68820222"
+            parentId="syn68820222",
         )
         try:
             # Loads cached results (if this has been run previously) as
@@ -314,12 +314,10 @@ def import_rna(
         # Z-score across samples, then separately for BM and PB samples
         combined.loc[:] = scale(combined, axis=0)
         combined.loc[:, sample_types == "BM"] = scale(
-            combined.loc[:, sample_types == "BM"],
-            axis=1
+            combined.loc[:, sample_types == "BM"], axis=1
         )
         combined.loc[:, sample_types == "PB"] = scale(
-            combined.loc[:, sample_types == "PB"],
-            axis=1
+            combined.loc[:, sample_types == "PB"], axis=1
         )
 
         pilot = combined.loc[:, pilot.columns]
@@ -428,7 +426,7 @@ def import_meta(
                 "ageAtDiagnosis": "Age",
                 "consensus_sex": "Sex",
                 "reportedRace": "Race",
-                "specimenType": "Specimen_Type"
+                "specimenType": "Specimen_Type",
             },
             inplace=True,
         )
@@ -459,8 +457,7 @@ def import_meta(
         )
         pilot_aux.loc[:, ["Source", "Study"]] = "pilotStudy"
         pilot_aux = pilot_aux.loc[
-            :,
-            pilot_aux.columns.intersection(meta.columns)
+            :, pilot_aux.columns.intersection(meta.columns)
         ]
 
         # Concatenate pilot auxiliary meta-data with existing meta-data, keep
@@ -469,21 +466,20 @@ def import_meta(
         meta = meta.loc[~meta.index.duplicated(keep="first"), :]
         meta.loc[meta.index.str.contains("Bridge"), "Specimen_Type"] = meta.loc[
             meta.loc[meta.index.str.contains("Bridge")].index.str[:-7],
-            "Specimen_Type"
+            "Specimen_Type",
         ].values
 
         # Standardize specimen types across meta data sets
         meta.replace(
             {
-                "Specimen_Type":
-                    {
-                        "Bone Marrow Aspirate": "BM",
-                        "Peripheral Blood": "PB",
-                        "Leukapheresis": "PB",
-                        "Not Specified": "BM"
-                    }
+                "Specimen_Type": {
+                    "Bone Marrow Aspirate": "BM",
+                    "Peripheral Blood": "PB",
+                    "Leukapheresis": "PB",
+                    "Not Specified": "BM",
+                }
             },
-            inplace=True
+            inplace=True,
         )
 
     return meta

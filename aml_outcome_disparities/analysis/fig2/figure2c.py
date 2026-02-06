@@ -13,24 +13,17 @@ ANALYSIS_DIR = dirname(abspath(__file__))
 
 def make_figure():
     # Load KSEA substrate links, trim to PRKACA substrates
-    substrates = pd.read_csv(
-        join(
-            ANALYSIS_DIR,
-            "Kinase-Substrate Links.csv"
-        )
-    )
+    substrates = pd.read_csv(join(ANALYSIS_DIR, "Kinase-Substrate Links.csv"))
     substrates = substrates.loc[
-        substrates.loc[:, "Kinase.Gene"] == "PRKACA",
-        :
-    ].sort_values(
-        by="log2FC",
-        ascending=True
-    )
+        substrates.loc[:, "Kinase.Gene"] == "PRKACA", :
+    ].sort_values(by="log2FC", ascending=True)
 
     # Reformat names to match Synapse data
-    substrates.index = (substrates.loc[:, "Substrate.Gene"] + "-" +
-        substrates.loc[:, "Substrate.Mod"] +
-        substrates.loc[:, "Substrate.Mod"].str[0].str.lower()
+    substrates.index = (
+        substrates.loc[:, "Substrate.Gene"]
+        + "-"
+        + substrates.loc[:, "Substrate.Mod"]
+        + substrates.loc[:, "Substrate.Mod"].str[0].str.lower()
     )
 
     # Load data
@@ -62,19 +55,12 @@ def make_figure():
 
     # Setup figure
     fig, axes = get_setup(
-        2,
-        1,
-        fig_params={
-            "figsize": (8, 5),
-            "height_ratios": [3, 1]
-        }
+        2, 1, fig_params={"figsize": (8, 5), "height_ratios": [3, 1]}
     )
 
     # Setup storage for correlation results
     rhos = pd.DataFrame(
-        index=ct_scores.columns,
-        columns=phospho.columns,
-        dtype=float
+        index=ct_scores.columns, columns=phospho.columns, dtype=float
     )
     p_values = rhos.copy(deep=True)
 
@@ -82,15 +68,11 @@ def make_figure():
     for phosphosite in phospho.columns:
         # Repeats phosphosite as columns for pearson correlation
         phospho_col = phospho.loc[
-            phospho.index.intersection(ct_scores.index),
-            phosphosite
+            phospho.index.intersection(ct_scores.index), phosphosite
         ].dropna()
         res = pearsonr(
-            pd.concat(
-                [phospho_col] * ct_scores.shape[1],
-                axis=1
-            ),
-            ct_scores.loc[phospho_col.index, :]
+            pd.concat([phospho_col] * ct_scores.shape[1], axis=1),
+            ct_scores.loc[phospho_col.index, :],
         )
         rhos.loc[:, phosphosite] = res.statistic
         p_values.loc[:, phosphosite] = res.pvalue
@@ -101,7 +83,7 @@ def make_figure():
     p_values.loc[:] = false_discovery_control(p_values)
 
     # Setup markers for significance
-    annot_df = np.empty(rhos.shape, dtype=np.dtype('U100'))
+    annot_df = np.empty(rhos.shape, dtype=np.dtype("U100"))
     annot_df[p_values.values < 0.05] = "*"
     annot_df[p_values.values < 0.01] = "**"
     annot_df[p_values.values < 0.001] = "***"
@@ -115,7 +97,7 @@ def make_figure():
         annot=annot_df,
         fmt="s",
         cbar_kws={"label": "Pearson Correlation"},
-        ax=ax
+        ax=ax,
     )
 
     # Label axes, add tick labels
@@ -123,21 +105,13 @@ def make_figure():
         xticks=np.arange(0.5, rhos.shape[1], 1),
         yticks=np.arange(0.5, rhos.shape[0], 1),
         xlabel="Phosphosite (PRKACA Substrates)",
-        ylabel="Cell Types Score\n(Bottomly et al)"
+        ylabel="Cell Types Score\n(Bottomly et al)",
     )
     ax.set_xticklabels(
-        rhos.columns,
-        rotation=45,
-        ha="right",
-        ma="right",
-        va="top"
+        rhos.columns, rotation=45, ha="right", ma="right", va="top"
     )
     ax.set_yticklabels(
-        rhos.index,
-        ha="right",
-        ma="right",
-        va="center",
-        rotation=0
+        rhos.index, ha="right", ma="right", va="center", rotation=0
     )
 
     ############################################################################
@@ -152,22 +126,18 @@ def make_figure():
         0,
         dtype=np.float64,
         index=phospho.columns,
-        columns=["Weighted HAS", "Unweighted HAS"]
+        columns=["Weighted HAS", "Unweighted HAS"],
     )
     has_p = has_rhos.copy(deep=True)
 
     # Correlate HAS scores with each phosphosite
     for phosphosite in phospho.columns:
         phospho_col = phospho.loc[
-            phospho.index.intersection(ct_scores.index),
-            phosphosite
+            phospho.index.intersection(ct_scores.index), phosphosite
         ].dropna()
         res = pearsonr(
-            pd.concat(
-                [phospho_col] * 2,
-                axis=1
-            ),
-            has_scores.loc[phospho_col.index, :]
+            pd.concat([phospho_col] * 2, axis=1),
+            has_scores.loc[phospho_col.index, :],
         )
         has_rhos.loc[phosphosite, :] = res.statistic
         has_p.loc[phosphosite, :] = res.pvalue
@@ -178,7 +148,7 @@ def make_figure():
     has_p = has_p.T
 
     # Setup markers for significance
-    has_annot = np.empty(has_rhos.shape, dtype=np.dtype('U100'))
+    has_annot = np.empty(has_rhos.shape, dtype=np.dtype("U100"))
     has_annot[has_p.values < 0.05] = "*"
     has_annot[has_p.values < 0.01] = "**"
     has_annot[has_p.values < 0.001] = "***"
@@ -192,31 +162,23 @@ def make_figure():
         annot=has_annot,
         fmt="s",
         cbar_kws={"label": "Pearson Correlation"},
-        ax=ax
+        ax=ax,
     )
     ax.set(
         xticks=np.arange(0.5, has_rhos.shape[1], 1),
         yticks=np.arange(0.5, has_rhos.shape[0], 1),
         xlabel="Phosphosite (PRKACA Substrates)",
-        ylabel="HAS Score\n(Cheng et al)"
+        ylabel="HAS Score\n(Cheng et al)",
     )
     ax.set_xticklabels(
-        has_rhos.columns,
-        rotation=45,
-        ha="right",
-        ma="right",
-        va="top"
+        has_rhos.columns, rotation=45, ha="right", ma="right", va="top"
     )
     ax.set_yticklabels(
-        has_rhos.index,
-        ha="right",
-        ma="right",
-        va="center",
-        rotation=0
+        has_rhos.index, ha="right", ma="right", va="center", rotation=0
     )
 
     return fig
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     make_figure()

@@ -11,31 +11,26 @@ import pandas as pd
 from pilot.data_import import import_meta, import_phospho, syn_login
 from pilot.figures.figure_setup import get_setup
 
-sys.path.append(join(dirname(dirname(dirname(abspath(__file__)))), "src", "python"))
+sys.path.append(
+    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
+)
 
 ANALYSIS_DIR = dirname(abspath(__file__))
 
 
 def make_figure():
     # Load KSEA substrates, trim to PRKACA substrates
-    substrates = pd.read_csv(
-        join(
-            ANALYSIS_DIR,
-            "Kinase-Substrate Links.csv"
-        )
-    )
+    substrates = pd.read_csv(join(ANALYSIS_DIR, "Kinase-Substrate Links.csv"))
     substrates = substrates.loc[
-        substrates.loc[:, "Kinase.Gene"] == "PRKACA",
-        :
-    ].sort_values(
-        by="log2FC",
-        ascending=True
-    )
+        substrates.loc[:, "Kinase.Gene"] == "PRKACA", :
+    ].sort_values(by="log2FC", ascending=True)
 
     # Reformat names to match Synapse data
-    substrates.index = (substrates.loc[:, "Substrate.Gene"] + "-" +
-        substrates.loc[:, "Substrate.Mod"] +
-        substrates.loc[:, "Substrate.Mod"].str[0].str.lower()
+    substrates.index = (
+        substrates.loc[:, "Substrate.Gene"]
+        + "-"
+        + substrates.loc[:, "Substrate.Mod"]
+        + substrates.loc[:, "Substrate.Mod"].str[0].str.lower()
     )
 
     # Load data
@@ -62,21 +57,11 @@ def make_figure():
 
     # Run MANOVA
     le = LabelEncoder()
-    manova = MANOVA(
-        phospho.values,
-        le.fit_transform(race),
-        missing="drop"
-    )
+    manova = MANOVA(phospho.values, le.fit_transform(race), missing="drop")
     manova_res = manova.mv_test().summary_frame
 
     # Setup plot
-    fig, ax = get_setup(
-        1,
-        1,
-        fig_params={
-            "figsize": (8, 4)
-        }
-    )
+    fig, ax = get_setup(1, 1, fig_params={"figsize": (8, 4)})
 
     # Plot each PRKACA substrate as boxplots comparing expression between Black
     # and White patients
@@ -89,12 +74,8 @@ def make_figure():
             widths=0.5,
             patch_artist=True,
             notch=True,
-            medianprops={
-                "color": "black"
-            },
-            flierprops={
-                "color": "tab:purple"
-            }
+            medianprops={"color": "black"},
+            flierprops={"color": "tab:purple"},
         )
         black_bp = ax.boxplot(
             phospho_col.loc[_race == "Black"],
@@ -102,12 +83,8 @@ def make_figure():
             widths=0.5,
             patch_artist=True,
             notch=True,
-            medianprops={
-                "color": "black"
-            },
-            flierprops={
-                "color": "tab:red"
-            }
+            medianprops={"color": "black"},
+            flierprops={"color": "tab:red"},
         )
         white_bp["boxes"][0].set_facecolor("tab:purple")
         black_bp["boxes"][0].set_facecolor("tab:red")
@@ -116,7 +93,7 @@ def make_figure():
     ax.set(
         xticks=np.arange(0.5, 3 * phospho.shape[1], 3),
         ylabel="Log2 Expression",
-        ylim=(-8, 8)
+        ylim=(-8, 8),
     )
     ax.text(
         0.99,
@@ -125,15 +102,11 @@ def make_figure():
         ma="right",
         va="top",
         s=f"MANOVA F: {round(manova_res.loc[:, 'F Value'].iloc[0], 3)}\n"
-          f"p-value: {'{:.2E}'.format(Decimal(manova_res.loc[:, 'Pr > F'].iloc[0]))}",
-        transform=ax.transAxes
+        f"p-value: {'{:.2E}'.format(Decimal(manova_res.loc[:, 'Pr > F'].iloc[0]))}",
+        transform=ax.transAxes,
     )
     ax.set_xticklabels(
-        phospho.columns,
-        rotation=45,
-        ha="right",
-        ma="right",
-        va="top"
+        phospho.columns, rotation=45, ha="right", ma="right", va="top"
     )
 
     # Add legend for Black & White patients
@@ -141,18 +114,14 @@ def make_figure():
         Patch(
             facecolor="tab:purple",
             edgecolor="tab:purple",
-            label="White Patients"
+            label="White Patients",
         ),
-        Patch(
-            facecolor="tab:red",
-            edgecolor="tab:red",
-            label="Black Patients"
-        )
+        Patch(facecolor="tab:red", edgecolor="tab:red", label="Black Patients"),
     ]
     ax.legend(handles=legend_elements, loc="upper left")
 
     return fig
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     make_figure()
