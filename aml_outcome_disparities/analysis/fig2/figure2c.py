@@ -1,10 +1,12 @@
+"""Plots figure 2c: KSEA substrate cell type correlations."""
+
 from os.path import abspath, dirname, join
 from scipy.stats import false_discovery_control, pearsonr
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from pilot.data_import import import_meta, import_phospho, import_rna, syn_login
+from pilot.data_import import import_phospho, syn_login
 from pilot.figures.figure_setup import get_setup
 from pilot.gene_analysis import cell_type_scores, get_has_scores
 
@@ -30,12 +32,6 @@ def make_figure():
     syn = syn_login()
     phospho = import_phospho(syn, pre_corrected=False)
     phospho = pd.concat(phospho, axis=0)
-    rna = import_rna(syn)
-    rna = pd.concat(rna, axis=0)
-
-    meta = import_meta(syn)
-    meta = meta.loc[phospho.index, :]
-    rna = rna.loc[rna.index.intersection(meta.index), :]
 
     # Trim KSEA table to phospho substrates that also appear in phospho
     # measurements. Not all are included since the KSEA splits phosphosites with

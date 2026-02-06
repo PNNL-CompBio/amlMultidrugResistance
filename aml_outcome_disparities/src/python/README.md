@@ -36,7 +36,7 @@ automatically handle connections between Python and any required dependencies.
 
 ## Data Prerequisites
 
-Before running any of the Python-based figure scripts, you'll need to add a couple of files to the `data/` 
+Before running any of the Python-based figure scripts, you'll need to add a few files to the `data/` 
 directory.
 
 1. Batch-corrected phosphoproteomic and global proteomic measurements for the BeatAML 210 and Pilot study cohorts. 
@@ -47,6 +47,10 @@ directory.
    These can be retrieved from [BioMart](https://useast.ensembl.org/info/docs/index.html), and require the columns 
    `Transcript length (including UTRs and CDS)` and `Gene stable ID`.
     * TODO: Move this to an automated .xml-based import for reproducibility.
+3. AML subtype gene lists from [van Galen et al (Table S3)](
+   https://www.cell.com/cms/10.1016/j.cell.2019.01.031/attachment/4a9ac427-eefb-40b8-b4dc-1f6595836ea2/mmc3.xlsx), 
+   saved as `data/mmc3.xlsx` (the default file name from the download link). This download can't be automated due to
+   security protocols on the source website.
 
 Data on Synapse is downloaded directly through Synapse's Python client. To use, you'll need to include a `.txt` file 
 with a personal access token that you can generate [here](

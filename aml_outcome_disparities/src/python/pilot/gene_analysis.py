@@ -210,19 +210,35 @@ def cell_type_scores() -> pd.DataFrame:
     """
     Identifies AML cell types in samples using cell types defined in van
     Galen et al. (doi.org/10.1016/j.cell.2019.01.031) Uses SVD-based scoring
-    approach defined in Bottomly et al. (doi.org/10.1016/j.ccell.2022.07.002
+    approach defined in Bottomly et al. (doi.org/10.1016/j.ccell.2022.07.002)
 
     Args:
         None.
 
     Returns:
         pd.DataFrame: AML cell type scores for each sample.
+
+    Notes:
+         If not already present, saves van Galen gene sets to data directory.
     """
     # Load RNA-seq data
     data = pd.concat(import_rna(), axis=0)
 
     # Loads van Galen genes
-    vg_genes = pd.read_csv(join(REPO_PATH, "data", "van_Galen_genes.csv"))
+    # If file is not found in data directory, instead loads from van Galen
+    # supplement URL and saves to data directory for future use
+    vg_genes = pd.read_excel(
+        join(REPO_PATH, "data", "mmc3.xlsx"),
+        header=1,
+        index_col=0
+    )
+
+    gmp_like = vg_genes.loc[:, "GMP-like"].iloc[:-2]
+    vg_genes = vg_genes.iloc[:-2, -7:-1]
+    vg_genes.rename(columns={"GMP-like.1": "GMP-like"}, inplace=True)
+    vg_genes.loc[:, "GMP-like"] = gmp_like
+    vg_genes.index = vg_genes.index.astype(int)
+
     vg_scores = pd.DataFrame(
         0, dtype=float, index=data.index, columns=vg_genes.columns
     )

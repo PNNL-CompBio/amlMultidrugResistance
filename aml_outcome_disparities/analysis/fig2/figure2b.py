@@ -1,3 +1,5 @@
+"""Plots figure 2b: KSEA substrate comparison."""
+
 from decimal import Decimal
 import sys
 
