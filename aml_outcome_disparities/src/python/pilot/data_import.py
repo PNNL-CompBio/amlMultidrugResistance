@@ -1,6 +1,3 @@
-import os.path
-import pickle
-import warnings
 from io import StringIO
 from os import PathLike
 from os.path import abspath, dirname, join
@@ -12,11 +9,9 @@ import pandas as pd
 import requests
 import synapseclient as sc
 from inmoose.pycombat import pycombat_seq
+from sklearn.preprocessing import scale
 from synapseclient.entity import File
 
-# Suppress SettingWithCopyWarning
-# Seems to be a false warning for some import operations
-warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 REPO_PATH = abspath(dirname(dirname(__file__)))
 
 
@@ -159,6 +154,7 @@ def import_rna(
     return_symbols: bool = True,
     batch_correct: bool = True,
     tpm: bool = True,
+    normalize: bool = False
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads and TPMs RNA data.
@@ -171,6 +167,8 @@ def import_rna(
         batch_correct (bool, default: True): Corrects for batches via ComBat-seq
             through inmoose.
         tpm (bool, default: True): Converts counts to transcripts-per-million.
+        normalize (bool, default: False): Z-scores genes, separating BM from
+            PB samples.
 
     Returns:
          pd.DataFrame: RNA data for BeatAML 210 cohort.
@@ -190,6 +188,7 @@ def import_rna(
         pilot_conversion.loc[:, "Accession"].values,
         index=pilot_conversion.loc[:, "RNA"],
     )
+    pilot_conversion = pilot_conversion.loc[~pilot_conversion.index.isna()]
     pilot.rename(columns=pilot_conversion, inplace=True)
 
     ptrc_conversion = pd.read_excel(syn.get("syn64126463").path, index_col=0)
@@ -298,6 +297,34 @@ def import_rna(
             inplace=True,
         )
 
+    # Normalize genes across samples (z-score)
+    if normalize:
+        # Import meta-data to isolate BM and PB samples
+        sample_types = import_meta(syn, aux_meta=True)
+        sample_types = sample_types.loc[:, "Specimen_Type"]
+        sample_types.dropna(inplace=True)
+
+        # Concatenate datasets, trim to those with known sample types
+        combined = pd.concat([ptrc, pilot], axis=1)
+        sample_types = sample_types.loc[
+            sample_types.index.intersection(combined.columns)
+        ]
+        combined = combined.loc[:, sample_types.index]
+
+        # Z-score across samples, then separately for BM and PB samples
+        combined.loc[:] = scale(combined, axis=0)
+        combined.loc[:, sample_types == "BM"] = scale(
+            combined.loc[:, sample_types == "BM"],
+            axis=1
+        )
+        combined.loc[:, sample_types == "PB"] = scale(
+            combined.loc[:, sample_types == "PB"],
+            axis=1
+        )
+
+        pilot = combined.loc[:, pilot.columns]
+        ptrc = combined.drop(columns=pilot.columns)
+
     return ptrc.T, pilot.T
 
 
@@ -401,10 +428,11 @@ def import_meta(
                 "ageAtDiagnosis": "Age",
                 "consensus_sex": "Sex",
                 "reportedRace": "Race",
+                "specimenType": "Specimen_Type"
             },
             inplace=True,
         )
-        ba_aux = ba_aux.loc[:, ["Age", "Sex", "Race"]]
+        ba_aux = ba_aux.loc[:, ["Age", "Sex", "Race", "Specimen_Type"]]
         ba_aux.loc[:, ["Source", "Study"]] = "BeatAML"
 
         # Convert sample names to match BeatAML study sample IDs
@@ -417,21 +445,46 @@ def import_meta(
             index=ptrc_conversion.loc[:, "dbgap_rnaseq_sample"].values,
         )
         ba_aux.rename(index=ptrc_conversion, inplace=True)
-        meta = pd.concat([meta, ba_aux])
+
+        # Concatenate auxiliary meta-data with existing meta-data, keep
+        # auxiliary samples if duplicated in existing meta-data
+        meta = pd.concat([ba_aux, meta])
         meta = meta.loc[~meta.index.duplicated(keep="first"), :]
 
         # Rename columns to match pilot cohort format
         pilot_aux = pd.read_excel(syn.get("syn62750469").path, index_col=0)
-        pilot_aux.drop(pilot_aux.index.intersection(meta.index), inplace=True)
         pilot_aux.rename(
             columns={"Sex (1-male, 0-female)": "Sex", "Race_label": "Race"},
             inplace=True,
         )
         pilot_aux.loc[:, ["Source", "Study"]] = "pilotStudy"
         pilot_aux = pilot_aux.loc[
-            :, pilot_aux.columns.intersection(meta.columns)
+            :,
+            pilot_aux.columns.intersection(meta.columns)
         ]
-        meta = pd.concat([meta, pilot_aux])
+
+        # Concatenate pilot auxiliary meta-data with existing meta-data, keep
+        # auxiliary samples if duplicated in existing meta-data
+        meta = pd.concat([pilot_aux, meta])
+        meta = meta.loc[~meta.index.duplicated(keep="first"), :]
+        meta.loc[meta.index.str.contains("Bridge"), "Specimen_Type"] = meta.loc[
+            meta.loc[meta.index.str.contains("Bridge")].index.str[:-7],
+            "Specimen_Type"
+        ].values
+
+        # Standardize specimen types across meta data sets
+        meta.replace(
+            {
+                "Specimen_Type":
+                    {
+                        "Bone Marrow Aspirate": "BM",
+                        "Peripheral Blood": "PB",
+                        "Leukapheresis": "PB",
+                        "Not Specified": "BM"
+                    }
+            },
+            inplace=True
+        )
 
     return meta
 
@@ -527,6 +580,11 @@ def import_sample_conversion(
         pilot_conversion.loc[:, "Accession"].values,
         index=pilot_conversion.loc[:, "New Sample ID"],
     )
+
+    # Remove PooledReference and EMPTY samples
+    pilot_conversion = pilot_conversion.loc[
+        ~pilot_conversion.isin(["PooledReference", "EMPTY"])
+    ]
 
     return ptrc_conversion, pilot_conversion
 
