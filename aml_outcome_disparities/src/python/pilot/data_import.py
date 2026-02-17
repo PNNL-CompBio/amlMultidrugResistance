@@ -327,7 +327,7 @@ def import_rna(
 
 
 def import_phospho(
-    syn: sc.Synapse | None = None, pre_corrected: bool = True
+    syn: sc.Synapse | None = None, pre_corrected: bool = False
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads phosphoproteomic data.

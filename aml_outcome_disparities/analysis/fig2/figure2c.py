@@ -30,7 +30,7 @@ def make_figure():
 
     # Load data
     syn = syn_login()
-    phospho = import_phospho(syn, pre_corrected=False)
+    phospho = import_phospho(syn)
     phospho = pd.concat(phospho, axis=0)
 
     # Trim KSEA table to phospho substrates that also appear in phospho
