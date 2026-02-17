@@ -12,7 +12,7 @@ from scipy.stats import false_discovery_control, ttest_ind
 from sklearn.preprocessing import scale
 from statsmodels.multivariate.pca import PCA
 
-from pilot.data_import import import_global, import_rna
+from pilot.data_import import import_global, import_rna, import_phospho
 
 REPO_PATH = dirname(dirname(abspath(__file__)))
 HAS_SCORES = pd.Series(
@@ -299,6 +299,68 @@ def get_has_scores():
     has_scores.loc[:, "Unweighted HAS"] = data.drop("PSAP", axis=1).mean(axis=1)
 
     return has_scores
+
+
+def get_prkaca_score() -> pd.Series:
+    """
+    Calculates PRKACA score using approach described in Bottomly et al.
+    (doi.org/10.1016/j.ccell.2022.07.002)
+
+    Args:
+        None.
+
+    Returns:
+        pd.Series: PRKACA scores for each sample.
+    """
+    # Loads substrate idea
+    substrates = pd.read_csv(
+        join(REPO_PATH, "data", "Kinase-Substrate Links.csv")
+    )
+    substrates = substrates.loc[
+        substrates.loc[:, "Kinase.Gene"] == "PRKACA", :
+    ].sort_values(by="log2FC", ascending=True)
+
+    # Reformat names to match Synapse data
+    substrates.index = (
+        substrates.loc[:, "Substrate.Gene"]
+        + "-"
+        + substrates.loc[:, "Substrate.Mod"]
+        + substrates.loc[:, "Substrate.Mod"].str[0].str.lower()
+    )
+
+    # Load phosphoproteomic measurements
+    phospho = import_phospho()
+    phospho = pd.concat(phospho, axis=0)
+
+    # Trim KSEA table to phospho substrates that also appear in phospho
+    # measurements. Not all are included since the KSEA splits phosphosites with
+    # multiple phosphorylations into individual columns!
+    shared = substrates.index.intersection(phospho.columns)
+    phospho = phospho.loc[:, shared]
+
+    # Drop phospho measurements with high missingness, trim to patients with
+    # all measurements
+    phospho = phospho.loc[:, phospho.isna().mean(axis=0) < 0.01]
+    phospho.dropna(axis=0, inplace=True)
+
+    # Fit PCA
+    phospho.loc[:] = scale(phospho)
+    pca = PCA(
+        phospho,
+        ncomp=1,
+        missing="fill-em",
+        demean=False,
+        standardize=False,
+        method="nipals",
+    )
+
+    # Store scores for patients
+    scores = pd.Series(
+        pca.factors.squeeze(),
+        index=phospho.index
+    )
+
+    return scores
 
 
 def volcano_plot(
