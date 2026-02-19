@@ -2,53 +2,24 @@ library(Biostrings)
 library(dplyr)
 library(here)
 library(MSnSet.utils)
-library(synapser)
 
 here::i_am("src/r/proteomics/proteomic_batch_correction.R")
-# Assumes an authorization token for Synapse is stored in the root directory
-# with name 'auth_token.txt'
-token <- readLines(here("auth_token.txt"), warn = FALSE)
-synapser::synLogin(authToken = token)
 
 #' Proteomic batch correction
 #'
 #' Corrects phospho & global proteomic measurements via ComBat.
-#' @param phospho Boolean. TRUE processes phospho measurements; FALSE processes
-#' global measurements.
-#' @param output_path Path to save processed data. Defaults to 
-#' "src/python/data".
-#' @return NULL (invisibly).
-combat_proteomics <- function(phospho = TRUE, output_path = NULL) {
-  # Setup storage path
-  if (is.null(output_path)) {
-    output_path <- here(
-      "src",
-      "python",
-      "data"
-    )
-  }
-  
-  # Import data from Synapse
-  if (phospho) {
-    ba <- t(read.csv(
-      synapser::synGet("syn25714936")$path,
-      sep = "\t"
-    ))
-    pilot <- t(read.csv(
-      synapser::synGet("syn69075545")$path,
-      sep = "\t"
-    ))
-  }
-  else {
-    ba <- t(read.csv(
-      synapser::synGet("syn25714254")$path,
-      sep = "\t"
-    ))
-    pilot <- t(read.csv(
-      synapser::synGet("syn69075554")$path,
-      sep = "\t"
-    ))
-  }
+#' @param ba DataFrame. Measurements for BeatAML cohort.
+#' @param pilot DataFrame. Measurements for Pilot cohort.
+#' @param meta DataFrame. Meta-data for patients. Row names should be same as
+#' those in ba and pilot DataFrames. Must contain columns 'Race' and 'Study'.
+#' @return [list] with the following elements:
+#' \itemize{
+#'  \item ba: Batch-corrected data for BeatAML cohort
+#'  \item pilot: Batch-corrected data for Pilot cohort.
+#' }
+combat_proteomics <- function(ba, pilot, meta) {
+  # Group non-Black/non-White patients, given limited sample size
+  meta[!(meta$Race %in% c("Black", "White")), "Race"] <- "Other"
   
   # Trim to measurements in both datasets
   shared <- intersect(
@@ -58,53 +29,38 @@ combat_proteomics <- function(phospho = TRUE, output_path = NULL) {
   ba <- ba[,shared]
   pilot <- pilot[,shared]
   
-  # Concatenate, define batches
+  # Concatenate
   data <- t(rbind(
     ba,
     pilot
   ))
-  batch <- integer(ncol(data))
-  batch[-1:-nrow(ba)] <- 1
+  
+  # Trim meta-data to dataset patients, reorder patients
+  meta <- meta[intersect(row.names(meta), colnames(data)),]
+  data <- data[,row.names(meta)]
+  
+  # Define race as a covariate to preserve
+  model <- model.matrix(
+    ~as.factor(Race),
+    meta
+  )
   
   # Correct using PNNL's missing-friendly ComBat
   corrected <- ComBat.NA(
     data,
-    batch,
-    par.prior = TRUE
+    as.factor(meta$Study),
+    par.prior = TRUE,
+    mod = model
   )
   corrected <- corrected$`corrected data`
   
-  if (phospho) {
-    file_name <- "phospho"
-  }
-  else {
-    file_name <- "global"
-  }
-  
   # Separate Pilot from BeatAML samples
-  ba_corrected <- corrected[,row.names(ba)]
-  pilot_corrected <- corrected[,row.names(pilot)]
+  ba_corrected <- data.frame(
+    corrected[,row.names(meta[meta$Study == "BeatAML",])]
+  )
+  pilot_corrected <- data.frame(
+    corrected[,row.names(meta[meta$Study == "pilotStudy",])]
+  )
   
-  # Write data
-  write.table(
-    ba_corrected,
-    here(
-      output_path,
-      sprintf("ba_%s_corrected.csv", file_name)
-    ),
-    quote=F,
-    sep=","
-  )
-  write.table(
-    pilot_corrected,
-    here(
-      output_path,
-      sprintf("pilot_%s_corrected.csv", file_name)
-    ),
-    quote=F,
-    sep=","
-  )
+  return(list(ba = ba_corrected, pilot = pilot_corrected))
 }
-
-combat_proteomics(phospho = TRUE)
-combat_proteomics(phospho = FALSE)
