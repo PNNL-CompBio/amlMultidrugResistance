@@ -598,41 +598,118 @@ def import_acetyl(syn: sc.Synapse | None = None) -> pd.DataFrame:
 
 
 def import_global(
-    syn: sc.Synapse | None = None, pre_corrected: bool = False
+    syn: sc.Synapse | None = None,
+    batch_correct: str | None = "study",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Loads global proteomic measurements.
+    Loads global proteomic data.
 
     Args:
         syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
             new one if None.
-        pre_corrected (bool, default: True): Load pre-corrected data; otherwise,
-            load post-concatenation corrected data.
+        batch_correct (str | None, default: "cohort"): Batch-correction method.
+            Accepts 'cohort' (corrected at cohort-level), 'study' (corrected at
+            study-level, post-cohort concatenation), or None.
 
     Returns:
-        pd.DataFrame: Global proteomics for 210 cohort.
-        pd.DataFrame: Global proteomics for pilot cohort.
+        pd.DataFrame: Global data for BeatAML 210 cohort.
+        pd.DataFrame: global data for Pilot cohort.
     """
+    if batch_correct not in ["cohort", "study", None]:
+        raise ValueError("'batch_correct' must be 'cohort', 'study', or None, "
+                         f"received {batch_correct}")
+
     if syn is None:
         syn = syn_login()
 
-    if pre_corrected:
-        ptrc = pd.read_csv(syn.get("syn25714248").path, index_col=0, sep="\t")
-        ptrc.columns = ptrc.columns.astype(int)
-        pilot = pd.read_csv(syn.get("syn69075555").path, index_col=0, sep="\t")
-    else:
-        ptrc = pd.read_csv(
-            join(REPO_PATH, "data", "ba_global_corrected.csv"), index_col=0
+    if batch_correct == "study":
+        # Setup Synapse file objects
+        ptrc_file = File(
+            join(REPO_PATH, "data", "global_beataml_batch_corrected.csv"),
+            parentId="syn25714186",
         )
-        ptrc.columns = ptrc.columns.str[1:].astype(int)
-        pilot = pd.read_csv(
-            join(REPO_PATH, "data", "pilot_global_corrected.csv"), index_col=0
+        pilot_file = File(
+            join(REPO_PATH, "data", "global_pilot_batch_corrected.csv"),
+            parentId="syn69075539",
         )
+        try:
+            # Loads cached results (if this has been run previously) as
+            # ComBat-Seq can be time-intensive with race covariates included
+            ptrc = pd.read_csv(ptrc_file.path, index_col=0)
+            pilot = pd.read_csv(pilot_file.path, index_col=0)
+        except FileNotFoundError:
+            ptrc, pilot = import_global(syn, batch_correct=None)
 
-    ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
-    pilot_conversion.loc[pilot_conversion.isin(ptrc_conversion)] += "-Bridge"
-    ptrc.rename(columns=ptrc_conversion, inplace=True)
-    pilot.rename(columns=pilot_conversion, inplace=True)
+            # Source R batch correction script
+            r_source = ro.r["source"]
+            r_source(
+                join(
+                    REPO_PATH,
+                    "..",
+                    "r",
+                    "proteomics",
+                    "proteomic_batch_correction.R"
+                )
+            )
+            bc_function = ro.globalenv["combat_proteomics"]
+
+            # Convert DataFrames to R
+            with localconverter(pandas2ri.converter):
+                ptrc_r = ro.conversion.py2rpy(ptrc)
+                pilot_r = ro.conversion.py2rpy(pilot)
+                meta_r = ro.conversion.py2rpy(import_meta(syn, aux_meta=False))
+
+            result = bc_function(
+                ptrc_r,
+                pilot_r,
+                meta_r
+            )
+            with localconverter(pandas2ri.converter):
+                ptrc, pilot = ro.conversion.rpy2py(result)
+
+            pilot.columns = pilot.columns.str.replace(
+                {
+                    ".": "-",
+                    "X": ""
+                }
+            )
+            ptrc.columns = ptrc.columns.str.replace(
+                {
+                    ".": "-",
+                    "X": ""
+                }
+            )
+
+            # Store locally
+            ptrc.to_csv(ptrc_file.path)
+            pilot.to_csv(pilot_file.path)
+
+            # Sync to Synapse
+            syn.store(ptrc_file)
+            syn.store(pilot_file)
+    else:
+        if batch_correct is "cohort":
+            ptrc = pd.read_csv(
+                syn.get("syn25714248").path,
+                index_col=0,
+                sep="\t"
+            )
+            ptrc.columns = ptrc.columns.astype(int)
+            pilot = pd.read_csv(
+                syn.get("syn69075555").path,
+                index_col=0,
+                sep="\t"
+            )
+        else:
+            # Raw measurements
+            ptrc = pd.read_csv(syn.get("syn25714254").path, index_col=0, sep="\t")
+            ptrc.columns = ptrc.columns.astype(int)
+            pilot = pd.read_csv(syn.get("syn69075554").path, index_col=0, sep="\t")
+
+        ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+        pilot_conversion.loc[pilot_conversion.isin(ptrc_conversion)] += "-Bridge"
+        ptrc.rename(columns=ptrc_conversion, inplace=True)
+        pilot.rename(columns=pilot_conversion, inplace=True)
 
     return ptrc.T, pilot.T
 
