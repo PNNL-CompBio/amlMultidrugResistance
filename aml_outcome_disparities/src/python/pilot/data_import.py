@@ -1,3 +1,4 @@
+import logging
 from io import StringIO
 from os import PathLike
 from os.path import abspath, dirname, join
@@ -7,12 +8,16 @@ import mygene
 import numpy as np
 import pandas as pd
 import requests
+import rpy2.robjects as ro
 import synapseclient as sc
 from inmoose.pycombat import pycombat_seq
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.conversion import localconverter
 from sklearn.preprocessing import scale
 from synapseclient.entity import File
 
 REPO_PATH = abspath(dirname(dirname(__file__)))
+logging.getLogger("rpy2.rinterface").setLevel(logging.ERROR)
 
 
 def syn_login(auth_path: PathLike | None = None) -> sc.Synapse:
@@ -327,7 +332,8 @@ def import_rna(
 
 
 def import_phospho(
-    syn: sc.Synapse | None = None, pre_corrected: bool = False
+    syn: sc.Synapse | None = None,
+    batch_correct: str | None = "study",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads phosphoproteomic data.
@@ -335,43 +341,126 @@ def import_phospho(
     Args:
         syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
             new one if None.
-        pre_corrected (bool, default: True): Load pre-corrected data; otherwise,
-            load post-concatenation corrected data.
+        batch_correct (str | None, default: "cohort"): Batch-correction method.
+            Accepts 'cohort' (corrected at cohort-level), 'study' (corrected at
+            study-level, post-cohort concatenation), or None.
 
     Returns:
         pd.DataFrame: Phosphoproteomic data for BeatAML 210 cohort.
         pd.DataFrame: Phosphoproteomic data for Pilot cohort.
     """
+    if batch_correct not in ["cohort", "study", None]:
+        raise ValueError("'batch_correct' must be 'cohort', 'study', or None, "
+                         f"received {batch_correct}")
+
     if syn is None:
         syn = syn_login()
 
-    if pre_corrected:
-        ptrc = pd.read_csv(syn.get("syn32528196").path, index_col=0, sep="\t")
-        pilot = pd.read_csv(syn.get("syn69075544").path, index_col=0, sep="\t")
+    if batch_correct == "study":
+        # Setup Synapse file objects
+        ptrc_file = File(
+            join(REPO_PATH, "data", "phospho_beataml_batch_corrected.csv"),
+            parentId="syn25714185",
+        )
+        pilot_file = File(
+            join(REPO_PATH, "data", "phospho_pilot_batch_corrected.csv"),
+            parentId="syn69075538",
+        )
+        try:
+            # Loads cached results (if this has been run previously) as
+            # ComBat-Seq can be time-intensive with race covariates included
+            ptrc = pd.read_csv(ptrc_file.path, index_col=0)
+            pilot = pd.read_csv(pilot_file.path, index_col=0)
+        except FileNotFoundError:
+            ptrc, pilot = import_phospho(syn, batch_correct=None)
+
+            # Source R batch correction script
+            r_source = ro.r["source"]
+            r_source(
+                join(
+                    REPO_PATH,
+                    "..",
+                    "r",
+                    "proteomics",
+                    "proteomic_batch_correction.R"
+                )
+            )
+            bc_function = ro.globalenv["combat_proteomics"]
+
+            # Convert DataFrames to R
+            with localconverter(pandas2ri.converter):
+                ptrc_r = ro.conversion.py2rpy(ptrc)
+                pilot_r = ro.conversion.py2rpy(pilot)
+                meta_r = ro.conversion.py2rpy(import_meta(syn, aux_meta=False))
+
+            result = bc_function(
+                ptrc_r,
+                pilot_r,
+                meta_r
+            )
+            with localconverter(pandas2ri.converter):
+                ptrc, pilot = ro.conversion.rpy2py(result)
+
+            pilot.columns = pilot.columns.str.replace(
+                {
+                    ".": "-",
+                    "X": ""
+                }
+            )
+            ptrc.columns = ptrc.columns.str.replace(
+                {
+                    ".": "-",
+                    "X": ""
+                }
+            )
+
+            # Store locally
+            ptrc.to_csv(ptrc_file.path)
+            pilot.to_csv(pilot_file.path)
+
+            # Sync to Synapse
+            syn.store(ptrc_file)
+            syn.store(pilot_file)
+    else:
+        if batch_correct == "cohort":
+            ptrc = pd.read_csv(
+                syn.get("syn32528196").path,
+                index_col=0,
+                sep="\t"
+            )
+            pilot = pd.read_csv(
+                syn.get("syn69075544").path,
+                index_col=0,
+                sep="\t"
+            )
+        else:
+            ptrc = pd.read_csv(
+                syn.get("syn25714936").path,
+                index_col=0,
+                sep="\t"
+            )
+            pilot = pd.read_csv(
+                syn.get("syn69075545").path,
+                index_col=0,
+                sep="\t"
+            )
+
         shared_phospho = ptrc.index.intersection(pilot.index)
         ptrc = ptrc.loc[shared_phospho, :]
         pilot = pilot.loc[shared_phospho, :]
-    else:
-        ptrc = pd.read_csv(
-            join(REPO_PATH, "data", "ba_phospho_corrected.csv"), index_col=0
-        )
-        ptrc.columns = ptrc.columns.str[1:]
-        pilot = pd.read_csv(
-            join(REPO_PATH, "data", "pilot_phospho_corrected.csv"), index_col=0
-        )
 
-    # Convert sample IDs to Accession IDs
-    ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
-    ptrc.columns = ptrc.columns.astype(int)
-    ptrc.rename(columns=ptrc_conversion, inplace=True)
-    pilot.rename(columns=pilot_conversion, inplace=True)
+        # Convert sample IDs to Accession IDs
+        ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+        ptrc.columns = ptrc.columns.astype(int)
+        ptrc.rename(columns=ptrc_conversion, inplace=True)
+        pilot.rename(columns=pilot_conversion, inplace=True)
 
-    # Relabel bridging samples
-    bridge_columns = pilot.columns.intersection(ptrc.columns)
-    pilot.rename(
-        columns=pd.Series(bridge_columns + "-Bridge", index=bridge_columns),
-        inplace=True,
-    )
+        # Relabel bridging samples
+        bridge_columns = pilot.columns.intersection(ptrc.columns)
+        pilot.rename(
+            columns=pd.Series(bridge_columns + "-Bridge", index=bridge_columns),
+            inplace=True,
+        )
 
     return ptrc.T, pilot.T
 
