@@ -55,7 +55,7 @@ def make_figure():
     )
     sig_meta = meta_stats.loc[
         np.logical_and(
-            meta_stats.loc[:, "FDR q-value"] < 0.01,
+            meta_stats.loc[:, "FDR q-value"] < 0.05,
             meta_stats.loc[:, "Rho"] > 0
         ),
         :
@@ -64,16 +64,16 @@ def make_figure():
 
     # Fill in contingency table
     carnitine_table.loc["Carnitine", "Significant"] = sum(
-        sig_meta.index.str.contains("carnitine")
+        sig_meta.index.str.lower().str.contains("carnitine")
     )
     carnitine_table.loc["Carnitine", "Non-Significant"] = sum(
-        ns_meta.index.str.contains("carnitine")
+        ns_meta.index.str.lower().str.contains("carnitine")
     )
     carnitine_table.loc["Other", "Significant"] = sum(
-        ~sig_meta.index.str.contains("carnitine")
+        ~sig_meta.index.str.lower().str.contains("carnitine")
     )
     carnitine_table.loc["Other", "Non-Significant"] = sum(
-        ~ns_meta.index.str.contains("carnitine")
+        ~ns_meta.index.str.lower().str.contains("carnitine")
     )
 
     # Rename columns for plotting

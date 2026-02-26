@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import false_discovery_control, pearsonr
 import pandas as pd
@@ -92,13 +93,13 @@ def make_figure():
         colors.loc[
             np.logical_and(
                 stat.loc[:, "Rho"] > 0,
-                stat.loc[:, "FDR q-value"] < 0.01,
+                stat.loc[:, "FDR q-value"] < 0.05,
             )
         ] = "tab:red"
         colors.loc[
             np.logical_and(
                 stat.loc[:, "Rho"] < 0,
-                stat.loc[:, "FDR q-value"] < 0.01,
+                stat.loc[:, "FDR q-value"] < 0.05,
             )
         ] = "tab:blue"
 
@@ -114,7 +115,7 @@ def make_figure():
         # Add line for q-value threshold
         ax.plot(
             [-1, 1],
-            [-np.log10(0.01), -np.log10(0.01)],
+            [-np.log10(0.05), -np.log10(0.05)],
             linestyle="--",
             color="black",
             zorder=1,

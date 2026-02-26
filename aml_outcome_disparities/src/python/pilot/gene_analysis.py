@@ -20,7 +20,7 @@ HAS_SCORES = pd.Series(
         "FGG": 0.173,
         "FGA": 0.144,
         "FGB": 0.141,
-        # "CALCRL": 0.091,  # Not measured in RNA-seq
+        # "CALCRL": 0.091,  # Not measured in Global
         "S100A9": 0.090,
         "THBS1": 0.083,
         "S100A8": 0.077,
@@ -29,7 +29,7 @@ HAS_SCORES = pd.Series(
         "MMRN1": 0.062,
         "CAVIN2": 0.061,
         "RBPMS": 0.060,
-        "PF4V1": 0.059,
+        # "PF4V1": 0.059,   # Very low coverage in Global
         "MS4A3": 0.056,
         "PF4": 0.054,
         "VCAN": 0.047,
