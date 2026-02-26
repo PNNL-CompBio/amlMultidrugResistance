@@ -1,5 +1,6 @@
+import requests
 from os import PathLike
-from os.path import abspath, dirname, join, splitext
+from os.path import abspath, dirname, exists, join, splitext
 from typing import Iterable
 
 import datashader as ds
@@ -11,7 +12,32 @@ from scipy.stats import false_discovery_control, ttest_ind
 from sklearn.preprocessing import scale
 from statsmodels.multivariate.pca import PCA
 
+from pilot.data_import import import_global, import_rna
+
 REPO_PATH = dirname(dirname(abspath(__file__)))
+HAS_SCORES = pd.Series(
+    {
+        "FGG": 0.173,
+        "FGA": 0.144,
+        "FGB": 0.141,
+        # "CALCRL": 0.091,  # Not measured in RNA-seq
+        "S100A9": 0.090,
+        "THBS1": 0.083,
+        "S100A8": 0.077,
+        "VNN2": 0.072,
+        "FPR1": 0.070,
+        "MMRN1": 0.062,
+        "CAVIN2": 0.061,
+        "RBPMS": 0.060,
+        "PF4V1": 0.059,
+        "MS4A3": 0.056,
+        "PF4": 0.054,
+        "VCAN": 0.047,
+        "S100A12": 0.041,
+        "MEIS1": 0.041,
+        "PSAP": -0.19,
+    }
+)
 
 
 def preranked_enrichment(
@@ -180,19 +206,39 @@ def calculate_fc(
     return fc, corrected_p
 
 
-def cell_type_scores(data: pd.DataFrame) -> pd.DataFrame:
+def cell_type_scores() -> pd.DataFrame:
     """
-    Identifies AML cell types in samples using cell types defined in van Galen et al.
-    (10.1016/j.cell.2019.01.031)
+    Identifies AML cell types in samples using cell types defined in van
+    Galen et al. (doi.org/10.1016/j.cell.2019.01.031) Uses SVD-based scoring
+    approach defined in Bottomly et al. (doi.org/10.1016/j.ccell.2022.07.002)
 
     Args:
-        data (pd.DataFrame): Expression data.
+        None.
 
     Returns:
         pd.DataFrame: AML cell type scores for each sample.
+
+    Notes:
+         If not already present, saves van Galen gene sets to data directory.
     """
+    # Load RNA-seq data
+    data = pd.concat(import_rna(), axis=0)
+
     # Loads van Galen genes
-    vg_genes = pd.read_csv(join(REPO_PATH, "data", "van_Galen_genes.csv"))
+    # If file is not found in data directory, instead loads from van Galen
+    # supplement URL and saves to data directory for future use
+    vg_genes = pd.read_excel(
+        join(REPO_PATH, "data", "mmc3.xlsx"),
+        header=1,
+        index_col=0
+    )
+
+    gmp_like = vg_genes.loc[:, "GMP-like"].iloc[:-2]
+    vg_genes = vg_genes.iloc[:-2, -7:-1]
+    vg_genes.rename(columns={"GMP-like.1": "GMP-like"}, inplace=True)
+    vg_genes.loc[:, "GMP-like"] = gmp_like
+    vg_genes.index = vg_genes.index.astype(int)
+
     vg_scores = pd.DataFrame(
         0, dtype=float, index=data.index, columns=vg_genes.columns
     )
@@ -216,6 +262,43 @@ def cell_type_scores(data: pd.DataFrame) -> pd.DataFrame:
         vg_scores.loc[:, cell_type] = pca.scores.iloc[:, 0].values
 
     return vg_scores
+
+
+def get_has_scores():
+    """
+    Calculates Hematopoietic Aging Signature (HAS) scores via Cheng et al.
+    (doi.org/10.1182/blood.2024027692)
+
+    Args:
+        None.
+
+    Returns:
+        pd.DataFrame: Weighted & unweighted HAS scores for each sample.
+            Unweighted considers arithmetic mean of measurements; weighted
+            includes coefficients from Cheng et al.
+    """
+    data = pd.concat(import_global(), axis=0)
+    data = data.loc[:, HAS_SCORES.index]
+    data = 2**data
+
+    has_scores = pd.DataFrame(
+        0,
+        dtype=float,
+        index=data.index,
+        columns=["Weighted HAS", "Unweighted HAS"],
+    )
+
+    # Includes HAS coefficients
+    has_scores.loc[:, "Weighted HAS"] = (
+        data * HAS_SCORES.loc[data.columns]
+    ).mean(axis=1)
+
+    # HAS score without coefficients
+    # Not in-place, so the Weighted HAS score stays in data
+    # PSAP is negatively associated with HAS, so removed
+    has_scores.loc[:, "Unweighted HAS"] = data.drop("PSAP", axis=1).mean(axis=1)
+
+    return has_scores
 
 
 def volcano_plot(
@@ -303,3 +386,56 @@ def volcano_plot(
     over_exp_2 = list(colors.loc[colors == left_color].index)
 
     return over_exp_1, over_exp_2, ax
+
+
+def get_iscore():
+    """
+    Calculates iScores via Lasry et al. (doi.org/10.1038/s43018-022-00480-0)
+    from gene expression.
+
+    Args:
+        None.
+
+    Returns:
+        pd.DataFrame: iScores for each patient.
+
+    Notes:
+        Loads iScore coefficients from Lasry et al if not found in python/data.
+    """
+    if not exists(join(REPO_PATH, "data", "lasry_supplement.xlsx")):
+        # Load response from URL with .xlsx
+        response = requests.get(
+            "https://static-content.springer.com/esm/"
+            "art%3A10.1038%2Fs43018-022-00480-0/MediaObjects/"
+            "43018_2022_480_MOESM2_ESM.xlsx"
+        )
+
+        # Save to data directory
+        with open(
+            join(REPO_PATH, "data", "lasry_supplement.xlsx"), "wb"
+        ) as xlsx_file:
+            xlsx_file.write(response.content)
+
+        xlsx_file.close()
+
+    # Load RNA-seq data
+    data = pd.concat(
+        import_rna(return_symbols=True, batch_correct=True, tpm=True)
+    )
+
+    # Load iScore genes, trim to genes in both datasets
+    iscore_genes = pd.read_excel(
+        join(REPO_PATH, "data", "lasry_supplement.xlsx"),
+        sheet_name="Supp11. Adult iScore genes",
+        index_col=0,
+    )
+    iscore_genes = iscore_genes.loc[
+        iscore_genes.index.intersection(data.columns), "beta mean"
+    ]
+    data = np.log2(data.loc[:, iscore_genes.index])
+
+    iscores = data * iscore_genes
+    iscores.replace({-np.inf: 0}, inplace=True)
+    iscores = iscores.sum(axis=1)
+
+    return iscores

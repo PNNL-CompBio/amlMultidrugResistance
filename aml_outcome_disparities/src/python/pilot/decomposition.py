@@ -59,7 +59,9 @@ def run_plsr(
         data[:] = knn.fit_transform(data)
 
     for rank in n_comp:
-        accuracies.loc[rank] = accuracy_score(labels, predictions.loc[:, rank].round())
+        accuracies.loc[rank] = accuracy_score(
+            labels, predictions.loc[:, rank].round()
+        )
         plsr = PLSRegression(n_components=rank)
         plsr.fit(data, labels)
         plsr_models.append(plsr)
