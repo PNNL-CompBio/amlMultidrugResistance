@@ -335,8 +335,7 @@ def import_rna(
 
 
 def import_phospho(
-    syn: sc.Synapse | None = None,
-    batch_correct: str | None = "study"
+    syn: sc.Synapse | None = None, batch_correct: str | None = "study"
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads phosphoproteomic data.
@@ -353,8 +352,10 @@ def import_phospho(
         pd.DataFrame: Phosphoproteomic data for Pilot cohort.
     """
     if batch_correct not in ["cohort", "study", None]:
-        raise ValueError("'batch_correct' must be 'cohort', 'study', or None, "
-                         f"received {batch_correct}")
+        raise ValueError(
+            "'batch_correct' must be 'cohort', 'study', or None, "
+            f"received {batch_correct}"
+        )
 
     if syn is None:
         syn = syn_login()
@@ -389,9 +390,7 @@ def import_phospho(
             # harmonization with phosphoproteomic sample IDs
             ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
             ptrc_plex = pd.read_csv(
-                syn.get("syn26534982").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn26534982").path, index_col=0, sep="\t"
             )
             ptrc_plex.index = ptrc_plex.index.str[11:].astype(int)
             ptrc_plex.rename(index=ptrc_conversion, inplace=True)
@@ -399,8 +398,7 @@ def import_phospho(
 
             # Repeat plex indexing for pilot samples
             pilot_plex = pd.read_excel(
-                syn.get("syn68835814").path,
-                sheet_name="TMT"
+                syn.get("syn68835814").path, sheet_name="TMT"
             ).set_index("Accession")
             pilot_plex = "P" + pilot_plex.loc[:, "Plex"].astype(str)
             pilot_plex = pilot_plex.loc[
@@ -425,7 +423,7 @@ def import_phospho(
                     "..",
                     "r",
                     "proteomics",
-                    "proteomic_batch_correction.R"
+                    "proteomic_batch_correction.R",
                 )
             )
             bc_function = ro.globalenv["combat_proteomics"]
@@ -437,30 +435,15 @@ def import_phospho(
                 meta_r = ro.conversion.py2rpy(import_meta(syn, aux_meta=False))
                 plex_r = ro.conversion.py2rpy(plex)
 
-            result = bc_function(
-                ptrc_r,
-                pilot_r,
-                meta_r,
-                plex_r
-            )
+            result = bc_function(ptrc_r, pilot_r, meta_r, plex_r)
             with localconverter(pandas2ri.converter):
                 ptrc, pilot = ro.conversion.rpy2py(result)
 
             # Rename R DataFrame columns
             # R appends "X" to the front of numeric columns and replaces "-"
             # with "."
-            pilot.columns = pilot.columns.str.replace(
-                {
-                    ".": "-",
-                    "X": ""
-                }
-            )
-            ptrc.columns = ptrc.columns.str.replace(
-                {
-                    ".": "-",
-                    "X": ""
-                }
-            )
+            pilot.columns = pilot.columns.str.replace({".": "-", "X": ""})
+            ptrc.columns = ptrc.columns.str.replace({".": "-", "X": ""})
 
             # Undo Z-score back to measurements
             ptrc = ptrc.T
@@ -480,36 +463,22 @@ def import_phospho(
     else:
         if batch_correct == "cohort":
             ptrc = pd.read_csv(
-                syn.get("syn32528196").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn32528196").path, index_col=0, sep="\t"
             )
             pilot = pd.read_csv(
-                syn.get("syn69075544").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn69075544").path, index_col=0, sep="\t"
             )
         else:
             ptrc = pd.read_csv(
-                syn.get("syn25714936").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn25714936").path, index_col=0, sep="\t"
             )
             pilot = pd.read_csv(
-                syn.get("syn69075545").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn69075545").path, index_col=0, sep="\t"
             )
 
             # Drop phosphosites with >50% missingness in either dataset
-            ptrc = ptrc.loc[
-                ptrc.isna().mean(axis=1) < 0.5,
-                :
-            ]
-            pilot = pilot.loc[
-                pilot.isna().mean(axis=1) < 0.5,
-                :
-            ]
+            ptrc = ptrc.loc[ptrc.isna().mean(axis=1) < 0.5, :]
+            pilot = pilot.loc[pilot.isna().mean(axis=1) < 0.5, :]
 
         shared_phospho = ptrc.index.intersection(pilot.index)
         ptrc = ptrc.loc[shared_phospho, :]
@@ -569,42 +538,32 @@ def import_meta(
     mapping = pd.read_excel(syn.get("syn64126463").path, index_col=0)
     mapping.reset_index(drop=True, inplace=True)
     ba_aux = pd.read_excel(
-        syn.get("syn64126458").path,
-        header=1,
-        index_col=0,
-        sheet_name="summary"
+        syn.get("syn64126458").path, header=1, index_col=0, sheet_name="summary"
     )
     ba_aux.reset_index(inplace=True, drop=True)
 
     mapping_ids = mapping.loc[:, "dbgap_rnaseq_sample"].str[:-1]
     mapping_ids.loc[mapping_ids.isna()] = mapping.loc[
-        :,
-        "dbgap_dnaseq_sample"
+        :, "dbgap_dnaseq_sample"
     ].str[:-1]
     sample_conversions = pd.Series(
-        mapping.loc[:, "labId"].values,
-        index=mapping_ids
+        mapping.loc[:, "labId"].values, index=mapping_ids
     )
 
     sample_names = ba_aux.loc[:, "dbgap_rnaseq_sample"].str[:-1]
     sample_names.loc[sample_names.isna()] = ba_aux.loc[
-        :,
-        "dbgap_dnaseq_sample"
+        :, "dbgap_dnaseq_sample"
     ].str[:-1]
     inferred_race = pd.Series(
         ba_aux.loc[:, "inferred_ethnicity"].values,
-        index=sample_names.replace(sample_conversions)
+        index=sample_names.replace(sample_conversions),
     )
     inferred_race = inferred_race.loc[
         meta.loc[
-            meta.loc[:, "Race"].isin([np.nan, "Unknown"]),
-            :
-        ].index.intersection(
-            inferred_race.index
-        )
+            meta.loc[:, "Race"].isin([np.nan, "Unknown"]), :
+        ].index.intersection(inferred_race.index)
     ]
     meta.loc[inferred_race.index, "Race"] = inferred_race
-
 
     if aux_meta:
         # Rename columns to match format of pilot cohort
@@ -672,13 +631,7 @@ def import_meta(
         )
 
     meta.replace(
-        {
-            "Race": {
-                "Declined": "Unknown",
-                np.nan: "Unknown"
-            }
-        },
-        inplace=True
+        {"Race": {"Declined": "Unknown", np.nan: "Unknown"}}, inplace=True
     )
 
     return meta
@@ -726,8 +679,10 @@ def import_global(
         pd.DataFrame: global data for Pilot cohort.
     """
     if batch_correct not in ["cohort", "study", None]:
-        raise ValueError("'batch_correct' must be 'cohort', 'study', or None, "
-                         f"received {batch_correct}")
+        raise ValueError(
+            "'batch_correct' must be 'cohort', 'study', or None, "
+            f"received {batch_correct}"
+        )
 
     if syn is None:
         syn = syn_login()
@@ -762,9 +717,7 @@ def import_global(
             # harmonization with phosphoproteomic sample IDs
             ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
             ptrc_plex = pd.read_csv(
-                syn.get("syn26534982").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn26534982").path, index_col=0, sep="\t"
             )
             ptrc_plex.index = ptrc_plex.index.str[11:].astype(int)
             ptrc_plex.rename(index=ptrc_conversion, inplace=True)
@@ -772,8 +725,7 @@ def import_global(
 
             # Repeat plex indexing for pilot samples
             pilot_plex = pd.read_excel(
-                syn.get("syn68835814").path,
-                sheet_name="TMT"
+                syn.get("syn68835814").path, sheet_name="TMT"
             ).set_index("Accession")
             pilot_plex = "P" + pilot_plex.loc[:, "Plex"].astype(str)
             pilot_plex = pilot_plex.loc[
@@ -798,7 +750,7 @@ def import_global(
                     "..",
                     "r",
                     "proteomics",
-                    "proteomic_batch_correction.R"
+                    "proteomic_batch_correction.R",
                 )
             )
             bc_function = ro.globalenv["combat_proteomics"]
@@ -822,18 +774,8 @@ def import_global(
             # Rename R DataFrame columns
             # R appends "X" to the front of numeric columns and replaces "-"
             # with "."
-            pilot.columns = pilot.columns.str.replace(
-                {
-                    ".": "-",
-                    "X": ""
-                }
-            )
-            ptrc.columns = ptrc.columns.str.replace(
-                {
-                    ".": "-",
-                    "X": ""
-                }
-            )
+            pilot.columns = pilot.columns.str.replace({".": "-", "X": ""})
+            ptrc.columns = ptrc.columns.str.replace({".": "-", "X": ""})
 
             # Undo Z-score back to measurements
             ptrc = ptrc.T
@@ -853,43 +795,30 @@ def import_global(
     else:
         if batch_correct == "cohort":
             ptrc = pd.read_csv(
-                syn.get("syn25714248").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn25714248").path, index_col=0, sep="\t"
             )
             ptrc.columns = ptrc.columns.astype(int)
             pilot = pd.read_csv(
-                syn.get("syn69075555").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn69075555").path, index_col=0, sep="\t"
             )
         else:
             # Raw measurements
             ptrc = pd.read_csv(
-                syn.get("syn25714254").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn25714254").path, index_col=0, sep="\t"
             )
             ptrc.columns = ptrc.columns.astype(int)
             pilot = pd.read_csv(
-                syn.get("syn69075554").path,
-                index_col=0,
-                sep="\t"
+                syn.get("syn69075554").path, index_col=0, sep="\t"
             )
 
             # Drop proteins with >50% missingness in either dataset
-            ptrc = ptrc.loc[
-                ptrc.isna().mean(axis=1) < 0.5,
-                :
-            ]
-            pilot = pilot.loc[
-                pilot.isna().mean(axis=1) < 0.5,
-                :
-            ]
-
+            ptrc = ptrc.loc[ptrc.isna().mean(axis=1) < 0.5, :]
+            pilot = pilot.loc[pilot.isna().mean(axis=1) < 0.5, :]
 
         ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
-        pilot_conversion.loc[pilot_conversion.isin(ptrc_conversion)] += "-Bridge"
+        pilot_conversion.loc[
+            pilot_conversion.isin(ptrc_conversion)
+        ] += "-Bridge"
         ptrc.rename(columns=ptrc_conversion, inplace=True)
         pilot.rename(columns=pilot_conversion, inplace=True)
 

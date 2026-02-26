@@ -21,28 +21,25 @@ def make_figure():
 
     # Trim to patients with PRKACA scores
     metabolites = metabolites.loc[
-        metabolites.index.intersection(prkaca_scores.index),
-        :
+        metabolites.index.intersection(prkaca_scores.index), :
     ]
     meta_stats = pd.DataFrame(
         0,
         dtype=float,
         index=metabolites.columns,
-        columns=["Rho", "FDR q-value"]
+        columns=["Rho", "FDR q-value"],
     )
 
     # Pearson correlations between PRKACA and metabolites
     meta_res = pearsonr(
         pd.concat(
             [prkaca_scores.loc[metabolites.index]] * metabolites.shape[1],
-            axis=1
+            axis=1,
         ),
-        np.log2(metabolites)
+        np.log2(metabolites),
     )
     meta_stats.loc[:, "Rho"] = meta_res.statistic
-    meta_stats.loc[:, "FDR q-value"] = false_discovery_control(
-        meta_res.pvalue
-    )
+    meta_stats.loc[:, "FDR q-value"] = false_discovery_control(meta_res.pvalue)
     meta_stats.index = meta_stats.index.str.lower()
 
     # Compare if carnitine is specifically enriched
@@ -51,14 +48,14 @@ def make_figure():
         0,
         dtype=int,
         index=["Other", "Carnitine"],
-        columns=["Non-Significant", "Significant"]
+        columns=["Non-Significant", "Significant"],
     )
     sig_meta = meta_stats.loc[
         np.logical_and(
             meta_stats.loc[:, "FDR q-value"] < 0.05,
-            meta_stats.loc[:, "Rho"] > 0
+            meta_stats.loc[:, "Rho"] > 0,
         ),
-        :
+        :,
     ]
     ns_meta = meta_stats.drop(sig_meta.index)
 
@@ -83,9 +80,7 @@ def make_figure():
     ]
 
     # Run Fisher's Exact
-    fisher_res = fisher_exact(
-        carnitine_table
-    )
+    fisher_res = fisher_exact(carnitine_table)
 
     # Plot contingency table
     fig, ax = get_setup(1, 1, {"figsize": (3, 3)})
@@ -94,7 +89,7 @@ def make_figure():
         annot=True,
         cmap="Reds",
         cbar=False,
-        annot_kws={"size": 30}
+        annot_kws={"size": 30},
     )
 
     # Label axes and ticks
@@ -110,13 +105,13 @@ def make_figure():
         0.99,
         0.99,
         s=f"Fisher's Exact: {round(fisher_res.statistic, 2)}\n"
-          f"p-value: {'{:.2E}'.format(Decimal(fisher_res.pvalue))}",
+        f"p-value: {'{:.2E}'.format(Decimal(fisher_res.pvalue))}",
         transform=ax.transAxes,
         ha="right",
         ma="right",
         va="top",
         fontsize=6,
-        color="black"
+        color="black",
     )
 
     return fig

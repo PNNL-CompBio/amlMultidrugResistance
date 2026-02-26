@@ -228,9 +228,7 @@ def cell_type_scores() -> pd.DataFrame:
     # If file is not found in data directory, instead loads from van Galen
     # supplement URL and saves to data directory for future use
     vg_genes = pd.read_excel(
-        join(REPO_PATH, "data", "mmc3.xlsx"),
-        header=1,
-        index_col=0
+        join(REPO_PATH, "data", "mmc3.xlsx"), header=1, index_col=0
     )
 
     gmp_like = vg_genes.loc[:, "GMP-like"].iloc[:-2]
@@ -355,10 +353,7 @@ def get_prkaca_score() -> pd.Series:
     )
 
     # Store scores for patients
-    scores = pd.Series(
-        pca.factors.squeeze(),
-        index=phospho.index
-    )
+    scores = pd.Series(pca.factors.squeeze(), index=phospho.index)
 
     return scores
 

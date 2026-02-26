@@ -21,49 +21,37 @@ def make_figure():
 
     # Trim to patients with PRKACA scores
     metabolites = metabolites.loc[
-        metabolites.index.intersection(prkaca_scores.index),
-        :
+        metabolites.index.intersection(prkaca_scores.index), :
     ]
-    lipids = lipids.loc[
-        lipids.index.intersection(prkaca_scores.index),
-        :
-    ]
+    lipids = lipids.loc[lipids.index.intersection(prkaca_scores.index), :]
 
     # Setup dataframes to store results
     lipid_stats = pd.DataFrame(
-        0,
-        dtype=float,
-        index=lipids.columns,
-        columns=["Rho", "FDR q-value"]
+        0, dtype=float, index=lipids.columns, columns=["Rho", "FDR q-value"]
     )
     meta_stats = pd.DataFrame(
         0,
         dtype=float,
         index=metabolites.columns,
-        columns=["Rho", "FDR q-value"]
+        columns=["Rho", "FDR q-value"],
     )
 
     # Compare PRKACA and metabolites, correct p-values via FDR
     meta_res = pearsonr(
         pd.concat(
             [prkaca_scores.loc[metabolites.index]] * metabolites.shape[1],
-            axis=1
+            axis=1,
         ),
-        np.log2(metabolites)
+        np.log2(metabolites),
     )
     meta_stats.loc[:, "Rho"] = meta_res.statistic
-    meta_stats.loc[:, "FDR q-value"] = false_discovery_control(
-        meta_res.pvalue
-    )
+    meta_stats.loc[:, "FDR q-value"] = false_discovery_control(meta_res.pvalue)
 
     # Compare PRKACA and lipids
     # Needs to be done in for loop to account for missing lipid measurements
     for lipid in lipids.columns:
         measurement = lipids.loc[:, lipid].dropna()
-        lipid_res = pearsonr(
-            measurement,
-            prkaca_scores.loc[measurement.index]
-        )
+        lipid_res = pearsonr(measurement, prkaca_scores.loc[measurement.index])
         lipid_stats.loc[lipid, "Rho"] = lipid_res.statistic
         lipid_stats.loc[lipid, "FDR q-value"] = lipid_res.pvalue
 
@@ -81,15 +69,10 @@ def make_figure():
 
     # Iterate through 'omes
     for name, stat, ax in zip(
-        ["Lipids", "Metabolites"],
-        [lipid_stats, meta_stats],
-        axes
+        ["Lipids", "Metabolites"], [lipid_stats, meta_stats], axes
     ):
         # Color measurements with significant differences in expression
-        colors = pd.Series(
-            ["grey"] * stat.shape[0],
-            index=stat.index
-        )
+        colors = pd.Series(["grey"] * stat.shape[0], index=stat.index)
         colors.loc[
             np.logical_and(
                 stat.loc[:, "Rho"] > 0,
@@ -108,7 +91,7 @@ def make_figure():
             stat.loc[:, "Rho"],
             -np.log10(stat.loc[:, "FDR q-value"]),
             c=colors,
-            alpha=0.5
+            alpha=0.5,
         )
         x_lims, y_lims = ax.get_xlim(), ax.get_ylim()
 
@@ -136,7 +119,7 @@ def make_figure():
             ylim=y_lims,
             xlabel="Pearson Rho",
             ylabel="-log10(FDR q-value)",
-            title=name
+            title=name,
         )
 
     return fig
