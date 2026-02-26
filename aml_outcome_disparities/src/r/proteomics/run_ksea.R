@@ -1,8 +1,15 @@
+library(dplyr)
 library(EnhancedVolcano)
+library(forcats)
+library(ggplot2)
 library(here)
 library(KSEAapp)
+library(synapser)
 
 here::i_am("src/r/proteomics/run_ksea.R")
+token <- readLines(here("auth_token.txt"), warn = FALSE)
+synapser::synLogin(authToken = token)
+
 
 #' KSEA for phosphoproteomic kinase-enrichment analysis
 #'
@@ -16,15 +23,10 @@ here::i_am("src/r/proteomics/run_ksea.R")
 #'  \item links: DataFrame of found Kinase-Substrate links
 #' }
 run_ksea <- function(phospho, meta) {
-  # Load KSEA Kinase-Substrate link data, if needed
-  if (!file.exists(here("src/r/proteomics/ks_data.csv"))) {
-    download.file(
-      "https://raw.githubusercontent.com/casecpb/KSEA/refs/heads/master/
-      PSP%26NetworKIN_Kinase_Substrate_Dataset_July2016.csv",
-      here("src/r/proteomics/ks_data.csv")
-    )
-  }
-  ks_data <- read.csv(here("src/r/proteomics/ks_data.csv"))
+  # Load KSEA Kinase-Substrate link data from Synapse
+  ks_data <- read.csv(
+    synapser::synGet("syn73849653")$path
+  )  
   
   # Import LIMMA function
   source(here("src/r/proteomics/limma_correlations.R"))
@@ -66,14 +68,39 @@ run_ksea <- function(phospho, meta) {
 
   # Run KSEA, get enrichment scores and kinase-substrate links
   result <- KSEA.Scores(
-    ks_data, 
+    ks_data,
     ksea_table, 
     NetworKIN = FALSE
   )
   links <- KSEA.KS_table(
-    ks_data, 
+    ks_data,
     ksea_table, 
     NetworKIN = FALSE
+  )
+  
+  # Plot bar chart of kinase enrichment scores
+  # Extract table of kinase z-scores, trim to those with an FDR < 0.05 and
+  # at least 10 measured substrates
+  df <- result
+  df <- df[df$FDR < 0.05,]
+  df <- df[df$m > 10,]
+  df <- df[order(df$z.score),]
+  
+  # Plot bar chart, sort by z-scores
+  bar_chart <- df %>%
+    mutate(Kinase = fct_reorder(Kinase.Gene, z.score)) %>%
+    ggplot(
+      aes(
+        x = Kinase, 
+        y = z.score
+      )
+    ) + geom_bar(
+      stat = "identity"
+    ) + coord_flip()
+  bar_chart <- bar_chart + ylab("Kinase Z-Score")
+  bar_chart <- bar_chart + theme(
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 16)
   )
   
   # Plots volcano
@@ -89,5 +116,12 @@ run_ksea <- function(phospho, meta) {
     selectLab = c("PRKACA")
   )
   
-  return(list(table = result, links = links, volcano = volcano))
+  return(
+    list(
+      table = result,
+      links = links, 
+      volcano = volcano,
+      bar_chart = bar_chart
+    )
+  )
 }
