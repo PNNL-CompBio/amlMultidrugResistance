@@ -12,14 +12,19 @@ here::i_am("src/r/proteomics/proteomic_batch_correction.R")
 #' @param pilot DataFrame. Measurements for Pilot cohort.
 #' @param meta DataFrame. Meta-data for patients. Row names should be same as
 #' those in ba and pilot DataFrames. Must contain columns 'Race' and 'Study'.
+#' @param batch DataFrame. Batch memberships for each sample. If NULL, uses
+#' "Study" column in meta.
 #' @return [list] with the following elements:
 #' \itemize{
 #'  \item ba: Batch-corrected data for BeatAML cohort
 #'  \item pilot: Batch-corrected data for Pilot cohort.
 #' }
-combat_proteomics <- function(ba, pilot, meta) {
-  # Group non-Black/non-White patients, given limited sample size
-  meta[!(meta$Race %in% c("Black", "White")), "Race"] <- "Other"
+combat_proteomics <- function(ba, pilot, meta, batch = NULL) {
+  # Remove patients with unknown race, and group non-White patients into one
+  # group. Not ideal, but best considering few non=White/Black patients are 
+  # in the dataset.
+  meta <- meta[meta$Race != "Unknown",]
+  meta[meta$Race != "White", "Race"] <- "NotWhite"
   
   # Trim to measurements in both datasets
   shared <- intersect(
@@ -45,11 +50,19 @@ combat_proteomics <- function(ba, pilot, meta) {
     meta
   )
   
+  if (is.null(batch)) {
+    batch <- as.factor(meta$Study)
+  } else {
+    batch <- batch[row.names(meta)]
+    batch <- as.factor(batch)
+  }
+  
   # Correct using PNNL's missing-friendly ComBat
   corrected <- ComBat.NA(
     data,
-    as.factor(meta$Study),
+    batch,
     par.prior = TRUE,
+    mean.only = FALSE,
     mod = model
   )
   corrected <- corrected$`corrected data`
