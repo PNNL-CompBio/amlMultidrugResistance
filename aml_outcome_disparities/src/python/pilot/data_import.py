@@ -221,13 +221,6 @@ def import_rna(
         ~gene_lengths.index.duplicated(keep="first")
     ]
 
-    # Trims to genes in both datasets
-    shared_genes = ptrc.index.intersection(pilot.index)
-    shared_genes = shared_genes.intersection(gene_lengths.index)
-    pilot = pilot.loc[shared_genes, :]
-    ptrc = ptrc.loc[shared_genes, :]
-    gene_lengths = gene_lengths.loc[shared_genes]
-
     # Correct raw counts via ComBat-Seq prior to normalization or TPM
     if batch_correct:
         # Setup Synapse file objects
@@ -274,6 +267,17 @@ def import_rna(
             # Sync to Synapse
             syn.store(ptrc_file)
             syn.store(pilot_file)
+
+    # Removes low coverage genes
+    ptrc = ptrc.loc[ptrc.mean(axis=1) > 1, :]
+    pilot = pilot.loc[pilot.mean(axis=1) > 1, :]
+
+    # Trims to genes in both datasets
+    shared_genes = ptrc.index.intersection(pilot.index)
+    shared_genes = shared_genes.intersection(gene_lengths.index)
+    pilot = pilot.loc[shared_genes, :]
+    ptrc = ptrc.loc[shared_genes, :]
+    gene_lengths = gene_lengths.loc[shared_genes]
 
     # Converts to transcripts-per-million (TPM)
     if tpm:
@@ -821,6 +825,13 @@ def import_global(
         ] += "-Bridge"
         ptrc.rename(columns=ptrc_conversion, inplace=True)
         pilot.rename(columns=pilot_conversion, inplace=True)
+
+    # Remove measurements missing across all of Pilot or BeatAML cohorts
+    pilot = pilot.dropna(how="all", axis=0)
+    ptrc = ptrc.dropna(how="all", axis=0)
+
+    pilot = pilot.loc[pilot.index.intersection(ptrc.index), :]
+    ptrc = ptrc.loc[pilot.index, :]
 
     return ptrc.T, pilot.T
 
