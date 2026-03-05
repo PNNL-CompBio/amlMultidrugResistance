@@ -3,7 +3,9 @@
 import sys
 from os.path import abspath, dirname, join
 
-sys.path.append(join(dirname(dirname(dirname(abspath(__file__)))), "src", "python"))
+sys.path.append(
+    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
+)
 
 import numpy as np
 import pandas as pd
@@ -32,7 +34,8 @@ def make_figure():
     races = meta.loc[:, "Race"]
 
     # Get cell type scores
-    ct_scores = cell_type_scores(rna)
+    ct_scores = cell_type_scores()
+    ct_scores = ct_scores.loc[races.index, :]
 
     # Setup figure
     fig, axes = get_setup(
@@ -59,7 +62,9 @@ def make_figure():
 
     # Add Race column to data, filter to only black and white patients
     ct_scores.loc[:, "Race"] = races
-    ct_scores = ct_scores.loc[ct_scores.loc[:, "Race"].isin(["Black", "White"]), :]
+    ct_scores = ct_scores.loc[
+        ct_scores.loc[:, "Race"].isin(["Black", "White"]), :
+    ]
     for ax, cell_type in zip(axes, ct_scores.columns[:6]):
         sns.stripplot(
             ct_scores,
@@ -70,8 +75,12 @@ def make_figure():
             ax=ax,
         )
 
-        white_scores = ct_scores.loc[ct_scores.loc[:, "Race"] == "White", cell_type]
-        black_scores = ct_scores.loc[ct_scores.loc[:, "Race"] == "Black", cell_type]
+        white_scores = ct_scores.loc[
+            ct_scores.loc[:, "Race"] == "White", cell_type
+        ]
+        black_scores = ct_scores.loc[
+            ct_scores.loc[:, "Race"] == "Black", cell_type
+        ]
         ax.errorbar(
             0,
             white_scores.mean(),

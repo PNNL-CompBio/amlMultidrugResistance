@@ -1,3 +1,4 @@
+import logging
 from io import StringIO
 from os import PathLike
 from os.path import abspath, dirname, join
@@ -7,12 +8,16 @@ import mygene
 import numpy as np
 import pandas as pd
 import requests
+import rpy2.robjects as ro
 import synapseclient as sc
 from inmoose.pycombat import pycombat_seq
-from sklearn.preprocessing import scale
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.conversion import localconverter
+from sklearn.preprocessing import scale, StandardScaler
 from synapseclient.entity import File
 
 REPO_PATH = abspath(dirname(dirname(__file__)))
+logging.getLogger("rpy2.rinterface").setLevel(logging.ERROR)
 
 
 def syn_login(auth_path: PathLike | None = None) -> sc.Synapse:
@@ -103,6 +108,9 @@ def import_metabolites(
     pilot.loc[
         :, pilot.columns.intersection(ptrc_conversions.values)
     ].columns += "-Bridge"
+
+    # Drop patients in both datasets--default to BeatAML
+    pilot = pilot.drop(pilot.columns.intersection(ptrc.columns), axis=1)
 
     return ptrc.T, pilot.T
 
@@ -213,13 +221,6 @@ def import_rna(
         ~gene_lengths.index.duplicated(keep="first")
     ]
 
-    # Trims to genes in both datasets
-    shared_genes = ptrc.index.intersection(pilot.index)
-    shared_genes = shared_genes.intersection(gene_lengths.index)
-    pilot = pilot.loc[shared_genes, :]
-    ptrc = ptrc.loc[shared_genes, :]
-    gene_lengths = gene_lengths.loc[shared_genes]
-
     # Correct raw counts via ComBat-Seq prior to normalization or TPM
     if batch_correct:
         # Setup Synapse file objects
@@ -266,6 +267,17 @@ def import_rna(
             # Sync to Synapse
             syn.store(ptrc_file)
             syn.store(pilot_file)
+
+    # Removes low coverage genes
+    ptrc = ptrc.loc[ptrc.mean(axis=1) > 1, :]
+    pilot = pilot.loc[pilot.mean(axis=1) > 1, :]
+
+    # Trims to genes in both datasets
+    shared_genes = ptrc.index.intersection(pilot.index)
+    shared_genes = shared_genes.intersection(gene_lengths.index)
+    pilot = pilot.loc[shared_genes, :]
+    ptrc = ptrc.loc[shared_genes, :]
+    gene_lengths = gene_lengths.loc[shared_genes]
 
     # Converts to transcripts-per-million (TPM)
     if tpm:
@@ -327,7 +339,7 @@ def import_rna(
 
 
 def import_phospho(
-    syn: sc.Synapse | None = None, pre_corrected: bool = True
+    syn: sc.Synapse | None = None, batch_correct: str | None = "study"
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads phosphoproteomic data.
@@ -335,43 +347,159 @@ def import_phospho(
     Args:
         syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
             new one if None.
-        pre_corrected (bool, default: True): Load pre-corrected data; otherwise,
-            load post-concatenation corrected data.
+        batch_correct (str | None, default: "cohort"): Batch-correction method.
+            Accepts 'cohort' (corrected at cohort-level), 'study' (corrected at
+            study-level, post-cohort concatenation), or None.
 
     Returns:
         pd.DataFrame: Phosphoproteomic data for BeatAML 210 cohort.
         pd.DataFrame: Phosphoproteomic data for Pilot cohort.
     """
+    if batch_correct not in ["cohort", "study", None]:
+        raise ValueError(
+            "'batch_correct' must be 'cohort', 'study', or None, "
+            f"received {batch_correct}"
+        )
+
     if syn is None:
         syn = syn_login()
 
-    if pre_corrected:
-        ptrc = pd.read_csv(syn.get("syn32528196").path, index_col=0, sep="\t")
-        pilot = pd.read_csv(syn.get("syn69075544").path, index_col=0, sep="\t")
+    if batch_correct == "study":
+        # Setup Synapse file objects
+        ptrc_file = File(
+            join(REPO_PATH, "data", "phospho_beataml_batch_corrected.csv"),
+            parentId="syn25714185",
+        )
+        pilot_file = File(
+            join(REPO_PATH, "data", "phospho_pilot_batch_corrected.csv"),
+            parentId="syn69075538",
+        )
+        try:
+            # Loads cached results (if this has been run previously) as
+            # ComBat-Seq can be time-intensive with race covariates included
+            ptrc = pd.read_csv(ptrc_file.path, index_col=0)
+            pilot = pd.read_csv(pilot_file.path, index_col=0)
+        except FileNotFoundError:
+            # Import raw phosphoproteomic measurements
+            ptrc, pilot = import_phospho(syn, batch_correct=None)
+
+            # Z-score measurements, use StandardScaler to undo later
+            scaler = StandardScaler()
+            data = pd.concat([ptrc, pilot], axis=0)
+            data.loc[:] = scaler.fit_transform(data)
+            ptrc = data.loc[ptrc.index, :]
+            pilot = data.loc[pilot.index, :]
+
+            # Get plex IDs for each sample and convert to accession IDs for
+            # harmonization with phosphoproteomic sample IDs
+            ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+            ptrc_plex = pd.read_csv(
+                syn.get("syn26534982").path, index_col=0, sep="\t"
+            )
+            ptrc_plex.index = ptrc_plex.index.str[11:].astype(int)
+            ptrc_plex.rename(index=ptrc_conversion, inplace=True)
+            ptrc_plex = "B" + ptrc_plex.loc[:, "Plex"].astype(str)
+
+            # Repeat plex indexing for pilot samples
+            pilot_plex = pd.read_excel(
+                syn.get("syn68835814").path, sheet_name="TMT"
+            ).set_index("Accession")
+            pilot_plex = "P" + pilot_plex.loc[:, "Plex"].astype(str)
+            pilot_plex = pilot_plex.loc[
+                ~pilot_plex.index.isin(["EMPTY", "PooledReference"])
+            ]
+
+            # Relabel bridging samples
+            bridging = pilot_plex.loc[
+                pilot_plex.index.intersection(ptrc_plex.index)
+            ]
+            bridging.loc[:] = bridging.index + "-Bridge"
+            pilot_plex.rename(index=bridging, inplace=True)
+
+            # Concatenate plex into one array
+            plex = pd.concat([ptrc_plex, pilot_plex], axis=0)
+
+            # Source R batch correction script
+            r_source = ro.r["source"]
+            r_source(
+                join(
+                    REPO_PATH,
+                    "..",
+                    "r",
+                    "proteomics",
+                    "proteomic_batch_correction.R",
+                )
+            )
+            bc_function = ro.globalenv["combat_proteomics"]
+
+            # Convert DataFrames to R
+            with localconverter(pandas2ri.converter):
+                ptrc_r = ro.conversion.py2rpy(ptrc)
+                pilot_r = ro.conversion.py2rpy(pilot)
+                meta_r = ro.conversion.py2rpy(import_meta(syn, aux_meta=False))
+                plex_r = ro.conversion.py2rpy(plex)
+
+            result = bc_function(ptrc_r, pilot_r, meta_r, plex_r)
+            with localconverter(pandas2ri.converter):
+                ptrc, pilot = ro.conversion.rpy2py(result)
+
+            # Rename R DataFrame columns
+            # R appends "X" to the front of numeric columns and replaces "-"
+            # with "."
+            pilot.columns = pilot.columns.str.replace({".": "-", "X": ""})
+            ptrc.columns = ptrc.columns.str.replace({".": "-", "X": ""})
+
+            # Undo Z-score back to measurements
+            ptrc = ptrc.T
+            pilot = pilot.T
+            ptrc.loc[:] = scaler.inverse_transform(ptrc)
+            pilot.loc[:] = scaler.inverse_transform(pilot)
+            ptrc = ptrc.T
+            pilot = pilot.T
+
+            # Store locally
+            ptrc.to_csv(ptrc_file.path)
+            pilot.to_csv(pilot_file.path)
+
+            # Sync to Synapse
+            syn.store(ptrc_file)
+            syn.store(pilot_file)
+    else:
+        if batch_correct == "cohort":
+            ptrc = pd.read_csv(
+                syn.get("syn32528196").path, index_col=0, sep="\t"
+            )
+            pilot = pd.read_csv(
+                syn.get("syn69075544").path, index_col=0, sep="\t"
+            )
+        else:
+            ptrc = pd.read_csv(
+                syn.get("syn25714936").path, index_col=0, sep="\t"
+            )
+            pilot = pd.read_csv(
+                syn.get("syn69075545").path, index_col=0, sep="\t"
+            )
+
+            # Drop phosphosites with >50% missingness in either dataset
+            ptrc = ptrc.loc[ptrc.isna().mean(axis=1) < 0.5, :]
+            pilot = pilot.loc[pilot.isna().mean(axis=1) < 0.5, :]
+
         shared_phospho = ptrc.index.intersection(pilot.index)
         ptrc = ptrc.loc[shared_phospho, :]
         pilot = pilot.loc[shared_phospho, :]
-    else:
-        ptrc = pd.read_csv(
-            join(REPO_PATH, "data", "ba_phospho_corrected.csv"), index_col=0
-        )
-        ptrc.columns = ptrc.columns.str[1:]
-        pilot = pd.read_csv(
-            join(REPO_PATH, "data", "pilot_phospho_corrected.csv"), index_col=0
-        )
 
-    # Convert sample IDs to Accession IDs
-    ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
-    ptrc.columns = ptrc.columns.astype(int)
-    ptrc.rename(columns=ptrc_conversion, inplace=True)
-    pilot.rename(columns=pilot_conversion, inplace=True)
+        # Convert sample IDs to Accession IDs
+        ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+        ptrc.columns = ptrc.columns.astype(int)
+        ptrc.rename(columns=ptrc_conversion, inplace=True)
+        pilot.rename(columns=pilot_conversion, inplace=True)
 
-    # Relabel bridging samples
-    bridge_columns = pilot.columns.intersection(ptrc.columns)
-    pilot.rename(
-        columns=pd.Series(bridge_columns + "-Bridge", index=bridge_columns),
-        inplace=True,
-    )
+        # Relabel bridging samples
+        bridge_columns = pilot.columns.intersection(ptrc.columns)
+        pilot.rename(
+            columns=pd.Series(bridge_columns + "-Bridge", index=bridge_columns),
+            inplace=True,
+        )
 
     return ptrc.T, pilot.T
 
@@ -410,14 +538,38 @@ def import_meta(
     meta = meta.loc[~meta.index.duplicated(keep="first"), :]
     meta = meta.rename(columns={"source": "Source"})
 
-    if aux_meta:
-        # Import additional metadata from BeatAML study
-        ba_aux = pd.read_excel(
-            syn.get("syn64126458").path, index_col=0, sheet_name="summary"
-        )
-        ba_aux.columns = ba_aux.iloc[0, :]
-        ba_aux = ba_aux.iloc[1:, :]
+    # Fill in missing/unknown with inferred race
+    mapping = pd.read_excel(syn.get("syn64126463").path, index_col=0)
+    mapping.reset_index(drop=True, inplace=True)
+    ba_aux = pd.read_excel(
+        syn.get("syn64126458").path, header=1, index_col=0, sheet_name="summary"
+    )
+    ba_aux.reset_index(inplace=True, drop=True)
 
+    mapping_ids = mapping.loc[:, "dbgap_rnaseq_sample"].str[:-1]
+    mapping_ids.loc[mapping_ids.isna()] = mapping.loc[
+        :, "dbgap_dnaseq_sample"
+    ].str[:-1]
+    sample_conversions = pd.Series(
+        mapping.loc[:, "labId"].values, index=mapping_ids
+    )
+
+    sample_names = ba_aux.loc[:, "dbgap_rnaseq_sample"].str[:-1]
+    sample_names.loc[sample_names.isna()] = ba_aux.loc[
+        :, "dbgap_dnaseq_sample"
+    ].str[:-1]
+    inferred_race = pd.Series(
+        ba_aux.loc[:, "inferred_ethnicity"].values,
+        index=sample_names.replace(sample_conversions),
+    )
+    inferred_race = inferred_race.loc[
+        meta.loc[
+            meta.loc[:, "Race"].isin([np.nan, "Unknown"]), :
+        ].index.intersection(inferred_race.index)
+    ]
+    meta.loc[inferred_race.index, "Race"] = inferred_race
+
+    if aux_meta:
         # Rename columns to match format of pilot cohort
         ba_aux.set_index("dbgap_rnaseq_sample", inplace=True, drop=True)
         ba_aux = ba_aux.loc[~ba_aux.index.isna(), :]
@@ -482,6 +634,10 @@ def import_meta(
             inplace=True,
         )
 
+    meta.replace(
+        {"Race": {"Declined": "Unknown", np.nan: "Unknown"}}, inplace=True
+    )
+
     return meta
 
 
@@ -509,41 +665,173 @@ def import_acetyl(syn: sc.Synapse | None = None) -> pd.DataFrame:
 
 
 def import_global(
-    syn: sc.Synapse | None = None, pre_corrected: bool = False
+    syn: sc.Synapse | None = None,
+    batch_correct: str | None = "study",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Loads global proteomic measurements.
+    Loads global proteomic data.
 
     Args:
         syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
             new one if None.
-        pre_corrected (bool, default: True): Load pre-corrected data; otherwise,
-            load post-concatenation corrected data.
+        batch_correct (str | None, default: "cohort"): Batch-correction method.
+            Accepts 'cohort' (corrected at cohort-level), 'study' (corrected at
+            study-level, post-cohort concatenation), or None.
 
     Returns:
-        pd.DataFrame: Global proteomics for 210 cohort.
-        pd.DataFrame: Global proteomics for pilot cohort.
+        pd.DataFrame: Global data for BeatAML 210 cohort.
+        pd.DataFrame: global data for Pilot cohort.
     """
+    if batch_correct not in ["cohort", "study", None]:
+        raise ValueError(
+            "'batch_correct' must be 'cohort', 'study', or None, "
+            f"received {batch_correct}"
+        )
+
     if syn is None:
         syn = syn_login()
 
-    if pre_corrected:
-        ptrc = pd.read_csv(syn.get("syn25714248").path, index_col=0, sep="\t")
-        ptrc.columns = ptrc.columns.astype(int)
-        pilot = pd.read_csv(syn.get("syn69075555").path, index_col=0, sep="\t")
-    else:
-        ptrc = pd.read_csv(
-            join(REPO_PATH, "data", "ba_global_corrected.csv"), index_col=0
+    if batch_correct == "study":
+        # Setup Synapse file objects
+        ptrc_file = File(
+            join(REPO_PATH, "data", "global_beataml_batch_corrected.csv"),
+            parentId="syn25714186",
         )
-        ptrc.columns = ptrc.columns.str[1:].astype(int)
-        pilot = pd.read_csv(
-            join(REPO_PATH, "data", "pilot_global_corrected.csv"), index_col=0
+        pilot_file = File(
+            join(REPO_PATH, "data", "global_pilot_batch_corrected.csv"),
+            parentId="syn69075539",
         )
+        try:
+            # Loads cached results (if this has been run previously) as
+            # ComBat-Seq can be time-intensive with race covariates included
+            ptrc = pd.read_csv(ptrc_file.path, index_col=0)
+            pilot = pd.read_csv(pilot_file.path, index_col=0)
+        except FileNotFoundError:
+            # Import raw phosphoproteomic measurements
+            ptrc, pilot = import_global(syn, batch_correct=None)
 
-    ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
-    pilot_conversion.loc[pilot_conversion.isin(ptrc_conversion)] += "-Bridge"
-    ptrc.rename(columns=ptrc_conversion, inplace=True)
-    pilot.rename(columns=pilot_conversion, inplace=True)
+            # Z-score measurements, use StandardScaler to undo later
+            scaler = StandardScaler()
+            data = pd.concat([ptrc, pilot], axis=0)
+            data.loc[:] = scaler.fit_transform(data)
+            ptrc = data.loc[ptrc.index, :]
+            pilot = data.loc[pilot.index, :]
+
+            # Get plex IDs for each sample and convert to accession IDs for
+            # harmonization with phosphoproteomic sample IDs
+            ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+            ptrc_plex = pd.read_csv(
+                syn.get("syn26534982").path, index_col=0, sep="\t"
+            )
+            ptrc_plex.index = ptrc_plex.index.str[11:].astype(int)
+            ptrc_plex.rename(index=ptrc_conversion, inplace=True)
+            ptrc_plex = "B" + ptrc_plex.loc[:, "Plex"].astype(str)
+
+            # Repeat plex indexing for pilot samples
+            pilot_plex = pd.read_excel(
+                syn.get("syn68835814").path, sheet_name="TMT"
+            ).set_index("Accession")
+            pilot_plex = "P" + pilot_plex.loc[:, "Plex"].astype(str)
+            pilot_plex = pilot_plex.loc[
+                ~pilot_plex.index.isin(["EMPTY", "PooledReference"])
+            ]
+
+            # Relabel bridging samples
+            bridging = pilot_plex.loc[
+                pilot_plex.index.intersection(ptrc_plex.index)
+            ]
+            bridging.loc[:] = bridging.index + "-Bridge"
+            pilot_plex.rename(index=bridging, inplace=True)
+
+            # Concatenate plex into one array
+            plex = pd.concat([ptrc_plex, pilot_plex], axis=0)
+
+            # Source R batch correction script
+            r_source = ro.r["source"]
+            r_source(
+                join(
+                    REPO_PATH,
+                    "..",
+                    "r",
+                    "proteomics",
+                    "proteomic_batch_correction.R",
+                )
+            )
+            bc_function = ro.globalenv["combat_proteomics"]
+
+            # Convert DataFrames to R
+            with localconverter(pandas2ri.converter):
+                ptrc_r = ro.conversion.py2rpy(ptrc)
+                pilot_r = ro.conversion.py2rpy(pilot)
+                meta_r = ro.conversion.py2rpy(import_meta(syn, aux_meta=False))
+                plex_r = ro.conversion.py2rpy(plex)
+
+            result = bc_function(
+                ptrc_r,
+                pilot_r,
+                meta_r,
+                plex_r,
+            )
+            with localconverter(pandas2ri.converter):
+                ptrc, pilot = ro.conversion.rpy2py(result)
+
+            # Rename R DataFrame columns
+            # R appends "X" to the front of numeric columns and replaces "-"
+            # with "."
+            pilot.columns = pilot.columns.str.replace({".": "-", "X": ""})
+            ptrc.columns = ptrc.columns.str.replace({".": "-", "X": ""})
+
+            # Undo Z-score back to measurements
+            ptrc = ptrc.T
+            pilot = pilot.T
+            ptrc.loc[:] = scaler.inverse_transform(ptrc)
+            pilot.loc[:] = scaler.inverse_transform(pilot)
+            ptrc = ptrc.T
+            pilot = pilot.T
+
+            # Store locally
+            ptrc.to_csv(ptrc_file.path)
+            pilot.to_csv(pilot_file.path)
+
+            # Sync to Synapse
+            syn.store(ptrc_file)
+            syn.store(pilot_file)
+    else:
+        if batch_correct == "cohort":
+            ptrc = pd.read_csv(
+                syn.get("syn25714248").path, index_col=0, sep="\t"
+            )
+            ptrc.columns = ptrc.columns.astype(int)
+            pilot = pd.read_csv(
+                syn.get("syn69075555").path, index_col=0, sep="\t"
+            )
+        else:
+            # Raw measurements
+            ptrc = pd.read_csv(
+                syn.get("syn25714254").path, index_col=0, sep="\t"
+            )
+            ptrc.columns = ptrc.columns.astype(int)
+            pilot = pd.read_csv(
+                syn.get("syn69075554").path, index_col=0, sep="\t"
+            )
+
+            # Drop proteins with >50% missingness in either dataset
+            ptrc = ptrc.loc[ptrc.isna().mean(axis=1) < 0.5, :]
+            pilot = pilot.loc[pilot.isna().mean(axis=1) < 0.5, :]
+
+        ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+        pilot_conversion.loc[
+            pilot_conversion.isin(ptrc_conversion)
+        ] += "-Bridge"
+        ptrc.rename(columns=ptrc_conversion, inplace=True)
+        pilot.rename(columns=pilot_conversion, inplace=True)
+
+    # Remove measurements missing across all of Pilot or BeatAML cohorts
+    pilot = pilot.dropna(how="all", axis=0)
+    ptrc = ptrc.dropna(how="all", axis=0)
+
+    pilot = pilot.loc[pilot.index.intersection(ptrc.index), :]
+    ptrc = ptrc.loc[pilot.index, :]
 
     return ptrc.T, pilot.T
 

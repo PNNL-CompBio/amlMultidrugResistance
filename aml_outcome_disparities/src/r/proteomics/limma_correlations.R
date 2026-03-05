@@ -7,12 +7,14 @@ library(limma)
 #' Uses LIMMA to compare proteomic expression between black and white patients.
 #' @param data DataFrame with expression measurements.
 #' @param meta DataFrame with patient meta-data, including race.
+#' @param p_cutoff Float corresponding to p-value cutoff for significance.
+#' Defaults to 1e-02.
 #' @return [list] with the following elements:
 #' \itemize{
 #'  \item results: LIMMA results object
 #'  \item volcano: Volcano plot comparing black & white patients
 #' }
-run_limma <- function(data, meta) {
+run_limma <- function(data, meta, p_cutoff = 1e-02) {
   # Build design matrix
   design <- model.matrix(
     ~0 + Race + Study + Age,
@@ -42,7 +44,7 @@ run_limma <- function(data, meta) {
     lab = rownames(results),
     x = 'logFC',
     y = 'adj.P.Val',
-    pCutoff = 1e-02
+    pCutoff = p_cutoff
   )
   
   return(list(results = results, volcano = volcano))
