@@ -1,0 +1,166 @@
+
+
+
+Loading data
+
+```{r}
+
+source("../scripts/plot_helper.R")
+source("../scripts/compute_lsc17.R")
+source("../scripts/predict_helper.R")
+source("../scripts/s2n_model.R")
+source("../scripts/helper_scripts.R")
+
+source("../scripts/loading_data.R")
+
+samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
+m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
+
+features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 19]
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+
+# diffexp_results = diffexp_helper(m_exp28, "subcohort", c("Refractory-Response_no_relapse", "Refractory-Relapse")) 
+
+```
+
+
+Compute the Lasry MEP signature  (https://pmc.ncbi.nlm.nih.gov/articles/PMC9986885/)
+
+
+```{r}
+lasry_markers = openxlsx::read.xlsx(syn$get("syn73942853")$path, 
+                                    sheet = "Supp2. Broad cell markers")
+MEP_markers = lasry_markers %>% filter(cluster == "MEP", p_val_adj < 0.01)
+
+xx = predict_helper_(m_exp28, MEP_markers %>% filter(avg_logFC > 0) %>% pull(gene) %>% unique(), 
+                     MEP_markers %>% filter(avg_logFC < 0) %>% pull(gene) %>% unique())
+# m_exp28$Lasry_MEP = xx[sampleNames(m_exp28), "signal"]
+new_mat = rbind(exprs(m_exp28), xx[sampleNames(m_exp28), "signal"] %>% matrix(nrow = 1))
+new_mat = rbind(new_mat, xx[sampleNames(m_exp28), "case_avg"] %>% matrix(nrow = 1))
+new_mat = rbind(new_mat, xx[sampleNames(m_exp28), "control_avg"] %>% matrix(nrow = 1))
+rownames(new_mat) = c(featureNames(m_exp28), "Lasry_MEP", "Lasry_MEP1", "Lasry_MEP2")
+m_exp28 <- MSnSet(exprs = new_mat, pData = pData(m_exp28))
+
+```
+
+
+Compute LSC17 signature (https://pmc.ncbi.nlm.nih.gov/articles/PMC9378589/)
+
+
+```{r}
+lsc17_df = compute.lsc17(exprs(m_exp28[complete_features, ]) %>% t()) %>% as.data.frame()
+rownames(lsc17_df) = lsc17_df$ptid
+m_exp28$lsc17 = lsc17_df[sampleNames(m_exp28), "LSC17"]
+new_mat = rbind(exprs(m_exp28), m_exp28$lsc17 %>% matrix(nrow = 1))
+rownames(new_mat) = c(featureNames(m_exp28), "LSC17")
+m_exp28 <- MSnSet(exprs = new_mat, pData = pData(m_exp28))
+
+
+```
+
+
+
+Compute HAS signature (https://www.sciencedirect.com/science/article/pii/S0006497125019822?via%3Dihub#mmc1)
+
+
+```{r}
+HAS_markers = data.frame(feature = c("FGG", "FGA", "FGB", "CALCRL", "S100A9", "THBS1", "S100A8", "VNN2",
+                                     "FPR1", "MMRN1", "CAVIN2", "RBPMS", "PF4V1", "MS4A3", "PF4", "VCAN",
+                                     "S100A12", "MEIS1", "PSAP"), 
+                         coef = c(0.173, 0.144, 0.141, 0.091, 0.090, 0.083, 0.077, 0.072, 0.070, 0.062, 
+                                  0.061, 0.060, 0.059, 0.056, 0.054, 0.047, 0.041, 0.041, -0.190))
+
+xx = predict_helper_(m_exp28, HAS_markers %>% filter(coef > 0) %>% pull(feature) %>% unique(), 
+                     HAS_markers %>% filter(coef < 0) %>% pull(feature) %>% unique())
+new_mat = rbind(exprs(m_exp28), xx[sampleNames(m_exp28), "signal"] %>% matrix(nrow = 1))
+new_mat = rbind(new_mat, xx[sampleNames(m_exp28), "case_avg"] %>% matrix(nrow = 1))
+new_mat = rbind(new_mat, xx[sampleNames(m_exp28), "control_avg"] %>% matrix(nrow = 1))
+rownames(new_mat) = c(featureNames(m_exp28), "HAS", "HAS1", "HAS2")
+m_exp28 <- MSnSet(exprs = new_mat, pData = pData(m_exp28))
+
+
+```
+
+
+
+Plotting maturity sigs (Cell type deconvolution results)
+
+
+
+```{r}
+to_save = c("GMP-like", "Monocyte", "Mono-like")
+
+maturation_df = read.table(syn$get("syn73942964")$path, 
+                           sep = "\t", header = T) %>% 
+   tidyr::pivot_longer(-X, names_to = "sample_name", values_to = "value") %>% 
+   group_by(sample_name) %>%
+   mutate(normalized_value = value/sum(value)) %>% ungroup() %>%
+   left_join(., p_data, by = "sample_name") %>% filter(sample_name %in% sampleNames(m_exp28))
+
+plots = list()
+for (cell_type in unique(maturation_df$X)){
+   plot_df = maturation_df %>%
+      filter(X == cell_type,
+             subcohort != "Paired_relapse_sample") %>%
+      mutate(refractory = case_when(`sub-cohort.PNNL` == "Refractory" ~ 1,
+                                    TRUE ~ 0))
+   
+   p = ggplot(plot_df, aes(x = subcohort, y = value, fill = subcohort)) + geom_boxplot() +
+      scale_fill_manual(values = subcohort_colors) + ggtitle(paste(cell_type, "(from complete crosstab)")) + 
+      ylab(paste(cell_type, "value")) + theme(text = element_text(size = 15))
+   if (cell_type %in% to_save){
+      p = t_test_ann(p, c("Refractory", "Response_no_relapse"))
+      plot_path = paste0("panel_", cell_type, "_vs_outcome.pdf")
+      ggsave(plot_path, plot = p, width = 7, height = 4.7)
+   }
+   plots = append(plots, list(p))
+   p = ggplot(plot_df, aes(x = survival_days, y = value)) + geom_point() + facet_wrap(~ subcohort) + 
+      ggtitle(paste(cell_type, "(from complete crosstab)")) + ylab(paste(cell_type, "value"))
+   plots = append(plots, list(p))
+}
+# plots
+
+
+```
+
+
+Plotting other known sigs (PEAR1, Lasry MEP)
+
+
+```{r}
+chosen_features = c("DENND3", "CD34", "CD14", "PEAR1", "EEF1E1", "SLA", "RBFOX2",  ## Choosing these according to diffexp_results
+                    "LSC17", "Lasry_MEP", "HAS") 
+
+plot_df = exprs(m_exp28)[chosen_features, ] %>% as.data.frame() %>%
+   mutate(feature = chosen_features) %>%
+   tidyr::pivot_longer(-feature, values_to = "value", names_to = "sample_name") %>%
+   group_by(sample_name) %>% mutate(total = n()) %>% ungroup() %>%
+   left_join(., p_data, by = "sample_name") %>%
+   filter(subcohort != "Paired_relapse_sample") %>%
+   mutate(refractory = case_when(`sub-cohort.PNNL` == "Refractory" ~ 1,
+                                 TRUE ~ 0))
+
+offsets = list("SLA" = c(-2.1, -1.75), "CD14" = c(3.8, 3.5), "CD34" = c(4.4, 4.75), 
+               "PEAR1" = c(-1.05, -1.45), "LSC17" = c(-0.16, -0.08))
+for (chosen_feature in chosen_features){
+   p = ggplot(plot_df %>% filter(feature == chosen_feature), aes(x = subcohort, y = value, fill = subcohort)) + geom_boxplot() +
+      scale_fill_manual(values = subcohort_colors) + ggtitle(paste(chosen_feature, "expression")) + 
+      ylab(chosen_feature) + theme(text = element_text(size = 15))
+   y1 = offsets[[chosen_feature]][[1]]
+   y2 = offsets[[chosen_feature]][[2]]
+   p = t_test_ann(p, c("Refractory", "Relapse"), y_start = y1)
+   p = t_test_ann(p, c("Refractory", "Response_no_relapse"), y_start = y2)
+   # p
+   plot_path = paste0("panel_", chosen_feature, "_vs_outcome.pdf")
+   ggsave(plot_path, plot = p, width = 7, height = 4.7)
+}
+
+
+
+```
+
+
+
+
+
+
