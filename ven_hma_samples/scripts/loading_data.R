@@ -5,7 +5,7 @@ library(ggpubr)
 library(patchwork)
 
 
-
+syn <- synapseLogin()
 subcohort_colors =  c("#e8991b", "#00798c", "#d1495b", "grey27")
 subcohort_colors2 =  c("#e8991b", "#00798c", "#d1495b", "grey27")
 names(subcohort_colors) = c("Response_no_relapse", "Refractory", "Relapse", "Paired_relapse_sample")

@@ -2,11 +2,11 @@
 
 
 ```{r}
+source("../../synapseUtil.R")
 source("../scripts/plot_helper.R")
 source("../scripts/compute_lsc17.R")
 source("../scripts/predict_helper.R")
 source("../scripts/s2n_model.R")
-source("../scripts/helper_scripts.R")
 
 source("../scripts/loading_data.R")
 

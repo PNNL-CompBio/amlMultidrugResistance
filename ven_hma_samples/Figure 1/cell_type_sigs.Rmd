@@ -4,7 +4,7 @@
 Loading data
 
 ```{r}
-
+source("../../synapseUtil.R")
 source("../scripts/plot_helper.R")
 source("../scripts/compute_lsc17.R")
 source("../scripts/predict_helper.R")
