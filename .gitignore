@@ -14,3 +14,11 @@
 /exvivo_exp25/GSEA tables/*.txt
 /exvivo_exp25/data/*
 .DS_Store
+
+# don't track any of the data files
+aml_outcome_disparities/src/python/data
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
