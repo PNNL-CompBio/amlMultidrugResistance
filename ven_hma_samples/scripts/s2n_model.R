@@ -273,3 +273,48 @@ eln_model <- function(msnset, response, pred.cls, alpha){
    return(cv.glmmod)
 }
 
+
+###SG: added this from ../../drug_treated_samples
+
+diffexp_helper <- function(m, contrast_var, contrasts){
+  pData(m)$bgd_ <- pData(m)[[contrast_var]]
+  pData(m)$Sample <- sampleNames(m)
+  
+  all_results <- data.frame()
+  
+  for (contrast in contrasts){
+    contrast_groups = strsplit(contrast, "-")[[1]]
+    contrast = paste0("bgd_", contrast_groups[[1]], "-bgd_", contrast_groups[[2]])
+    limma_res <- limma_contrasts(m, model.str = "~0 + bgd_", 
+                                 coef.str = "bgd_", contrasts = contrast) %>% as.data.frame()
+    rownames(limma_res) <- limma_res$feature
+    counter = 1
+    
+    m_contrast <- m[, m$bgd_ %in% contrast_groups]
+    p_values_t_test <- vector(mode="character", length = nrow(limma_res))
+    p_values_welch_test <- vector(mode="character", length = nrow(limma_res))
+    for (feature in limma_res$feature){
+      data_df <- data.frame(value = exprs(m_contrast)[feature, ],
+                            Sample = colnames(exprs(m_contrast))) %>%
+        filter(!is.na(value)) %>%
+        merge(pData(m_contrast) %>% select(Sample, bgd_), by = "Sample")
+      
+      p_values_t_test[[counter]] <- tryCatch({t.test(value ~ bgd_, data = data_df, 
+                                                     alternative = "two.sided", var.equal = TRUE)[[3]]}, 
+                                             error = function(e) {NA}) 
+      p_values_welch_test[[counter]] <- tryCatch({t.test(value ~ bgd_, data = data_df, 
+                                                         alternative = "two.sided", var.equal = FALSE)[[3]]}, 
+                                                 error = function(e) {NA}) 
+      counter = counter + 1
+    }
+    
+    limma_res <- limma_res %>%
+      mutate(t_test_pval = as.numeric(p_values_t_test),
+             t_test_adj = p.adjust(t_test_pval, method = "BH"),
+             welch_pval = as.numeric(p_values_welch_test),
+             welch_adj = p.adjust(welch_pval, method = "BH"))
+    all_results <- rbind(all_results, limma_res)
+  }
+  
+  return(all_results)
+}
