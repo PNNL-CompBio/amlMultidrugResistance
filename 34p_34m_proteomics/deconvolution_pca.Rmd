@@ -1,0 +1,202 @@
+
+
+This script produces 1) PCA plots of the cell type estimates for BeatAML + Braun combined.
+2) boxplots of the cell populations from deconvolution for the Braun data and 
+3) Scatter plots of HSC vs Monocyte population in the Braun data
+
+Loading data
+
+
+```{r}
+source("../synapseUtil.R")
+source("misc/helper_scripts.R")
+source("misc/loading_data.R")
+
+
+## Load deconvolution results (long form)
+source = "global"
+algo = 'xcell'
+sig = 'AML'
+path_ = syn$get("syn72644215")$path
+dir.create(sprintf("deconvolution_results/%s_%s_%s", source, algo, sig), recursive = TRUE)
+
+maturation_global_df = read.table(path_, sep = "\t", header = T) %>%
+   pivot_longer(-X, names_to = "sample", values_to = "value") %>% select(cell_type = X, everything()) %>%
+   left_join(., pData(m_corrected_g), by = c("sample" = "MeasurementName")) %>%
+   mutate(group_ = paste(Treatment, Time), group_ = factor(group_, levels = names(boxplot_colors))) %>%
+   group_by(sample) %>% mutate(value_normalized = value/sum(value)) %>% ungroup()
+
+maturation_beataml_df = read.table(syn$get("syn69930872")$path, sep = "\t", header = T) %>%
+   pivot_longer(-X, names_to = "sample", values_to = "value") %>% select(cell_type = X, everything()) %>%
+   mutate(sample = sub("^X", "", sample),
+          sample = sub("\\.", "-", sample)) %>%
+   left_join(., beataml_meta, by = c("sample" = "Barcode.ID")) %>%
+   group_by(sample) %>% mutate(value_normalized = value/sum(value)) %>% ungroup()
+
+
+```
+
+
+PCA of deconvolution results
+
+
+
+```{r}
+p_data = plyr::rbind.fill(pData(m_corrected_g) %>% select(sample = MeasurementName, Celltype, Treatment, Time, group), 
+                          beataml_meta %>% mutate(sample = Barcode.ID) %>% select(sample, Subtype)) %>%
+   mutate(Celltype = case_when(is.na(Celltype) ~ Subtype,
+                               TRUE ~ Celltype))
+rownames(p_data) = p_data$sample
+p_data[drug_data_df$Barcode.ID, "ven_auc"] = drug_data_df$auc
+
+## Load deconvolution results (wide form)
+mat1 = read.table(path_, sep = "\t", header = T)
+mat2 = read.table(syn$get("syn69930872")$path, sep = "\t", header = T)
+table(mat1$X == mat2$X)
+mat = cbind(mat1[,-1], mat2[, -1])
+rownames(mat) = mat1$X
+colnames(mat) = colnames(mat) %>% sub("^X", "", .) %>% sub("\\.", "-", .)
+
+
+m_maturation_combined = MSnSet(exprs = mat %>% as.matrix(), pData = p_data[colnames(mat), ])
+p = plot_pca(m_maturation_combined, phenotype = "Celltype") + 
+   scale_fill_manual(values = subtype_colors) + scale_color_manual(values = subtype_colors) + 
+   ggtitle("PCA of 14 different cell types - xcell AML") + 
+   theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
+                      axis.text.x = element_text(angle = 30, vjust = 0.7),
+                      panel.background = element_rect(fill = "white", colour = NA),
+                      plot.background = element_rect(fill = "white", colour = NA),
+                      text = element_text(size = 15))
+p
+# ggsave(plot = p, filename = "deconvolution_Braun_BeatAML_PCA.pdf", width = 8, height = 7)
+p = plot_pca(m_maturation_combined, phenotype = "ven_auc") + geom_point(size = 3) +
+   scale_color_gradient(low = "blue", high = "firebrick3") + 
+   ggtitle("PCA of 14 different cell types - xcell AML") + 
+   theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
+                      axis.text.x = element_text(angle = 30, vjust = 0.7),
+                      panel.background = element_rect(fill = "white", colour = NA),
+                      plot.background = element_rect(fill = "white", colour = NA),
+                      text = element_text(size = 15))
+# ggsave(plot = p, filename = "deconvolution_Braun_BeatAML_PCA2.pdf", width = 8, height = 7)
+p
+
+
+```
+
+
+
+
+Boxplots of the deconvolution results for the Braun data (34-/34+)
+
+
+```{r}
+
+plot_df = maturation_global_df %>% filter(Celltype == "34-") %>% mutate(group = group_)
+p = ggplot(plot_df, aes(x = group, y = value, fill = group)) + geom_boxplot() + 
+   facet_wrap(~cell_type) + scale_fill_manual(values = boxplot_colors) + 
+   ggtitle(sprintf("34- %s %s (mature)", algo, sig)) +
+   theme_minimal() + theme(plot.title = element_text(hjust = 0.5), 
+                           axis.text.x = element_text(angle = 30, vjust = 0.7),
+                           panel.background = element_rect(fill = "white", colour = NA),
+                           plot.background = element_rect(fill = "white", colour = NA))
+# ggsave(plot = p, filename = sprintf("deconvolution_results/%s_%s_%s/maturation_global_34m.pdf", source, algo, sig),
+#        width = 8.3, height = 7)
+p
+
+plot_df = maturation_global_df %>% filter(Celltype == "34+") %>% mutate(group = group_)
+p = ggplot(plot_df, aes(x = group, y = value, fill = group)) + geom_boxplot() + 
+   facet_wrap(~cell_type) + scale_fill_manual(values = boxplot_colors) + 
+   ggtitle(sprintf("34+ %s %s (primitive)", algo, sig)) +
+   theme_minimal() + theme(plot.title = element_text(hjust = 0.5), 
+                           axis.text.x = element_text(angle = 30, vjust = 0.7),
+                           panel.background = element_rect(fill = "white", colour = NA),
+                           plot.background = element_rect(fill = "white", colour = NA))
+# ggsave(plot = p, filename = sprintf("deconvolution_results/%s_%s_%s/maturation_global_34p.pdf", source, algo, sig),
+#        width = 8.3, height = 7)
+p
+
+plot_df = maturation_global_df %>% filter(Celltype == "34-") %>% mutate(group = group_)
+p = ggplot(plot_df, aes(x = group, y = value, fill = group)) + geom_boxplot() + 
+   facet_wrap(~cell_type, scales = 'free') + scale_fill_manual(values = boxplot_colors) + 
+   ggtitle(sprintf("34- %s %s (mature)", algo, sig)) +
+   theme_minimal() + theme(plot.title = element_text(hjust = 0.5), 
+                           axis.text.x = element_text(angle = 30, vjust = 0.7),
+                           panel.background = element_rect(fill = "white", colour = NA),
+                           plot.background = element_rect(fill = "white", colour = NA))
+# ggsave(plot = p, filename = sprintf("deconvolution_results/%s_%s_%s/maturation_global_34m_free.pdf", source, algo, sig),
+#        width = 8.3, height = 7)
+p
+
+plot_df = maturation_global_df %>% filter(Celltype == "34+") %>% mutate(group = group_)
+p = ggplot(plot_df, aes(x = group, y = value, fill = group)) + geom_boxplot() + 
+   facet_wrap(~cell_type, scales = 'free') + scale_fill_manual(values = boxplot_colors) + 
+   ggtitle(sprintf("34+ %s %s (mature)", algo, sig)) +
+   theme_minimal() + theme(plot.title = element_text(hjust = 0.5), 
+                           axis.text.x = element_text(angle = 30, vjust = 0.7),
+                           panel.background = element_rect(fill = "white", colour = NA),
+                           plot.background = element_rect(fill = "white", colour = NA))
+# ggsave(plot = p, filename = sprintf("deconvolution_results/%s_%s_%s/maturation_global_34p_free.pdf", source, algo, sig),
+#        width = 8.3, height = 7)
+p
+
+plots = list()
+for (chosen_cell_type in unique(maturation_global_df$cell_type)){
+   plot_df = maturation_global_df %>% filter(cell_type == chosen_cell_type)
+   p = ggplot(plot_df, aes(x = group_, y = value, fill = group_)) + geom_boxplot() + 
+      facet_wrap(~Celltype) + scale_fill_manual(values = boxplot_colors) + 
+      ggtitle(sprintf("%s population, AML xcell", chosen_cell_type)) + 
+      theme_minimal() + theme(plot.title = element_text(hjust = 0.5), 
+                         axis.text.x = element_text(angle = 30, vjust = 0.7),
+                         panel.background = element_rect(fill = "white", colour = NA),
+                         plot.background = element_rect(fill = "white", colour = NA))
+   # ggsave(plot = p, filename = sprintf("deconvolution_results/%s_%s_%s/%s_global.pdf", source, algo, sig, chosen_cell_type), 
+   #        width = 5.5, height = 3.7)
+   plots = append(plots, list(p))
+   plot_df = maturation_global_df %>% filter(cell_type == chosen_cell_type)
+   p = ggplot(plot_df, aes(x = group_, y = value, fill = group_)) + geom_boxplot() + 
+      facet_wrap(~Celltype, scales = 'free') + scale_fill_manual(values = boxplot_colors) + 
+      ggtitle(sprintf("%s population, AML xcell", chosen_cell_type)) + 
+      theme_minimal() + theme(plot.title = element_text(hjust = 0.5), 
+                         axis.text.x = element_text(angle = 30, vjust = 0.7),
+                         panel.background = element_rect(fill = "white", colour = NA),
+                         plot.background = element_rect(fill = "white", colour = NA))
+   # ggsave(plot = p, filename = sprintf("deconvolution_results/%s_%s_%s/%s_global_freescales.pdf", source, algo, sig, chosen_cell_type), 
+   #        width = 5.5, height = 3.7)
+   plots = append(plots, list(p))
+}
+plots
+
+
+```
+
+
+Scatter plots of HSC (GMP-like) vs Monocyte
+
+
+```{r}
+HSC_score = maturation_global_df %>% filter(cell_type == "GMP-like") %>%
+   select(sample_name, Celltype, value) %>% as.data.frame()
+Mono_score = maturation_global_df %>% filter(cell_type == "Monocyte") %>%
+   select(sample_name, Celltype, value) %>% as.data.frame()
+rownames(HSC_score) = HSC_score$sample_name
+rownames(Mono_score) = Mono_score$sample_name
+
+plot_df = data.frame(sample = HSC_score$sample_name, HSC_score = HSC_score$value, 
+                     Mono_score = Mono_score[HSC_score$sample_name, "value"], 
+                     CellType = HSC_score$Celltype)
+
+p = ggplot(plot_df, aes(x = HSC_score, y = Mono_score, color = CellType)) + 
+   geom_point() + ggtitle("HSC score vs Mono score  -  34- & 34+")
+# ggsave(plot = p, filename = "scatter_plot_HSC_Mono_Braun_data.pdf", width = 5, height = 5)
+p
+p = ggplot(plot_df %>% filter(CellType == "34-"), 
+       aes(x = HSC_score, y = Mono_score)) + geom_point() + ggtitle("34- cells")
+# ggsave(plot = p, filename = "scatter_plot_HSC_Mono_34m_Braun_data.pdf")
+p
+p = ggplot(plot_df %>% filter(CellType == "34+"), 
+       aes(x = HSC_score, y = Mono_score)) + geom_point() + ggtitle("34+ cells")
+# ggsave(plot = p, filename = "scatter_plot_HSC_Mono_34p_Braun_data.pdf")
+p
+
+
+```
