@@ -22,3 +22,6 @@ aml_outcome_disparities/src/python/data
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Don't need to track my scratch notebook
+scratch.ipynb
