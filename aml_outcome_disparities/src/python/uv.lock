@@ -1709,6 +1709,7 @@ dependencies = [
     { name = "seaborn" },
     { name = "statsmodels" },
     { name = "synapseclient" },
+    { name = "venny4py" },
 ]
 
 [package.metadata]
@@ -1736,6 +1737,7 @@ requires-dist = [
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "statsmodels", specifier = ">=0.14.5" },
     { name = "synapseclient", specifier = ">=4.9.0" },
+    { name = "venny4py", specifier = ">=1.0.3" },
 ]
 
 [[package]]
@@ -2449,6 +2451,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
+]
+
+[[package]]
+name = "venny4py"
+version = "1.0.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/30/d9deba8c88b4c0c00610db579a542a8a469cbf16097d86c30175c4a96f70/venny4py-1.0.3.tar.gz", hash = "sha256:14e1ee3bc08bd94517c7857d970f10d2bec6ae0d3120b45f29d1a5cbff659c8b", size = 219762, upload-time = "2024-09-02T14:29:03.514Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/29/dc645095e64cdf254bc39ce3a9f41b07389556fa892d974035d94b0e3b08/venny4py-1.0.3-py3-none-any.whl", hash = "sha256:3af759dfa10a751b53f2597a539c51334226a532d5d48eea0da83eaab0b3d98e", size = 4485, upload-time = "2024-09-02T14:29:01.563Z" },
 ]
 
 [[package]]

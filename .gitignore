@@ -25,3 +25,6 @@ __pycache__/
 
 # Don't need to track my scratch notebook
 scratch.ipynb
+
+# Don't track intermediate data tables cached as Apache arrow files
+*.arrow

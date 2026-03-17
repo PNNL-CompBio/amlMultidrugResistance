@@ -28,6 +28,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "statsmodels>=0.14.5",
     "synapseclient>=4.9.0",
+    "venny4py>=1.0.3",
 ]
 
 [tool.black]
