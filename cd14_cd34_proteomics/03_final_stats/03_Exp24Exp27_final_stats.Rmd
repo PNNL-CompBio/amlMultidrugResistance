@@ -17,6 +17,7 @@ library(TMSig)
 library(MotrpacRatTraining6moWAT)
 library(clusterProfiler)
 library(pheatmap)
+library(synapser)
 ```
 
 ## Data
@@ -24,10 +25,16 @@ library(pheatmap)
 Having evaluated the various datasets in the previous notebook, we are moving forward with "version 2" of the updated data. Will now run some more statistics for different comparisons of interest, as well as downstream enrichment analyses.
 
 ```{r import data, message=FALSE}
+#Set working directory appropriately for your machine
+setwd("~/OneDrive - PNNL/Documents/GitHub/amlMultidrugResistance/cd14_cd34_proteomics/")
+
+#For pulling files from synapse
+synapser::synLogin()
+
 ###Moving forward with v2 of the data (DIA-NN search, with FAIMS CV correction, performed by James Fulcher)
-##Grab relevant msnsets, results, etc. from previous script. 
-##Can update this later if these data get pushed to Synapse
-load("../02_dataset_comparisons/v2_msnsets_stats.RData")
+##Grab relevant msnsets, results, etc. generated in previous script and now stored on synapse
+v2 <- synapser::synGet("syn74025788")
+load(v2$path)
 
 ##Will use proteins filtered for 50% missingness, and all samples (v2_filt_prot)
 ##Create another variable to combine cell type and drug sensitivity for testing within cell types
@@ -332,9 +339,9 @@ UpSetR::upset(
 ```
 
 ```{r Heatmaps: comparisons across datasets, message=FALSE}
-#Import Belinda's dataset
-res_bel <- readxl::read_xlsx("../02_dataset_comparisons/data/SupplementaryTable1_differentialExpression.xlsx", 
-                             sheet = "Differential_expression")
+#Import Belinda's previous DA data
+res_bel <- readxl::read_xlsx(synapser::synGet("syn74024893")$path, 
+                                 sheet = "Differential_expression")
 res_bel_drug <- filter(res_bel, Contrast == "Ven_Sensitive_vs_Resistant")
 res_bel <- filter(res_bel, Contrast == "CD14_Pos_vs_Neg")
 

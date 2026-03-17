@@ -14,6 +14,7 @@ library(ggpubr)
 library(readr)
 library(readr)
 library(pheatmap)
+library(synapser)
 ```
 
 ## Data
@@ -21,48 +22,64 @@ library(pheatmap)
 Having cleaned up the different versions of the Exp24 + Exp27 combined data in the previous notebook, we will now run some statistics within each dataset to see how they compare to each other. Additionally, within each dataset, we will evaluate how filtering proteins and/or samples affects the resulting statistics.
 
 ```{r import data, build msnsets for testing, message=FALSE}
-#Import a detailed metadata file (generated from Belinda's old code, will update to reflect this here and/or store this metadata file on synapse and source from there)
-metadata <- as.data.frame(read_tsv("data/Metadata.tsv"))
+#Set working directory appropriately for your machine
+setwd("~/OneDrive - PNNL/Documents/GitHub/amlMultidrugResistance/cd14_cd34_proteomics/")
+
+#For pulling files from synapse
+synapser::synLogin()
+
+#Import a detailed metadata file (generated from Belinda's old code, stored on synapse as syn74023681)
+meta <- synapser::synGet("syn74023681")
+metadata <- as.data.frame(read_tsv(meta$path))
 
 #Change metadata$patient from numeric to character (so it's not a continuous variable when used as covariate in limma)
-#make cellsort factor (combining cell type and sort type) for limma testing later
 metadata$patient <- as.character(metadata$patient)
+
+#make cellsort factor (combining cell type and sort type) for limma testing later
 metadata$cellsort <- paste0(metadata$cellType, "_", metadata$Sort.Type)
 rownames(metadata) <- metadata$sample
 
 #Build msnsets: first with all proteins (no missingness filter)
-#Importing expression-level data written out in previous notebook; should modify if these files are on synapse
-v1_allprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v1_allquant.txt"))
+#Importing expression-level data generated in previous notebook and now stored on synapse
+v1_all <- synapser::synGet("syn74022739")
+v1_allprot <- as.matrix(read.delim(v1_all$path))
 colnames(v1_allprot) <- gsub("X", "", colnames(v1_allprot))
 v1_allprot <- MSnSet(exprs = v1_allprot, pData = metadata)
 
-v2_allprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v2_allquant.txt"))
+v2_all <- synapser::synGet("syn74022812")
+v2_allprot <- as.matrix(read.delim(v2_all$path))
 colnames(v2_allprot) <- gsub("X", "", colnames(v2_allprot))
 v2_allprot <- MSnSet(exprs = v2_allprot, pData = metadata)
 
-v3_allprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v3_allquant.txt"))
+v3_all <- synapser::synGet("syn74022813")
+v3_allprot <- as.matrix(read.delim(v3_all$path))
 colnames(v3_allprot) <- gsub("X", "", colnames(v3_allprot))
 v3_allprot <- MSnSet(exprs = v3_allprot, pData = metadata)
 
-v4_allprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v4_allquant.txt"))
+v4_all <- synapser::synGet("syn74022811")
+v4_allprot <- as.matrix(read.delim(v4_all$path))
 colnames(v4_allprot) <- gsub("X", "", colnames(v4_allprot))
 v4_allprot <- MSnSet(exprs = v4_allprot, pData = metadata)
 
 #Build msnsets: now with filtered proteins (50% missingness filter)
-#Importing expression-level data written out in previous notebook; should modify if these files are on synapse
-v1_filtprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v1_minhalfsampquant.txt"))
+#Importing expression-level data generated in previous notebook and now stored on synapse
+v1_filt <- synapser::synGet("syn74022738")
+v1_filtprot <- as.matrix(read.delim(v1_filt$path))
 colnames(v1_filtprot) <- gsub("X", "", colnames(v1_filtprot))
 v1_filtprot <- MSnSet(exprs = v1_filtprot, pData = metadata)
 
-v2_filtprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v2_minhalfsampquant.txt"))
+v2_filt <- synapser::synGet("syn74022814")
+v2_filtprot <- as.matrix(read.delim(v2_filt$path))
 colnames(v2_filtprot) <- gsub("X", "", colnames(v2_filtprot))
 v2_filtprot <- MSnSet(exprs = v2_filtprot, pData = metadata)
 
-v3_filtprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v3_minhalfsampquant.txt"))
+v3_filt <- synapser::synGet("syn74022810")
+v3_filtprot <- as.matrix(read.delim(v3_filt$path))
 colnames(v3_filtprot) <- gsub("X", "", colnames(v3_filtprot))
 v3_filtprot <- MSnSet(exprs = v3_filtprot, pData = metadata)
 
-v4_filtprot <- as.matrix(read.delim("../01_initial_data_processing/sorted_cells_dia_5469_6599_combo_v4_minhalfsampquant.txt"))
+v4_filt <- synapser::synGet("syn74022809")
+v4_filtprot <- as.matrix(read.delim(v4_filt$path))
 colnames(v4_filtprot) <- gsub("X", "", colnames(v4_filtprot))
 v4_filtprot <- MSnSet(exprs = v4_filtprot, pData = metadata)
 ```
@@ -88,13 +105,12 @@ x4 <- as.data.frame(colMeans(!is.na(exprs(v4_filtprot))))
 x4 <- subset(x4, x4$`colMeans(!is.na(exprs(v4_filtprot)))` <0.75)
 
 v4_filtprot_filtsamp <- v4_filtprot[,!colnames(exprs(v4_filtprot)) %in% rownames(x4)]
-
 ```
 
 
 ```{r Importing previous stats for downstream comparisons, message=FALSE}
-#import Belinda's data and previous DA results for comparisons
-res_bel <- readxl::read_xlsx("data/SupplementaryTable1_differentialExpression.xlsx", 
+#import Belinda's previous DA results for comparisons; stored on synapse as syn74024893
+res_bel <- readxl::read_xlsx(synapser::synGet("syn74024893")$path, 
                                  sheet = "Differential_expression")
 res_bel <- filter(res_bel, Contrast == "CD14_Pos_vs_Neg")
 colnames(res_bel)[colnames(res_bel) == 'Gene'] <- 'feature'

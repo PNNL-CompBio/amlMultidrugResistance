@@ -12,6 +12,7 @@ library(tidyverse)
 library(eulerr)
 library(ggpubr)
 library(readr)
+library(synapser)
 ```
 
 ## Data
@@ -23,17 +24,27 @@ We have reprocessed the Exp 24 and Exp 27 data together (rather than separate) t
 ##Processing according to Sam/Camilo's previous work in Exp24 and Exp27
 ##Files generated through PNNL DMS DIA-NN analysis and James Fulcher December 2025
 
-#Standard DMS DIA-NN workflow; also stored as syn72325476
-DIA_combo_v1 <-read_tsv("data/Old_Approach_Med_Normalized.tsv")
+#Set working directory appropriately for your machine
+setwd("~/OneDrive - PNNL/Documents/GitHub/amlMultidrugResistance/cd14_cd34_proteomics/")
 
-#New DIA-NN FAIMS workflow from James; also stored as syn72325477
-DIA_combo_v2 <-read_tsv("data/New_Approach_Med_Normalized.tsv")
+#For pulling files from synapse
+synapser::synLogin()
 
-#New DIAn-NN FAIMS workflow with QuantUMS from James; also stored as syn72325478
-DIA_combo_v3 <-read_tsv("data/New_Approach_Med_Normalized_QuantumMS.tsv")
+#Standard DMS DIA-NN workflow;  stored as syn72325476
+v1 <- synapser::synGet("syn72325476")
+DIA_combo_v1 <- read_tsv(v1$path)
 
-#New Spectronaut data from James for comparison, also stored as syn72325479
-DIA_combo_v4 <- read_tsv("data/Spectronaut_MedNorm.tsv")
+#New DIA-NN FAIMS workflow from James;  stored as syn72325477
+v2 <- synapser::synGet("syn72325477")
+DIA_combo_v2 <- read_tsv(v2$path)
+
+#New DIAn-NN FAIMS workflow with QuantUMS from James;  stored as syn72325478
+v3 <- synapser::synGet("syn72325478")
+DIA_combo_v3 <- read_tsv(v3$path)
+
+#New Spectronaut data from James for comparison, stored as syn72325479
+v4 <- synapser::synGet("syn72325479")
+DIA_combo_v4 <- read_tsv(v4$path)
 
 ##remove contaminants
 DIA_combo_v1 <-DIA_combo_v1 %>% filter(!str_detect(Protein.Group,"Contaminant|contaminant"))
@@ -105,9 +116,9 @@ write.table(rownames(crosstab_prot_v4), quote = F, file = "dia_sorted_cells_prot
 ```
 
 ```{r map proteins to genes and collapse, message=FALSE}
-##Import the mapping tables downloaded from UniProt 
-##Will upload these to synapse and update code rather than having to use local files
-conv_df_v1 <- read.table("data/idmapping_2025_12_19_v1.tsv", sep = "\t", header = T) %>%
+##Import the mapping tables downloaded from UniProt and stored on synapse
+ids_v1 <- synapser::synGet("syn74022069")
+conv_df_v1 <- read.table(ids_v1$path, sep = "\t", header = T) %>%
   group_by(From) %>%
   mutate(total = n()) %>% ungroup() %>%
   group_by(To) %>% mutate(total_2 = n()) %>% ungroup()
@@ -115,7 +126,8 @@ conv_df_v1 <- read.table("data/idmapping_2025_12_19_v1.tsv", sep = "\t", header 
 conv_df_v1 <- conv_df_v1 %>%
   group_by(From) %>% slice(1)
 
-conv_df_v2 <- read.table("data/idmapping_2025_12_19_v2.tsv", sep = "\t", header = T) %>%
+ids_v2 <- synapser::synGet("syn74022072")
+conv_df_v2 <- read.table(ids_v2$path, sep = "\t", header = T) %>%
   group_by(From) %>%
   mutate(total = n()) %>% ungroup() %>%
   group_by(To) %>% mutate(total_2 = n()) %>% ungroup()
@@ -123,7 +135,8 @@ conv_df_v2 <- read.table("data/idmapping_2025_12_19_v2.tsv", sep = "\t", header 
 conv_df_v2 <- conv_df_v2 %>%
   group_by(From) %>% slice(1)
 
-conv_df_v3 <- read.table("data/idmapping_2025_12_19_v3.tsv", sep = "\t", header = T) %>%
+ids_v3 <- synapser::synGet("syn74022073")
+conv_df_v3 <- read.table(ids_v3$path, sep = "\t", header = T) %>%
   group_by(From) %>%
   mutate(total = n()) %>% ungroup() %>%
   group_by(To) %>% mutate(total_2 = n()) %>% ungroup()
@@ -131,7 +144,8 @@ conv_df_v3 <- read.table("data/idmapping_2025_12_19_v3.tsv", sep = "\t", header 
 conv_df_v3 <- conv_df_v3 %>%
   group_by(From) %>% slice(1)
 
-conv_df_v4 <- read.table("data/idmapping_2026_01_05.tsv", sep = "\t", header = T) %>%
+ids_v4 <- synapser::synGet("syn74022080")
+conv_df_v4 <- read.table(ids_v4$path, sep = "\t", header = T) %>%
   group_by(From) %>%
   mutate(total = n()) %>% ungroup() %>%
   group_by(To) %>% mutate(total_2 = n()) %>% ungroup()
