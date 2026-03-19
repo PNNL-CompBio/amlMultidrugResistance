@@ -90,6 +90,7 @@ Plotting maturity sigs (Cell type deconvolution results)
 to_save = c("GMP-like", "Monocyte", "Mono-like")
 
 #this doesn't workmaturation_df = read.table(syn$get("syn73942964")$path, 
+# Can also use syn74210508, or syn70753423
 maturation_df <- read.table(syn$get('syn70753424')$path,
                            sep = "\t", header = T) %>% 
    tidyr::pivot_longer(-X, names_to = "sample_name", values_to = "value") %>% 
