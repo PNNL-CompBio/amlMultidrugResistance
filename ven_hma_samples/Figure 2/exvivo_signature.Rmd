@@ -1,0 +1,221 @@
+
+
+
+```{r}
+source("../../synapseUtil.R")
+source("../scripts/plot_helper.R")
+source("../scripts/compute_lsc17.R")
+source("../scripts/predict_helper.R")
+source("../scripts/s2n_model.R")
+
+source("../scripts/loading_data.R")
+
+samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
+m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
+
+features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 19]
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+
+plot_folder = "./many_plots/"
+if (!file.exists(plot_folder))
+  dir.create(plot_folder)
+# diffexp_results = diffexp_helper(m_exp28, "subcohort", c("Refractory-Response_no_relapse", "Refractory-Relapse")) 
+
+```
+
+
+
+
+```{r}
+############################## DV - UT signature ############################## 
+# N_markers = 10
+complete_DV_UT_features <- complete.cases(exprs(m_4pat[, m_4pat$Treatment %in% c("UT", "DV")]))
+complete_DV_UT_features_ = intersect(featureNames(m_4pat)[complete_DV_UT_features], complete_features)
+var.equal = TRUE
+plots = list()
+results_ttest = data.frame()
+all_samples = pData(m_4pat) %>% filter(Treatment %in% c("UT", "DV")) %>% pull(sample)
+for (N_markers in 1:18){
+   print(N_markers)
+   for (pval_cutoff in c(0.01, 0.001)){
+      print(pval_cutoff)
+      for (method in c("simple", "s2n_max_v2")){
+         print(method)
+         model <- logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = TRUE,
+                                 pred_group = "DV", control_group = "UT",
+                                 ## Tune-able parameters
+                                 N_markers = N_markers, pval_cutoff = pval_cutoff, 
+                                 method = method, var.equal = var.equal)
+         
+         all_features_df_ <- model$full_model$features
+         xx = predict_helper(m_exp28, model$full_model, case_group = "DV", control_group = "UT") %>%
+            left_join(., p_data, by = c("sample" = "sample_name")) %>%
+            group_by(subcohort) %>%
+            mutate(corr = cor(logistic_signal2, survival_days)) %>% ungroup() %>%
+            mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2))) %>%
+            mutate(refractory = case_when(`sub-cohort.PNNL` == "Refractory" ~ 1,
+                                          TRUE ~ 0))
+         xx_ = xx %>% filter(subcohort != "Paired_relapse_sample")
+         pred = ROCR::prediction(xx_$logistic_signal2, xx_$refractory)
+         modelresult1 = list(prob = xx_$logistic_signal2, features = NA, top = NA, 
+               auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+         
+         xx_ = xx %>% filter(subcohort %in% c("Refractory", "Response_no_relapse"))
+         pred = ROCR::prediction(xx_$logistic_signal2, xx_$refractory)
+         modelresult2 = list(prob = xx_$logistic_signal2, features = NA, top = NA, 
+               auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+         
+         
+         pooled_t_test = stat_test_(xx %>% mutate(x = subcohort, y = logistic_signal2))
+         t_test_pval = sub(" \n.*", "", pooled_t_test) %>% sub(".* = ", "", .) %>% as.numeric()
+         ## Boxplot with no annotations
+         q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+                    aes(x = subcohort, y = logistic_signal2, fill = group)) + geom_boxplot(width = 0.75) + 
+            ylab("Dec-Ven signal") + scale_fill_manual(values = subcohort_colors) +
+            ggtitle(paste0(pooled_t_test, "\n AUC ", formatC(modelresult1$auc, digits = 2), ", ", 
+              formatC(modelresult2$auc, digits = 2))) +
+            theme(text = element_text(size = 15))
+         
+      
+         ## Boxplot with t_test annotations
+         q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+         q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+         q2 = t_test_ann(q2, c("Refractory", "Relapse"))
+         plots[[paste(N_markers, pval_cutoff, method, sep = "_")]] = list(q2)
+         
+         results_ = all_features_df_ %>% select(-s2n, -silhouette_width, -loo_sample) %>%
+            mutate(N_markers = N_markers, pval_cutoff = pval_cutoff, method = method, t_test_pooled = t_test_pval,
+                   auc_response_pooled = modelresult1$auc, auc_not_pooled = modelresult2$auc)
+         results_ttest = rbind(results_ttest, results_)
+         plot_path = paste0(plot_folder, "t_test_N", N_markers, "_ptop_", pval_cutoff, "_", method, ".png")
+         ggsave(plot = q2, filename = plot_path)
+      }
+   }
+}
+
+
+
+```
+
+summarizing results
+
+```{r}
+plot_df = results_ttest %>% filter(pval_cutoff == 0.001, N_markers < 13) %>%
+   select(method, N_markers, t_test = t_test_pooled, auc = auc_response_pooled) %>% unique()
+
+p = ggplot(plot_df, aes(x = N_markers, y = auc, fill = method)) + 
+   geom_bar(stat = 'identity', position = position_dodge()) + 
+   scale_fill_manual(values = c("#154259", "#de3f29") )+ ylim(0, 1) +
+   theme_minimal() + theme(text = element_text(size = 15)) +
+   ggtitle("Ex-vivo signature performance, Refractory detection")
+p
+
+p = ggplot(plot_df, aes(x = N_markers, y = t_test, fill = method)) + 
+   geom_bar(stat = 'identity', position = position_dodge()) + 
+   scale_fill_manual(values = c("#154259", "#de3f29")) +
+   theme_minimal() + theme(text = element_text(size = 15)) +
+   ggtitle("Ex-vivo signature performance, Refractory detection")
+p
+
+model_features = results_ttest %>% filter(pval_cutoff == 0.001) %>% pull(feature) %>% unique()
+plot_pca(m_exp28[model_features, ], phenotype = "subcohort") + ggtitle("PCA of 21 model features") +
+   scale_fill_manual(values = subcohort_colors) + scale_color_manual(values = subcohort_colors)
+
+
+plot_pca(m_exp28, phenotype = "subcohort") + ggtitle("PCA of all features") +
+   scale_fill_manual(values = subcohort_colors) + scale_color_manual(values = subcohort_colors)
+
+
+```
+
+
+Elastic net doesn't work well. 
+
+```{r}
+############################## DV - UT signature ############################## 
+# N_markers = 10
+complete_DV_UT_features <- complete.cases(exprs(m_4pat[, m_4pat$Treatment %in% c("UT", "DV")]))
+complete_DV_UT_features_ = intersect(featureNames(m_4pat)[complete_DV_UT_features], complete_features)
+var.equal = TRUE
+plots = list()
+results_eln = data.frame()
+all_samples = pData(m_4pat) %>% filter(Treatment %in% c("UT", "DV")) %>% pull(sample)
+for (chosen_alpha in c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)){
+   print(chosen_alpha)
+   model <- eln_model(m_4pat[complete_DV_UT_features_, all_samples], 
+                      "Treatment", pred.cls = "DV", alpha = chosen_alpha)
+
+   xx = data.frame(sample = sampleNames(m_exp28)) %>%
+      mutate(eln_signal = predict(model, t(exprs(m_exp28)[complete_DV_UT_features_, ]), s = model$lambda.min)) %>%
+      left_join(., p_data, by = c("sample" = "sample_name")) %>%
+      mutate(refractory = case_when(`sub-cohort.PNNL` == "Refractory" ~ 1,
+                                    TRUE ~ 0)) %>%
+      mutate(refractory = case_when(`sub-cohort.PNNL` == "Refractory" ~ 1,
+                                          TRUE ~ 0))
+   xx_ = xx %>% filter(subcohort != "Paired_relapse_sample")
+   pred = ROCR::prediction(xx_$eln_signal, xx_$refractory)
+   modelresult1 = list(prob = xx_$eln_signal, features = NA, top = NA, 
+         auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+   
+   xx_ = xx %>% filter(subcohort %in% c("Refractory", "Response_no_relapse"))
+   pred = ROCR::prediction(xx_$eln_signal, xx_$refractory)
+   modelresult2 = list(prob = xx_$eln_signal, features = NA, top = NA, 
+         auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+   
+   
+   pooled_t_test = stat_test_(xx %>% mutate(x = subcohort, y = eln_signal))
+   t_test_pval = sub(" \n.*", "", pooled_t_test) %>% sub(".* = ", "", .) %>% as.numeric()
+   ## Boxplot with no annotations
+   q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+              aes(x = subcohort, y = eln_signal, fill = group)) + geom_boxplot(width = 0.75) + 
+      ylab("Dec-Ven signal") + scale_fill_manual(values = subcohort_colors) +
+      ggtitle(paste0(pooled_t_test, "\n AUC ", formatC(modelresult1$auc, digits = 2), ", ", 
+              formatC(modelresult2$auc, digits = 2))) +
+      theme(text = element_text(size = 15))
+   
+
+   ## Boxplot with t_test annotations
+   q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+   q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+   q2 = t_test_ann(q2, c("Refractory", "Relapse"))
+   plots[[paste(N_markers, pval_cutoff, method, sep = "_")]] = list(q2)
+   
+   results_ = data.frame(alpha = chosen_alpha, t_test_pooled = t_test_pval,
+             auc_response_pooled = modelresult1$auc, auc_not_pooled = modelresult2$auc)
+   results_eln = rbind(results_eln, results_)
+   plot_path = paste0(plot_folder, "eln_alpha_", chosen_alpha, ".png")
+   ggsave(plot = q2, filename = plot_path)
+}
+
+```
+
+
+
+```{r}
+plot_df = results_eln %>% 
+   select(alpha, t_test = t_test_pooled, auc = auc_response_pooled) %>%
+   mutate(method = "ELN")
+
+p = ggplot(plot_df, aes(x = alpha, y = auc, fill = method)) + 
+   geom_bar(stat = 'identity', position = position_dodge()) + 
+   scale_fill_manual(values = c("#154259")) + ylim(0, 1) + 
+   ggtitle("Ex-vivo signature performance, Refractory detection")
+p
+
+p = ggplot(plot_df, aes(x = alpha, y = t_test, fill = method)) + 
+   geom_bar(stat = 'identity', position = position_dodge()) + 
+   scale_fill_manual(values = c("#154259")) + 
+   ggtitle("Ex-vivo signature performance, Refractory detection")
+p
+
+```
+
+
+
+
+
+
+
+
+
+
