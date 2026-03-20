@@ -1,3 +1,11 @@
+# Info
+## Setup
+- Follow instructions [here](../../src/python/README.md) to set up Python environment
+    - must be able to import and use functions from [data import module](../../src/python/pilot/data_import.py)
+- intermediate data files and generated figures are saved in the (untracked) `_cache` and `figures` directories, respectively
+    - create these if they do not exist
+
+# Analysis
 ## 1. Create a Combined Data table to support analyses
 - [combined_data_table.ipynb](./combined_data_table.ipynb)
     - metadata:
@@ -44,7 +52,7 @@
             - `_figures/sex_comparison_white.png`
 
 ## 4. Create subsets of the -omics data for specific mutation state comparisons
-- [subset_omics_data](./subset_omics_data.ipynb)
+- [subset_omics_data.ipynb](./subset_omics_data.ipynb)
     - input: 
         - `_cache/meta.arrow`
         - `_cache/combined.arrow`
@@ -61,3 +69,8 @@
         - White patients: NRAS mutant vs. WT
             - `_cache/W_NRAS-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
             - `_cache/W_NRAS-WT.arrow`: combined -omics data table for selected subset
+    - during subsetting, the omics data has some filtering/normalization applied:
+        - filter columns to only include the selected samples for the subset (from WT and mutant sample groups)
+        - filter rows separately for each sample group to remove rows with missingness fraction greater than a specified threshold
+        - impute remaining missing values across all subset samples with row median
+        - apply row-wise z-score normalization across subset samples 
