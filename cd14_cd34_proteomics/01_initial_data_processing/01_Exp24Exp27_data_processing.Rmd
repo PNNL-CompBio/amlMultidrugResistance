@@ -15,17 +15,16 @@ library(readr)
 library(synapser)
 ```
 
-## Data
+## Data Processing: DIA-NN Results tables to crosstabs for downstream analysis
 
-We have reprocessed the Exp 24 and Exp 27 data together (rather than separate) thru DIA-NN or Spectronaut. There are multiple versions of the data (settings in DIA-NN related to FAIMS CV correction), and we need to evaluate these versions side-by-side to identify the best set to move forward with. This first notebook will clean the data and write out tables to be used in subsequence notebooks.
+We have reprocessed the Exp 24 and Exp 27 data together (rather than separate) thru DIA-NN or Spectronaut. There are multiple versions of the data (settings in DIA-NN related to FAIMS CV correction), and we need to evaluate these versions side-by-side to identify the best set to move forward with. This first notebook will clean the data and write out tables to be used in subsequent notebooks.
+
+This first section reads in DIA-NN results tables (stored on Synapse), removes contaminants, and writes out crosstabs.
 
 ```{r import and clean data, message=FALSE}
 ##Import protein-level data taken from DIA-NN pg matrix output. see log file for parameter information. 
 ##Processing according to Sam/Camilo's previous work in Exp24 and Exp27
 ##Files generated through PNNL DMS DIA-NN analysis and James Fulcher December 2025
-
-#Set working directory appropriately for your machine
-setwd("~/OneDrive - PNNL/Documents/GitHub/amlMultidrugResistance/cd14_cd34_proteomics/")
 
 #For pulling files from synapse
 synapser::synLogin()
@@ -72,6 +71,8 @@ write.table(DIA_combo_v4, file = "crosstab_PTRC_combo_SpectroNaut.txt",
             sep = "\t", quote = FALSE, row.names = TRUE,col.names = TRUE)
 ```
 
+This section allows for generation of Venn diagrams to look at overlap of protein group IDs across any of the datasets desired.
+
 ```{r Venn diagrams, message=FALSE}
 ##If desired for visualization of protein ID overlaps, Venn diagrams can be made from the rownames of any given datasets
 p <- plot(euler(list("Original"=rownames(DIA_combo_v1),
@@ -84,6 +85,8 @@ p <- plot(euler(list("Original"=rownames(DIA_combo_v1),
                          main = list(col = "black", fontsize=16)))
 print(p)
 ```
+
+Now, non-unique rows are removed from the crosstab, and the protein IDs (UniProt accessions from DIA-NN search) from each dataset are written out as tables. These tables are then mapped to gene symbols via the UniProt website.
 
 ```{r generate files for protein-to-gene mapping, message=FALSE}
 ##Tally how many rows aren't unique mappings (multiple proteins separated by ":")
@@ -114,6 +117,8 @@ write.table(rownames(crosstab_prot_v4), quote = F, file = "dia_sorted_cells_prot
 ###Go here to map these to gene names: https://www.uniprot.org/id-mapping 
 ###(uniprotKB AC/ID to Gene Name (select under uniprot))
 ```
+
+Protein-level crosstabs are now mapped to gene symbols using the protein-to-gene mappings from UniProt (now stored on synapse). Proteins that don't map to a gene symbol are excluded. For instances where multiple UniProt accessions map to the same gene symbol, the mean is calculated and retained. Data is then log2-transformed, and these crosstabs can be written out if desired.
 
 ```{r map proteins to genes and collapse, message=FALSE}
 ##Import the mapping tables downloaded from UniProt and stored on synapse
@@ -153,12 +158,25 @@ conv_df_v4 <- read.table(ids_v4$path, sep = "\t", header = T) %>%
 conv_df_v4 <- conv_df_v4 %>%
   group_by(From) %>% slice(1)
 
-###Note: do these steps for each of the datasets by changing file names
-
 ##Merge these mappings with prior crosstab to exclude anything that doesn't map to gene name
 crosstab_df_v1 <- crosstab_prot_v1 %>% as.data.frame() %>%
   mutate(From = rownames(crosstab_prot_v1)) %>%
   merge(conv_df_v1, by = "From") %>%
+  mutate(feature = To) %>% select(-From, -To, -total, -total_2)
+
+crosstab_df_v2 <- crosstab_prot_v2 %>% as.data.frame() %>%
+  mutate(From = rownames(crosstab_prot_v2)) %>%
+  merge(conv_df_v2, by = "From") %>%
+  mutate(feature = To) %>% select(-From, -To, -total, -total_2)
+
+crosstab_df_v3 <- crosstab_prot_v3 %>% as.data.frame() %>%
+  mutate(From = rownames(crosstab_prot_v3)) %>%
+  merge(conv_df_v3, by = "From") %>%
+  mutate(feature = To) %>% select(-From, -To, -total, -total_2)
+
+crosstab_df_v4 <- crosstab_prot_v4 %>% as.data.frame() %>%
+  mutate(From = rownames(crosstab_prot_v4)) %>%
+  merge(conv_df_v4, by = "From") %>%
   mutate(feature = To) %>% select(-From, -To, -total, -total_2)
 
 ##log transform data then take the mean samplewise if two proteins map to the same gene
@@ -168,31 +186,83 @@ crosstab_df_v1 <- crosstab_df_v1 %>%
   mutate(value = log2(value)) %>%
   tidyr::pivot_wider(names_from = "sample", values_from = "value", values_fn = ~mean(.x, na.rm=TRUE))
 
+crosstab_df_v2 <- crosstab_df_v2 %>%
+  tidyr::pivot_longer(-feature, values_to = "value", names_to = "sample") %>%
+  mutate(value = log2(value)) %>%
+  tidyr::pivot_wider(names_from = "sample", values_from = "value", values_fn = ~mean(.x, na.rm=TRUE))
+
+crosstab_df_v3 <- crosstab_df_v3 %>%
+  tidyr::pivot_longer(-feature, values_to = "value", names_to = "sample") %>%
+  mutate(value = log2(value)) %>%
+  tidyr::pivot_wider(names_from = "sample", values_from = "value", values_fn = ~mean(.x, na.rm=TRUE))
+
+crosstab_df_v4 <- crosstab_df_v4 %>%
+  tidyr::pivot_longer(-feature, values_to = "value", names_to = "sample") %>%
+  mutate(value = log2(value)) %>%
+  tidyr::pivot_wider(names_from = "sample", values_from = "value", values_fn = ~mean(.x, na.rm=TRUE))
+
 ##Write tables if desired (log2-transformed data, no missingness filters)
 write.table(crosstab_df_v1, file = "sorted_cells_dia_5469_6599_combo_v1_unfiltered.txt", sep = "\t", quote = F, row.names = F)
+write.table(crosstab_df_v2, file = "sorted_cells_dia_5469_6599_combo_v2_unfiltered.txt", sep = "\t", quote = F, row.names = F)
+write.table(crosstab_df_v3, file = "sorted_cells_dia_5469_6599_combo_v3_unfiltered.txt", sep = "\t", quote = F, row.names = F)
+write.table(crosstab_df_v4, file = "sorted_cells_dia_5469_6599_combo_v4_unfiltered.txt", sep = "\t", quote = F, row.names = F)
 ```
 
-```{r evaluate/filter for missingness and median-center data, message=FALSE}
-###Note: as above, these steps need to be performed dataset-by-dataset by changing file names (v1, v2, v3, v4)
+This section median-centers the data and writes out crosstabs for each dataset. This is done first on the entire dataset, and then a second time on a version of the datasets where proteins with >50% missing values have been removed. Histograms of missingness, and boxplots within each sample before and after median-centering are generated for data visualization.
 
+```{r evaluate/filter for missingness and median-center data, message=FALSE}
 #Make data a matrix with features as rownames
 crosstab_v1 <- crosstab_df_v1 %>%
   column_to_rownames("feature") %>% 
   as.matrix()
 
+crosstab_v2 <- crosstab_df_v2 %>%
+  column_to_rownames("feature") %>% 
+  as.matrix()
+
+crosstab_v3 <- crosstab_df_v3 %>%
+  column_to_rownames("feature") %>% 
+  as.matrix()
+
+crosstab_v4 <- crosstab_df_v4 %>%
+  column_to_rownames("feature") %>% 
+  as.matrix()
+
 #Plot missingness and data distribution
 hist(rowSums(is.na(crosstab_v1)))
-
 boxplot(crosstab_v1)
 
-#Calculate column medians and median-center data
-col_medians <- apply(crosstab_v1, 2, median, na.rm = T)
-crosstab_v1_mc <- sweep(crosstab_v1, 2, col_medians, FUN = '-')
+hist(rowSums(is.na(crosstab_v2)))
+boxplot(crosstab_v2)
 
+hist(rowSums(is.na(crosstab_v3)))
+boxplot(crosstab_v3)
+
+hist(rowSums(is.na(crosstab_v4)))
+boxplot(crosstab_v4)
+
+#Calculate column medians and median-center data
+col_medians_v1 <- apply(crosstab_v1, 2, median, na.rm = T)
+crosstab_v1_mc <- sweep(crosstab_v1, 2, col_medians_v1, FUN = '-')
 boxplot(crosstab_v1_mc)
+
+col_medians_v2 <- apply(crosstab_v2, 2, median, na.rm = T)
+crosstab_v2_mc <- sweep(crosstab_v2, 2, col_medians_v2, FUN = '-')
+boxplot(crosstab_v2_mc)
+
+col_medians_v3 <- apply(crosstab_v3, 2, median, na.rm = T)
+crosstab_v3_mc <- sweep(crosstab_v3, 2, col_medians_v3, FUN = '-')
+boxplot(crosstab_v3_mc)
+
+col_medians_v4 <- apply(crosstab_v4, 2, median, na.rm = T)
+crosstab_v4_mc <- sweep(crosstab_v4, 2, col_medians_v4, FUN = '-')
+boxplot(crosstab_v4_mc)
 
 #Write table: median-centered, all proteins (no missingness filter)
 write.table(crosstab_v1_mc, "sorted_cells_dia_5469_6599_combo_v1_allquant.txt", sep = "\t", quote = F)
+write.table(crosstab_v2_mc, "sorted_cells_dia_5469_6599_combo_v2_allquant.txt", sep = "\t", quote = F)
+write.table(crosstab_v3_mc, "sorted_cells_dia_5469_6599_combo_v3_allquant.txt", sep = "\t", quote = F)
+write.table(crosstab_v4_mc, "sorted_cells_dia_5469_6599_combo_v4_allquant.txt", sep = "\t", quote = F)
 
 #Now make a version where proteins are filtered for <50% missingness prior to median-centering
 #Do this by building an msnset but there's probably an easier way
@@ -203,23 +273,69 @@ rownames(meta_v1) <- meta_v1$sample
 
 m1 <- MSnSet(exprs = crosstab_v1, pData = meta_v1)
 
+meta_v2 <- data.frame(sample = colnames(crosstab_v2)) %>%
+  mutate(group = sub("^.*_", "", sample),
+         patient = sub("_.*$", "", sample))
+rownames(meta_v2) <- meta_v2$sample
+
+m2 <- MSnSet(exprs = crosstab_v2, pData = meta_v2)
+
+meta_v3 <- data.frame(sample = colnames(crosstab_v3)) %>%
+  mutate(group = sub("^.*_", "", sample),
+         patient = sub("_.*$", "", sample))
+rownames(meta_v3) <- meta_v3$sample
+
+m3 <- MSnSet(exprs = crosstab_v3, pData = meta_v3)
+
+meta_v4 <- data.frame(sample = colnames(crosstab_v4)) %>%
+  mutate(group = sub("^.*_", "", sample),
+         patient = sub("_.*$", "", sample))
+rownames(meta_v4) <- meta_v4$sample
+
+m4 <- MSnSet(exprs = crosstab_v4, pData = meta_v4)
+
 #Filter for proteins with <50% missingness, plot missingness and distribution
 m1 <- m1[rowSums(is.na(exprs(m1))) < (ncol(m1)/2), ]
-
 hist(rowSums(is.na(exprs(m1))))
-
 boxplot(exprs(m1))
+
+m2 <- m2[rowSums(is.na(exprs(m2))) < (ncol(m2)/2), ]
+hist(rowSums(is.na(exprs(m2))))
+boxplot(exprs(m2))
+
+m3 <- m3[rowSums(is.na(exprs(m3))) < (ncol(m3)/2), ]
+hist(rowSums(is.na(exprs(m3))))
+boxplot(exprs(m3))
+
+m4 <- m4[rowSums(is.na(exprs(m4))) < (ncol(m4)/2), ]
+hist(rowSums(is.na(exprs(m4))))
+boxplot(exprs(m4))
 
 #Calculate column medians and median-center data
-col_medians <- apply(exprs(m1), 2, median, na.rm = T)
-exprs(m1) <- sweep(exprs(m1), 2, col_medians, FUN = '-')
-
+col_medians_v1 <- apply(exprs(m1), 2, median, na.rm = T)
+exprs(m1) <- sweep(exprs(m1), 2, col_medians_v1, FUN = '-')
 boxplot(exprs(m1))
+
+col_medians_v2 <- apply(exprs(m2), 2, median, na.rm = T)
+exprs(m2) <- sweep(exprs(m2), 2, col_medians_v2, FUN = '-')
+boxplot(exprs(m2))
+
+col_medians_v3 <- apply(exprs(m3), 2, median, na.rm = T)
+exprs(m3) <- sweep(exprs(m3), 2, col_medians_v3, FUN = '-')
+boxplot(exprs(m3))
+
+col_medians_v4 <- apply(exprs(m4), 2, median, na.rm = T)
+exprs(m4) <- sweep(exprs(m4), 2, col_medians_v4, FUN = '-')
+boxplot(exprs(m4))
 
 #Write table: median-centered, only proteins with <50% missingness
 write.table(exprs(m1), "sorted_cells_dia_5469_6599_combo_v1_minhalfsampquant.txt", sep = "\t", quote = F)
-
+write.table(exprs(m2), "sorted_cells_dia_5469_6599_combo_v2_minhalfsampquant.txt", sep = "\t", quote = F)
+write.table(exprs(m3), "sorted_cells_dia_5469_6599_combo_v3_minhalfsampquant.txt", sep = "\t", quote = F)
+write.table(exprs(m4), "sorted_cells_dia_5469_6599_combo_v4_minhalfsampquant.txt", sep = "\t", quote = F)
 ```
+
+This last section looks at data missingness within samples, as previous analysis of this data had removed samples that did not meet a certain coverage threshold (75%). No filtering is done, but these values are calculated for reference. Additionally, protein-level %CV is calculated within each dataset and plotted for comparison.
 
 ```{r last evaluations: missingness within samples, %CV of different datasets message=FALSE}
 ##Check missingness within samples (to determine if some samples should be removed later)

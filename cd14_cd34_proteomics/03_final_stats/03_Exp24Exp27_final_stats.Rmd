@@ -20,14 +20,11 @@ library(pheatmap)
 library(synapser)
 ```
 
-## Data
+## Statistics and enrichment analysis 
 
 Having evaluated the various datasets in the previous notebook, we are moving forward with "version 2" of the updated data. Will now run some more statistics for different comparisons of interest, as well as downstream enrichment analyses.
 
 ```{r import data, message=FALSE}
-#Set working directory appropriately for your machine
-setwd("~/OneDrive - PNNL/Documents/GitHub/amlMultidrugResistance/cd14_cd34_proteomics/")
-
 #For pulling files from synapse
 synapser::synLogin()
 
@@ -42,6 +39,8 @@ v2_filtprot$cell_aza <- paste0(v2_filtprot$cellType, "_", v2_filtprot$Aza)
 v2_filtprot$cell_ven <- paste0(v2_filtprot$cellType, "_", v2_filtprot$Ven)
 v2_filtprot$cell_azaven <- paste0(v2_filtprot$cellType, "_", v2_filtprot$Aza.Ven)
 ```
+
+This section sets up some limma analysis to compare cell types. First comparison is CD14+ vs CD34+ as done in the previous script, and an additional comparison of MSC vs non-MSC is also included.
 
 ```{r limma analysis, cell types, message=FALSE}
 ##Testing CD14 vs CD34; all samples, controlling for sort type (bead vs. flow) and patient
@@ -89,6 +88,7 @@ ggplot(res_MSC) +
 
 ```
 
+This section sets up more limma analysis, this time looking at drug sensitivity. We have data for sensitivity to venetoclax, azacytidine, or combination of Ven + Aza. For each drug, we compare sensitive vs resistant across the entire dataset (controlling for cell type and patient), as well as within each cell type (CD14+, CD34+, MSC) individually.
 
 ```{r limma analsis, drug sensitivities, message=FALSE}
 ##Testing Aza.Ven sensitivity
@@ -254,6 +254,8 @@ ggplot(res_ven_celltypes2) +
   theme_bw()
 ```
 
+Comparing results from the various statistical analyses: generating heatmaps of correlations (logFC and t-statistic) and UpSet plots of significant proteins (adjusted p-value <0.05).
+
 ```{r heatmaps and upset plots of various stats, message=FALSE}
 ##Correlation heatmap of results
 dfs <- list(
@@ -338,7 +340,9 @@ UpSetR::upset(
 )
 ```
 
-```{r Heatmaps: comparisons across datasets, message=FALSE}
+For additional comparison, we import the statistics previously generated from this work.
+
+```{r Comparisons with previous statistics, message=FALSE}
 #Import Belinda's previous DA data
 res_bel <- readxl::read_xlsx(synapser::synGet("syn74024893")$path, 
                                  sheet = "Differential_expression")
@@ -375,6 +379,8 @@ print(p)
 ##More analysis in progress, will update later
 
 ```
+
+Using the results of the statistics generated above, we can run some pathway-level enrichment analysis (over-representation analysis, ORA) using functions form the clusterProfiler package.
 
 ```{r Enrichment analysis: ORA from clusterProfiler, message=FALSE}
 ##CD14 vs CD34
