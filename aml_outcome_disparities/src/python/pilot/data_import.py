@@ -42,6 +42,90 @@ def syn_login(auth_path: PathLike | None = None) -> sc.Synapse:
     return syn
 
 
+def call_mutations(
+    syn: sc.Synapse | None = None
+) -> pd.DataFrame:
+    """
+    Calls mutations from WES measurements.
+
+    Args:
+        syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
+        new one if None.
+
+    Returns:
+        pd.DataFrame: Mutation calls for BeatAML 210 cohort.
+    """
+    if syn is None:
+        syn = syn_login()
+
+    # Load mutation data
+    mutation_calls = pd.read_excel(syn.get("syn26427388").path)
+
+    # # Load additional mutation calls
+    calls_177 = pd.read_csv(
+        syn.get("syn32533104").path,
+        sep="\t"
+    )
+    calls_177.rename(
+        columns={"labId": "original_id", "alt_ID": "seq_id"},
+        inplace=True
+    )
+    mutation_calls = pd.concat([mutation_calls, calls_177])
+
+    # Drop duplicate calls due to multiple calling methods
+    mutation_calls = mutation_calls.loc[
+        ~mutation_calls.loc[
+            :,
+            ["original_id", "hgvsp"]
+        ].duplicated(keep="first")
+    ]
+
+    # Track all patients with calls
+    # Those without any recurrent may be interesting to keep--as a WES, a lack
+    # of calls should indicate a lack of mutations
+    all_patients = mutation_calls.loc[:, "original_id"].unique()
+
+    # Trim to nonsynonymous mutations
+    mutation_calls = mutation_calls.loc[
+        ~mutation_calls.loc[:, "hgvsp"].isna(),
+        :
+    ]
+
+    # Trim to recurrent mutations
+    recurrent = mutation_calls.loc[
+        :,
+        ["pos_start", "pos_end", "alt", "original_id", "symbol"]
+    ]
+    recurrent = recurrent.loc[~recurrent.duplicated(keep="first")]
+    recurrent = recurrent.loc[
+        recurrent.loc[:, ["pos_start", "pos_end", "alt"]].duplicated(
+            keep=False
+        ),
+        :
+    ]
+
+    # Drop duplicate patient/gene pairs
+    # Some patients have a gene with multiple mutations
+    recurrent = recurrent.loc[
+        ~recurrent.loc[
+            :,
+            ["original_id", "symbol"]
+        ].duplicated(keep="first"),
+        :
+    ]
+
+    # Pivot to wide format
+    recurrent.loc[:, "value"] = "Mutant"
+    recurrent = recurrent.pivot(
+        index="original_id",
+        columns="symbol",
+        values="value"
+    )
+    recurrent.fillna("WT", inplace=True)
+
+    return recurrent
+
+
 def import_metabolites(
     syn: sc.Synapse | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -505,7 +589,9 @@ def import_phospho(
 
 
 def import_meta(
-    syn: sc.Synapse | None = None, aux_meta: bool = False
+    syn: sc.Synapse | None = None,
+    aux_meta: bool = False,
+    use_wes: bool = True
 ) -> pd.DataFrame:
     """
     Loads merged meta-data from Synapse.
@@ -515,6 +601,8 @@ def import_meta(
             new one if None.
         aux_meta (bool, default: False): Load auxiliary meta-data for patients
             not included in manuscript analyses.
+        use_wes (bool, default: False): Use WES for mutation calls, otherwise
+            uses existing meta-data.
 
     Returns:
          pd.DataFrame: Updated meta-data across cohorts
@@ -634,9 +722,51 @@ def import_meta(
             inplace=True,
         )
 
+    # Standardizes Race column
     meta.replace(
         {"Race": {"Declined": "Unknown", np.nan: "Unknown"}}, inplace=True
     )
+
+    if use_wes:
+        # Gets WES calls
+        mutations = call_mutations(syn)
+
+        # Sets up WES calls for bridging patients
+        bridge = meta.index[meta.index.str.endswith("-Bridge")]
+        bridge = mutations.loc[
+            mutations.index.intersection(bridge.str[:-7]),
+            :
+        ]
+        bridge.index = bridge.index + "-Bridge"
+        mutations = pd.concat([mutations, bridge])
+
+        # Trims to mutations already in meta data
+        preserved_mutations = mutations.columns.intersection(meta.columns)
+
+        # Update non-FLT3/non-NPM1 mutations
+        preserved_mutations = preserved_mutations.drop(["FLT3", "NPM1"])
+        meta.loc[
+            mutations.index.intersection(meta.index),
+            preserved_mutations
+        ] = mutations.loc[
+            mutations.index.intersection(meta.index),
+            preserved_mutations
+        ]
+
+        # Update meta data mutation calls
+        meta = meta.loc[
+            :,
+            list(meta.loc[:, :"ALT"].columns[:-1]) +
+            ["FLT3_ITD", "NPM1"] +
+            list(preserved_mutations)
+        ]
+
+        # Adds column to denote mutation call source
+        meta.loc[:, "WES_call"] = False
+        meta.loc[
+            mutations.index.intersection(meta.index),
+            "WES_call"
+        ] = True
 
     return meta
 
