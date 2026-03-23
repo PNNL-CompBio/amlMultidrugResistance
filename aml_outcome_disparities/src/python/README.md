@@ -4,19 +4,19 @@ This src directory contains Python-based analysis scripts supporting the AML out
 
 ## Project Organization
 
-├── src/python/ \
-│   ├── data/                       # Utility and intermediate storage \
-│   │   └── van_Galen_genes.csv     # Genes for van Galen cell types \
-│   └── pilot/                      # Python module \
-│       ├── figures/                # Preliminary data exploration figures \
-│       │   └── figure_setup.py     # Figure plotting utilities (to ensure consistent formatting) \
-│       ├── data_import.py          # Data importation utilities \
-│       ├── decomposition.py        # Data-driven decomposition tools \
-│       ├── gene_analysis.py        # Transcriptomic analysis tools \
-│       └── utils.py                # Miscellaneous supporting utilities \
-├── pyproject.toml                  # uv dependency file \
-├── README.md                       # README for Python module \
-└── uv.lock                         # Locked uv dependency file
+   ├── src/python/ \
+   │   ├── data/                       # Utility and intermediate storage \   
+   │   │   └── van_Galen_genes.csv     # Genes for van Galen cell types \
+   │   └── pilot/                      # Python module \
+   │       ├── figures/                # Preliminary data exploration figures \
+   │       │   └── figure_setup.py     # Figure plotting utilities (to ensure consistent formatting) \
+   │       ├── data_import.py          # Data importation utilities \
+   │       ├── decomposition.py        # Data-driven decomposition tools \
+   │       ├── gene_analysis.py        # Transcriptomic analysis tools \
+   │       └── utils.py                # Miscellaneous supporting utilities \
+   ├── pyproject.toml                  # uv dependency file \
+   ├── README.md                       # README for Python module \
+   └── uv.lock                         # Locked uv dependency file
 
 ## Python Installation & Package Management
 
@@ -36,26 +36,13 @@ automatically handle connections between Python and any required dependencies.
 
 ## Data Prerequisites
 
-Before running any of the Python-based figure scripts, you'll need to add a few files to the `data/` 
-directory.
+Before running any of the Python-based figure scripts, you'll need to generate an authorization token for Synapse. 
+All biological and clinical meta data are stored via Synapse for reproducibility and transparency, and the scripts 
+within this repository will automatically download files from Synapse as needed for analyses.
 
-1. Batch-corrected phosphoproteomic and global proteomic measurements for the BeatAML 210 and Pilot study cohorts. 
-   These are automatically generated and saved to `data/` by executing the proteomic batch correction script
-   `src/r/proteomics/proteomic_batch_correction.R`. This batch correction is done via R to leverage PNNL's improved 
-   ComBat method that handles missing values.
-2. Gene lengths to convert RNA-seq counts to transcripts-per-million, saved as `data/biomart_gene_lengths.txt.gz`. 
-   These can be retrieved from [BioMart](https://useast.ensembl.org/info/docs/index.html), and require the columns 
-   `Transcript length (including UTRs and CDS)` and `Gene stable ID`.
-    * TODO: Move this to an automated .xml-based import for reproducibility.
-3. AML subtype gene lists from [van Galen et al (Table S3)](
-   https://www.cell.com/cms/10.1016/j.cell.2019.01.031/attachment/4a9ac427-eefb-40b8-b4dc-1f6595836ea2/mmc3.xlsx), 
-   saved as `data/mmc3.xlsx` (the default file name from the download link). This download can't be automated due to
-   security protocols on the source website.
-
-Data on Synapse is downloaded directly through Synapse's Python client. To use, you'll need to include a `.txt` file 
-with a personal access token that you can generate [here](
-https://accounts.synapse.org/authenticated/personalaccesstokens). Once generated, save the token to `auth_token.txt` in
-the `src/python/` directory.
+You can generate a personal access token [here](https://accounts.synapse.org/authenticated/personalaccesstokens). 
+Once generated, save the token to `src/python/auth_token.txt`. This will allow the data import scripts to access any 
+files you have permission to access on Synapse.
 
 ## Code Execution
 
