@@ -78,3 +78,15 @@
         - filter rows separately for each sample group to remove rows with missingness fraction greater than a specified threshold
         - impute remaining missing values across all subset samples with row median
         - apply row-wise z-score normalization across subset samples 
+
+## 5. DIABLO
+
+### Prepare inputs
+- [prep_diablo_data.ipynb](./prep_diablo_data.ipynb)
+- [create_diablo_designs.ipynb](./create_diablo_designs.ipynb)
+
+### Run parameter tuning
+- run [MomDiablo.R](./MomDiablo.R) with "tune" option
+- shell script for running parameter tuning for all subsets: [run_diablo_tune.zsh](./run_diablo_tune.zsh)
+
+
