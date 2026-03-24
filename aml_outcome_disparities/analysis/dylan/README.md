@@ -2,7 +2,7 @@
 ## Setup
 - Follow instructions [here](../../src/python/README.md) to set up Python environment
     - must be able to import and use functions from [data import module](../../src/python/pilot/data_import.py)
-- intermediate data files and generated figures are saved in the (untracked) `_cache` and `figures` directories, respectively
+- intermediate data files and generated figures are saved in the (untracked) `_cache` and `_figures` directories, respectively
     - create these if they do not exist
 
 # Analysis
@@ -33,6 +33,7 @@
                 - features
 
 ## 2. Analyze combinations of different mutations, stratified by race
+- mutations of interest from [Stiff, et al. Nat. Genet. (2024)](https://doi.org/10.1038/s41588-024-01929-x)
 - [mutations.ipynb](./mutations.ipynb)
     - input: `_cache/meta.arrow`
     - output: `_figures/mutations_upset_race-stratified.png`
@@ -80,13 +81,28 @@
         - apply row-wise z-score normalization across subset samples 
 
 ## 5. DIABLO
+- [Singh, et al. Bioinformatics. (2019)](https://doi.org/10.1093/bioinformatics/bty1054)
+- In DIABLO parlance a "block" is a single -omics dataset, a component of a multiomics dataset.
 
 ### Prepare inputs
 - [prep_diablo_data.ipynb](./prep_diablo_data.ipynb)
+    - prepares input CSVs (one per block) for DIABLO analysis
 - [create_diablo_designs.ipynb](./create_diablo_designs.ipynb)
+    - writes design matrices to CSV files (input for DIABLO analysis):
+        - null design (all 0s)
+            - model not constrained by pre-defined correlations between blocks 
+        - design based on correlation between component 0 from single-block PLS-DA
+            - correlating compounent 0 projections from PLS-DA on single blocks is meant to capture the extent to which the different blocks capture variance related to phenotype (Mutant vs. WT)
+            - this imparts strong constraints on model optimization, usually leading to poorer classification performance but alsp hopefully a more coherent signature spanning the blocks.
 
 ### Run parameter tuning
 - run [MomDiablo.R](./MomDiablo.R) with "tune" option
 - shell script for running parameter tuning for all subsets: [run_diablo_tune.zsh](./run_diablo_tune.zsh)
+- [create_diablo_keepX.ipynb](./create_diablo_keepX.ipynb)
+    - Based on parameter tuning results, creates CSVs with the number of features to keep per block for each component (input for DIABLO analysis)
 
+### Run final DIABLO analysis
+- run [MomDiablo.R](./MomDiablo.R) with "final" option
+- shell script for running final analysis for all subsets: [run_diablo_final.zsh](./run_diablo_final.zsh)
+    - distance metric and number of components parameters are selected based on results from the tuning
 
