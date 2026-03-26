@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Query>
+<Query  virtualSchemaName = "default" formatter = "CSV" header = "1" uniqueRows = "1" count = "" datasetConfigVersion = "0.6" >
+	<Dataset name = "hsapiens_gene_ensembl" interface = "default" >
+		<Attribute name = "ensembl_gene_id" />
+		<Attribute name = "transcript_length" />
+		<Attribute name = "uniprot_gn_symbol" />
+	</Dataset>
+</Query>
