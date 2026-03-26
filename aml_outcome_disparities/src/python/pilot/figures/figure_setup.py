@@ -6,9 +6,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 import numpy as np
+import pandas as pd
 import statsmodels.api as sm
 from matplotlib.patches import Ellipse
 from numpy.typing import ArrayLike
+from scipy.stats import false_discovery_control, ttest_ind
+from sklearn.preprocessing import LabelEncoder
 from statsmodels.regression.linear_model import RegressionResults
 
 matplotlib.rcParams["axes.labelsize"] = 8
@@ -143,7 +146,7 @@ def run_ols(
 
 def get_setup(
     n_rows: int, n_cols: int, fig_params: Dict[str, Any] | None = None
-) -> tuple[plt.Figure, np.ndarray]:
+) -> tuple[plt.Figure, np.ndarray | plt.Axes]:
     """
     Builds subplot figure and axes.
 
@@ -166,3 +169,91 @@ def get_setup(
     fig, axes = plt.subplots(n_rows, n_cols, **fig_params)
 
     return fig, axes
+
+
+def compare_means(
+    data: pd.DataFrame,
+    groups: Iterable,
+    x_within: float,
+    x_between: float,
+    ax: plt.Axes,
+    alternative: str = "two-sided",
+    star_only: bool = False,
+    bracket_height: float = 0.01,
+    bracket_space: float = 0.05
+) -> plt.Axes:
+    """
+    Compares means of two groups via t-test and denotes p-value in plot.
+
+    Args:
+        data (pd.DataFrame): Data to compare between groups.
+        groups (Iterable): Group membership for each row in data.
+        x_within (float): Space between groups within each compared measurement.
+        x_between (float): Space between each measurement.
+        ax (plt.Axes): Axes to add significance test to.
+        alternative (str): Alternative hypothesis to test. Accepts same values
+            as scipy.stats.ttest_ind.
+        star_only (bool, default: False): Use * in place of exact p-values.
+        bracket_height (float, default: 0.05): Height of bracket.
+        bracket_space (float, default: 0.05): Space between bracket and max
+            measurement value.
+
+    Returns
+        plt.Axes: Matplotlib axes.
+    """
+    if alternative not in ["two-sided", "less", "greater"]:
+        raise ValueError("alternative must be one of 'two-sided', 'less', "
+                         "or 'greater'.")
+
+    # Encode groups for standardized use
+    le = LabelEncoder()
+    groups = le.fit_transform(groups)
+
+    # Perform t-test, correct for FDR
+    res = ttest_ind(
+        data.loc[groups == 0, :],
+        data.loc[groups == 1, :],
+        nan_policy="omit",
+        alternative=alternative
+    )
+    p_values = false_discovery_control(res.pvalue)
+
+    # Convert p-values to *
+    if star_only:
+        stars = np.repeat("n.s.", len(p_values))
+        stars[p_values < 0.05] = "*"
+        stars[p_values < 0.01] = "**"
+        stars[p_values < 0.001] = "***"
+
+    # Add comparison brackets
+    vert_scale = ax.get_ylim()
+    vert_scale = vert_scale[1] - vert_scale[0]
+
+    for index, (p_value, column) in enumerate(zip(p_values, data.columns)):
+        col_max = data.loc[:, column].max()
+        x_pos = [index * x_between] * 2 + [index * x_between + x_within] * 2
+        y_pos = [
+            col_max + vert_scale * bracket_space,
+            col_max + vert_scale * (bracket_space + bracket_height),
+            col_max + vert_scale * (bracket_space + bracket_height),
+            col_max + vert_scale * bracket_space
+        ]
+        ax.plot(x_pos, y_pos, color="black")
+        if star_only:
+            ax.text(
+                index * x_between + x_within / 2,
+                col_max + vert_scale * (bracket_space + bracket_height),
+                s=stars[index],
+                ha="center",
+                va="bottom"
+            )
+        else:
+            ax.text(
+                index * x_between + x_within / 2,
+                col_max + vert_scale * (bracket_space + bracket_height),
+                s=round(p_values[index], 4),
+                ha="center",
+                va="bottom"
+            )
+
+    return ax

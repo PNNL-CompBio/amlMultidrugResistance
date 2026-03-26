@@ -1,5 +1,5 @@
 import requests
-from os import PathLike
+from os import makedirs, PathLike
 from os.path import abspath, dirname, exists, join, splitext
 from typing import Iterable
 
@@ -70,6 +70,8 @@ def preranked_enrichment(
     if gene_libraries is None:
         gene_libraries = ["GO_Biological_Process_2025"]
 
+    makedirs(output_path, exist_ok=True)
+
     # Iterate through queued libraries
     for library in gene_libraries:
         # Runs pre-ranked enrichment
@@ -85,7 +87,7 @@ def preranked_enrichment(
                 continue
 
             # Export results to .csv
-            out_file = output_path + "_" + library + f"_{exp}expressed"
+            out_file = output_path + library + f"_{exp}expressed"
             df.to_csv(out_file + ".csv")
 
             # Trims term tags if using GO Biological Process
