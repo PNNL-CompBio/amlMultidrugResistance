@@ -85,7 +85,7 @@ def call_mutations(
     # Track all patients with calls
     # Those without any recurrent may be interesting to keep--as a WES, a lack
     # of calls should indicate a lack of mutations
-    all_patients = mutation_calls.loc[:, "original_id"].unique()
+    all_patients = pd.Index(mutation_calls.loc[:, "original_id"].unique())
 
     # Trim to nonsynonymous mutations
     mutation_calls = mutation_calls.loc[
@@ -123,7 +123,18 @@ def call_mutations(
         columns="symbol",
         values="value"
     )
-    recurrent.fillna("WT", inplace=True)
+
+    # Adds patients in WES without recurrent mutations
+    recurrent = pd.concat(
+        [
+            recurrent,
+            pd.DataFrame(
+                "WT",
+                index=all_patients.difference(recurrent.index),
+                columns=recurrent.columns
+            )
+        ]
+    )
 
     return recurrent
 
@@ -537,10 +548,10 @@ def plex_correct_proteomics(
         pilot_data_plex.index.intersection(ba_data_plex.index)
     ]
     bridging.loc[:] = bridging.index + "-Bridge"
-    pilot_data_data_plex.rename(index=bridging, inplace=True)
+    pilot_data_plex.rename(index=bridging, inplace=True)
 
     # Concatenate plex into one array
-    plex = pd.concat([ba_data_plex, pilot_data_data_plex], axis=0)
+    plex = pd.concat([ba_data_plex, pilot_data_plex], axis=0)
 
     # Source R batch correction script
     r_source = ro.r["source"]
@@ -967,7 +978,6 @@ def import_meta(
         preserved_mutations = mutations.columns.intersection(meta.columns)
 
         # Update non-FLT3/non-NPM1 mutations
-        preserved_mutations = preserved_mutations.drop(["FLT3", "NPM1"])
         meta.loc[
             mutations.index.intersection(meta.index),
             preserved_mutations
@@ -980,7 +990,7 @@ def import_meta(
         meta = meta.loc[
             :,
             list(meta.loc[:, :"ALT"].columns[:-1]) +
-            ["FLT3_ITD", "NPM1"] +
+            ["FLT3_ITD"] +
             list(preserved_mutations)
         ]
 
@@ -990,6 +1000,15 @@ def import_meta(
             mutations.index.intersection(meta.index),
             "WES_call"
         ] = True
+
+    # Add FLT3-ITD to FLT3 mutation calls
+    meta.loc[
+        np.logical_or(
+            meta.loc[:, "FLT3"] == "Mutant",
+            meta.loc[:, "FLT3_ITD"] == "Mutant"
+        ),
+        "FLT3"
+    ] = "Mutant"
 
     return meta
 
