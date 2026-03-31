@@ -106,3 +106,6 @@
 - shell script for running final analysis for all subsets: [run_diablo_final.zsh](./run_diablo_final.zsh)
     - distance metric and number of components parameters are selected based on results from the tuning
 
+## 6. Single -ome differential expression
+- [differential_expression.ipynb](./differential_expression.ipynb)
+    - perform basic differential expression analysis (Welch's t-test) to identify top features within each block for all mutation state comparisons
