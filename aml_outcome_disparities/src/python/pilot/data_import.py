@@ -956,6 +956,14 @@ def import_meta(
             inplace=True,
         )
 
+        # Reorders columns, putting study/source meta-data to the left and
+        # mutation data to the right
+        col_order = list(meta.loc[:, :"Race"].columns) + ["Source", "Study"]
+        col_order = col_order + sorted(
+            list(meta.drop(col_order, axis=1).columns)
+        )
+        meta = meta.loc[:, col_order]
+
     # Standardizes Race column
     meta.replace(
         {"Race": {"Declined": "Unknown", np.nan: "Unknown"}}, inplace=True
@@ -977,21 +985,13 @@ def import_meta(
         # Trims to mutations already in meta data
         preserved_mutations = mutations.columns.intersection(meta.columns)
 
-        # Update non-FLT3/non-NPM1 mutations
+        # Update mutation calls
         meta.loc[
             mutations.index.intersection(meta.index),
             preserved_mutations
         ] = mutations.loc[
             mutations.index.intersection(meta.index),
             preserved_mutations
-        ]
-
-        # Update meta data mutation calls
-        meta = meta.loc[
-            :,
-            list(meta.loc[:, :"ALT"].columns[:-1]) +
-            ["FLT3_ITD"] +
-            list(preserved_mutations)
         ]
 
         # Adds column to denote mutation call source
