@@ -74,6 +74,22 @@
             - `_cache/W_NRAS-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
             - `_cache/W_NRAS-WT.arrow`: combined -omics data table for selected subset
             - `_figures/block-feature-counts_W_NRAS-WT.png`: plot of feature counts before and after subsetting
+        - Black patients: FLT3-ITD mutant vs. WT
+            - `_cache/B_FLT3-ITD-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
+            - `_cache/B_FLT3-ITD-WT.arrow`: combined -omics data table for selected subset
+            - `_figures/block-feature-counts_B_FLT3-ITD-WT.png`: plot of feature counts before and after subsetting
+        - White patients: FLT3-ITD mutant vs. WT
+            - `_cache/W_FLT3-ITD-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
+            - `_cache/W_FLT3-ITD-WT.arrow`: combined -omics data table for selected subset
+            - `_figures/block-feature-counts_W_FLT3-ITD-WT.png`: plot of feature counts before and after subsetting
+        - Black patients: FLT3-ITDxNPM1 mutant vs. WT
+            - `_cache/B_FLT3-ITDxNPM1-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
+            - `_cache/B_FLT3-ITDxNPM1-WT.arrow`: combined -omics data table for selected subset
+            - `_figures/block-feature-counts_B_FLT3-ITDxNPM1-WT.png`: plot of feature counts before and after subsetting
+        - White patients: FLT3-ITDxNPM1 mutant vs. WT
+            - `_cache/W_FLT3-ITDxNPM1-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
+            - `_cache/W_FLT3-ITDxNPM1-WT.arrow`: combined -omics data table for selected subset
+            - `_figures/block-feature-counts_W_FLT3-ITDxNPM1-WT.png`: plot of feature counts before and after subsetting
     - during subsetting, the omics data has some filtering/normalization applied:
         - filter columns to only include the selected samples for the subset (from WT and mutant sample groups)
         - filter rows separately for each sample group to remove rows with missingness fraction greater than a specified threshold
