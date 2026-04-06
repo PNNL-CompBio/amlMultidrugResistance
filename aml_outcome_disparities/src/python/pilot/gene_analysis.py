@@ -114,6 +114,8 @@ def preranked_enrichment(
                 df.loc[row, "Term"] = term
 
             # Plot dotplot
+            if (df.loc[:, "FDR q-val"] == 0).all():
+                df.loc[:, "FDR q-val"] += 1E-6
             gp.dotplot(
                 df,
                 column="FDR q-val",
