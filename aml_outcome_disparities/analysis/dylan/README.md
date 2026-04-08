@@ -16,7 +16,6 @@
             - Study
         - Mutation states (important genes highlighted in Eisfeld paper)
             - For all genes, the "Not measured" label is converted to "WT", proportions pre-conversion included for reference
-            - IDH1 and IDH2 to be combined into single IDH1+IDH2 mutant flag
             - All mutation states columns will be converted to boolean, True indicates mutant
             - filter to only include samples with race labeled as "White" or "Black"
     - input:
@@ -45,7 +44,8 @@
         - Age:
             - `_figures/age_comparison_all.png`
             - `_figures/age_comparison_NPM1.png`
-            - `_figures/age_comparison_NRAS.png`
+            - `_figures/age_comparison_FLT3-ITD.png`
+            - `_figures/age_comparison_NPM1xFLT3-ITD.png`
             - `_figures/age_comparison_WT.png`
         - Sex 
             - `_figures/sex_comparison_all.png`
@@ -58,6 +58,7 @@
         - `_cache/meta.arrow`
         - `_cache/combined.arrow`
     - output:
+        - summary of omics data coverage for samples: `_figures/mutations_omics_coverage_sample_counts.png`
         - Black patients: NPM1 mutant vs. WT
             - `_cache/B_NPM1-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
             - `_cache/B_NPM1-WT.arrow`: combined -omics data table for selected subset
@@ -66,14 +67,6 @@
             - `_cache/W_NPM1-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
             - `_cache/W_NPM1-WT.arrow`: combined -omics data table for selected subset
             - `_figures/block-feature-counts_W_NPM1-WT.png`: plot of feature counts before and after subsetting
-        - Black patients: NRAS mutant vs. WT
-            - `_cache/B_NRAS-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
-            - `_cache/B_NRAS-WT.arrow`: combined -omics data table for selected subset
-            - `_figures/block-feature-counts_B_NRAS-WT.png`: plot of feature counts before and after subsetting
-        - White patients: NRAS mutant vs. WT
-            - `_cache/W_NRAS-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
-            - `_cache/W_NRAS-WT.arrow`: combined -omics data table for selected subset
-            - `_figures/block-feature-counts_W_NRAS-WT.png`: plot of feature counts before and after subsetting
         - Black patients: FLT3-ITD mutant vs. WT
             - `_cache/B_FLT3-ITD-WT_cols.pkl`: tuple of lists (WT columns, mutant columns)
             - `_cache/B_FLT3-ITD-WT.arrow`: combined -omics data table for selected subset
@@ -91,37 +84,11 @@
             - `_cache/W_FLT3-ITDxNPM1-WT.arrow`: combined -omics data table for selected subset
             - `_figures/block-feature-counts_W_FLT3-ITDxNPM1-WT.png`: plot of feature counts before and after subsetting
     - during subsetting, the omics data has some filtering/normalization applied:
-        - filter columns to only include the selected samples for the subset (from WT and mutant sample groups)
-        - filter rows separately for each sample group to remove rows with missingness fraction greater than a specified threshold
-        - impute remaining missing values across all subset samples with row median
-        - apply row-wise z-score normalization across subset samples 
+        - filter columns to only include the selected samples for the subset (with two sample groups)
+        - filter rows to remove those that do not have at least 5 non-null values in WT and mutant groups
+        - apply row-wise z-score normalization across subset samples that are not null
+            - require at least 5 samples within WT and mutant groups to z-score normalize
 
-## 5. DIABLO
-- [Singh, et al. Bioinformatics. (2019)](https://doi.org/10.1093/bioinformatics/bty1054)
-- In DIABLO parlance a "block" is a single -omics dataset, a component of a multiomics dataset.
-
-### Prepare inputs
-- [prep_diablo_data.ipynb](./prep_diablo_data.ipynb)
-    - prepares input CSVs (one per block) for DIABLO analysis
-- [create_diablo_designs.ipynb](./create_diablo_designs.ipynb)
-    - writes design matrices to CSV files (input for DIABLO analysis):
-        - null design (all 0s)
-            - model not constrained by pre-defined correlations between blocks 
-        - design based on correlation between component 0 from single-block PLS-DA
-            - correlating compounent 0 projections from PLS-DA on single blocks is meant to capture the extent to which the different blocks capture variance related to phenotype (Mutant vs. WT)
-            - this imparts strong constraints on model optimization, usually leading to poorer classification performance but alsp hopefully a more coherent signature spanning the blocks.
-
-### Run parameter tuning
-- run [MomDiablo.R](./MomDiablo.R) with "tune" option
-- shell script for running parameter tuning for all subsets: [run_diablo_tune.zsh](./run_diablo_tune.zsh)
-- [create_diablo_keepX.ipynb](./create_diablo_keepX.ipynb)
-    - Based on parameter tuning results, creates CSVs with the number of features to keep per block for each component (input for DIABLO analysis)
-
-### Run final DIABLO analysis
-- run [MomDiablo.R](./MomDiablo.R) with "final" option
-- shell script for running final analysis for all subsets: [run_diablo_final.zsh](./run_diablo_final.zsh)
-    - distance metric and number of components parameters are selected based on results from the tuning
-
-## 6. Single -ome differential expression
+## 5. Single -ome differential expression
 - [differential_expression.ipynb](./differential_expression.ipynb)
     - perform basic differential expression analysis (Welch's t-test) to identify top features within each block for all mutation state comparisons
