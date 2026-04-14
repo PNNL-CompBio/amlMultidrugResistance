@@ -92,3 +92,8 @@
 ## 5. Single -ome differential expression
 - [differential_expression.ipynb](./differential_expression.ipynb)
     - perform basic differential expression analysis (Welch's t-test) to identify top features within each block for all mutation state comparisons
+
+## 6. Associate lipids with proteins
+- [associate_lipids_and_proteins.ipynb](./associate_lipids_and_proteins.ipynb)
+    - Uses coexpression (Spearman correlation) of lipids and proteins (Proteomics and Transcriptomics) to find proteins that are associated with significantly differentially expressed lipids
+    - This generates lists of proteins that can be used for pathway enrichment

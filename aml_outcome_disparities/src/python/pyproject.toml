@@ -16,6 +16,7 @@ dependencies = [
     "kaleido>=1.2.0",
     "matplotlib>=3.10.5",
     "mygene>=3.2.2",
+    "networkx>=3.6.1",
     "numba>=0.62.0",
     "numpy>=2.2.6",
     "openpyxl>=3.1.5",
