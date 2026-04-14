@@ -20,7 +20,7 @@ library(synapser)
 
 ## Statistics and enrichment analysis 
 
-Having evaluated the various datasets in the previous notebook, we are moving forward with "version 2" of the updated data. Will now run some more statistics for different comparisons of interest, as well as downstream enrichment analyses.
+Having evaluated the various datasets in the previous notebook, I plan to move forward with "version 2" of the updated data. Will now do some more QC and initial investigation of this dataset, then run some more statistics for different comparisons of interest, as well as downstream enrichment analyses.
 
 ```{r import data, message=FALSE}
 #For pulling files from synapse
@@ -38,238 +38,174 @@ v2_filtprot$cell_ven <- paste0(v2_filtprot$cellType, "_", v2_filtprot$Ven)
 v2_filtprot$cell_azaven <- paste0(v2_filtprot$cellType, "_", v2_filtprot$Aza.Ven)
 ```
 
-This section sets up some limma analysis to compare cell types. First comparison is CD14+ vs CD34+ as done in the previous script, and an additional comparison of MSC vs non-MSC is also included.
+Taking some initial looks at the dataset via PCA plots- how do the samples separate by cell type, sort type, batch, etc?
+
+```{r Data Visualization, message=FALSE}
+##Note: not sure if this for loop will print the PCA plots when notebook is knit- commenting out for now and manually running all PCAs but might change later
+#Make PCA plots for some factors in the metadata
+# phenos <- c("batch", "patient", "cellType", "cellsort", "Sort.Type", "Aza", "Ven", "Aza.Ven")
+# for (i in 1:length(phenos)) {
+#   plot_pca(v2_filtprot, phenotype = phenos[i]) + ggtitle("PCA: Sorted Cell DIA Proteomics")
+#   ggsave(paste0("global_PCA_by_", phenos[i], ".png"))
+# }
+
+plot_pca(v2_filtprot, "batch") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+plot_pca(v2_filtprot, "patient") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+plot_pca(v2_filtprot, "cellType") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+plot_pca(v2_filtprot, "cellsort") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+plot_pca(v2_filtprot, "Sort.Type") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+plot_pca(v2_filtprot, "Aza") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+plot_pca(v2_filtprot, "Aza.Ven") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+plot_pca(v2_filtprot, "Ven") + ggtitle("PCA: Sorted Cell DIA Proteomics")
+
+#There definitely seems to be some effect of sort type (flow vs. bead) evident in the data; wondering if the cell types will separate out more if we isolate only one sort type
+v2_filtprot_flow <- v2_filtprot[, pData(v2_filtprot)$Sort.Type == "Flow"]
+v2_filtprot_bead <- v2_filtprot[, pData(v2_filtprot)$Sort.Type == "Bead"]
+
+plot_pca(v2_filtprot_flow, "cellType") + ggtitle("PCA: Sorted Cell DIA Proteomics, Flow-sorted cells")
+plot_pca(v2_filtprot_bead, "cellType") + ggtitle("PCA: Sorted Cell DIA Proteomics, Bead-sorted cells")
+
+#A little better cell type separation within the flow- or bead-sorted samples
+```
+
+These PCA plots are a little concerning. There is not a clear separation of samples based on cell type, and there appears to be some effect of batch on the data. The batch effect is probably not too concerning in the long run, as within each subject, all samples were run in the same batch, so as long as patient is used as a covariate in limma models checking for the effects of other factors, this shouldn't be a big deal.
+
+One thing that was looked at in previous iterations of the data was the actual abundance values of CD14 or CD34 in their respective cell types. CD14+ subpopulations that a) are missing CD14 values, or b) have higher CD34 values than CD14, might want to be flagged as outliers and removed from the dataset. The same is true for CD34+ samples--those without a CD34 value, or with higher CD14 values, should be flagged. Let's look into this.
+
+```{r Investigating CD14/CD34 ratios, message=FALSE}
+#Pull expression data and pData from MSnSet
+mat <- exprs(v2_filtprot)
+pd  <- pData(v2_filtprot)
+
+#Alignment check to make sure row names and column names are in same order (they should be)
+if (!identical(rownames(pd), colnames(mat))) {
+  stop("Alignment check failed: rownames(pData(ms)) are not identical to colnames(exprs(ms)).")
+}
+
+#Now pull the values for CD14 and CD34 within each sample
+i_cd14 <- which(rownames(mat) == "CD14")
+i_cd34 <- which(rownames(mat) == "CD34")
+
+cd14_vals <- colMeans(mat[i_cd14, , drop = FALSE], na.rm = TRUE)
+cd34_vals <- colMeans(mat[i_cd34, , drop = FALSE], na.rm = TRUE)
+
+#Now create a dataframe with these values plus cellType for each sample
+out <- data.frame(
+  Sample     = colnames(mat),
+  cellType   = pd$cellType,
+  CD14_value = unname(cd14_vals),
+  CD34_value = unname(cd34_vals),
+  row.names = NULL,
+  check.names = FALSE
+)
+
+#Generate CD14/CD34 ratio for defining outliers
+out$ratio <- out$CD14_value/out$CD34_value
+
+#Some ratio values are negative, so rather than using ratio we will just require respective cell type markers to be higher, or else samples are flagged as outliers
+#Also make sure to not flag samples where the non-enriched cellType marker is absent (i.e. CD14+ cells with a CD14 value but not a CD34 value- these should be kept)
+out$outlier <- with(out,
+  (cellType == "CD14" & (is.na(CD14_value) |
+                         (!is.na(CD14_value) & !is.na(CD34_value) & CD14_value < CD34_value))) |
+  (cellType == "CD34" & (is.na(CD34_value) |
+                         (!is.na(CD14_value) & !is.na(CD34_value) & CD34_value < CD14_value)))
+)
+
+#This flags 15 of the 79 samples as outliers based on CD14 vs CD34 abundance. Let's remove these samples from the MSnSet, and see how the PCA plots for cell type look
+keep <- filter(out, !outlier == "TRUE")
+keep <- keep$Sample
+
+v2_filtprot_no_outliers <- v2_filtprot[, colnames(exprs(v2_filtprot)) %in% keep]
+
+plot_pca(v2_filtprot_no_outliers, "cellType")
+plot_pca(v2_filtprot_no_outliers, "cellsort")
+plot_pca(v2_filtprot_no_outliers, "patient")
+
+#Much better cell type separation on PCA plot!
+#The one CD34+ sample that is clustering with CD14+ happens to be a sample with very low protein coverage (~33% of the data present in this sample). Could think about removing this sample on those grounds but will leave for now.
+```
+
+This now seems like a cleaner version of the dataset to move forward with for statistics, having removed the samples that don't show enrichment of CD14 vs CD34 based on proteomic abundance.
+
+This section sets up some limma analysis to compare cell types. First we will compare different cell types (CD14+, CD34+, and MSC) against each other. The following comparisons will be made:
+  1) Direct comparisons of 2 specific cell types, using the "cellType" factor from metadata
+      1a) CD14+ vs CD34+
+      1b) MSC vs CD14+
+      1c) MSC vs. CD34+
+  2) Comparisons of 1 specific cell type vs all other samples (using the CD14, CD34, or MSC factors from metadata)
+      2a) CD14+ vs CD14- (i.e. grouping the CD34+ and MSC cells)
+      2b) CD34+ vs CD34- (i.e. grouping the CD14+ and MSC cells)
+      2c) MSC vs non-MSC (i.e. grouping the CD14+ and CD34+ cells)
 
 ```{r limma analysis, cell types, message=FALSE}
-##Testing CD14 vs CD34; all samples, controlling for sort type (bead vs. flow) and patient
-contrasts_CD <- c("cellTypeCD14 - cellTypeCD34")
+##Specific comparisons, controlling for sort type (bead vs. flow) and patient
+contrasts_cells <- c("cellTypeCD14 - cellTypeCD34",
+                     "cellTypeMSC - cellTypeCD14",
+                     "cellTypeMSC - cellTypeCD34")
 
-res_CD <- limma_contrasts(v2_filtprot,
+res_cells <- limma_contrasts(v2_filtprot_no_outliers,
                           model.str = "~0 + cellType + Sort.Type + patient",
                           coef.str = "cellType",
-                          contrasts = contrasts_CD) %>%
+                          contrasts = contrasts_cells) %>%
   group_by(contrast) %>%
   mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
 
-#Tallies and pvalue histograms
-res_CD %>% filter(adj.P.Val< 0.05) %>%
-  group_by(contrast) %>%
-  tally()
+##Additional cell type comparisons, controlling for patient
+##Something is up here- if I include "cellType" or "cellsort" in the model.str argument for these comparisons, I get a warning message saying something like "Coefficients not estimable: cellsortMSC_Flow". The number of significant features in these comparisons changes wildly depending on whether a covariate like this is included or not. Seems like this is due to covariates being perfectly confounding.
 
-ggplot(res_CD) +
-  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
-                 color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
-  theme_bw()
-
-
-##Testing MSC vs non-MSC; controlling for cell type and patient
 contrasts_MSC <- c("MSCMSC - MSCNon_MSC")
+contrasts_CD14 <- c("CD14Pos - CD14Neg")
+contrasts_CD34 <- c("CD34Pos - CD34Neg")
 
-res_MSC <- limma_contrasts(v2_filtprot,
-                           model.str = "~0 + MSC + cellType + patient",
+res_MSC <- limma_contrasts(v2_filtprot_no_outliers,
+                           model.str = "~0 + MSC + patient",
                            coef.str = "MSC",
                            contrasts = contrasts_MSC) %>%
   group_by(contrast) %>%
   mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
 
-res_MSC %>% filter(adj.P.Val< 0.05) %>%
+res_CD14 <- limma_contrasts(v2_filtprot_no_outliers,
+                           model.str = "~0 + CD14 + patient",
+                           coef.str = "CD14",
+                           contrasts = contrasts_CD14) %>%
+  group_by(contrast) %>%
+  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
+
+res_CD34 <- limma_contrasts(v2_filtprot_no_outliers,
+                           model.str = "~0 + CD34 + patient",
+                           coef.str = "CD34",
+                           contrasts = contrasts_CD34) %>%
+  group_by(contrast) %>%
+  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
+
+#Adjust contrast names in results so they're more clear/ can rbind together
+res_MSC$contrast = "MSC - Non_MSC"
+res_CD14$contrast = "CD14_Pos - CD14_Neg"
+res_CD34$contrast = "CD34_Pos - CD34_Neg"
+
+res_cells <- rbind(res_cells, res_MSC, res_CD14, res_CD34)
+
+res_cells %>% filter(adj.P.Val< 0.05) %>%
   group_by(contrast) %>%
   tally()
 
 #Tallies and pvalue histograms
-ggplot(res_MSC) +
+ggplot(res_cells) +
   geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
                  color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
+  facet_wrap(vars(contrast), ncol = 3) +
   theme_bw()
 
-```
+#Heatmap to see how these various contrasts compare with each other
+res_list <- split(res_cells, res_cells$contrast)
 
-This section sets up more limma analysis, this time looking at drug sensitivity. We have data for sensitivity to venetoclax, azacytidine, or combination of Ven + Aza. For each drug, we compare sensitive vs resistant across the entire dataset (controlling for cell type and patient), as well as within each cell type (CD14+, CD34+, MSC) individually.
-
-```{r limma analsis, drug sensitivities, message=FALSE}
-##Testing Aza.Ven sensitivity
-#All samples together; controlling for celltype+sort type (cellsort) and patient
-contrasts_azaven <- c("Aza.VenResistant - Aza.VenSensitive")
-
-res_azaven_all <- limma_contrasts(v2_filtprot,
-                                  model.str = "~0 + Aza.Ven + cellsort + patient",
-                                  coef.str = "Aza.Ven",
-                                  contrasts = contrasts_azaven) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-#Tallies and pvalue histograms
-res_azaven_all %>% filter(adj.P.Val< 0.05) %>%
-  group_by(contrast) %>%
-  tally()
-
-ggplot(res_azaven_all) +
-  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
-                 color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
-  theme_bw()
-
-#Separately within each cell type; controlling for sort type and patient (?)
-contrasts_azaven_celltypes <- c("cell_azavenCD14_Resistant - cell_azavenCD14_Sensitive",
-                                "cell_azavenCD34_Resistant - cell_azavenCD34_Sensitive",
-                                "cell_azavenMSC_Resistant - cell_azavenMSC_Sensitive")
-
-res_azaven_celltypes <- limma_contrasts(v2_filtprot,
-                                        model.str = "~0 + cell_azaven + Sort.Type",
-                                        coef.str = "cell_azaven",
-                                        contrasts = contrasts_azaven_celltypes) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-
-res_azaven_celltypes2 <- limma_contrasts(v2_filtprot,
-                                         model.str = "~0 + cell_azaven + Sort.Type + patient",
-                                         coef.str = "cell_azaven",
-                                         contrasts = contrasts_azaven_celltypes) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-#Tallies and pvalue histograms
-res_azaven_celltypes %>% filter(adj.P.Val< 0.05) %>%
-  group_by(contrast) %>%
-  tally()
-
-ggplot(res_azaven_celltypes) +
-  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
-                 color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
-  theme_bw()
-
-
-##Testing Aza sensitivity
-#All samples together; controlling for celltype+sort type (cellsort) and patient
-contrasts_aza <- c("AzaResistant - AzaSensitive")
-
-res_aza_all <- limma_contrasts(v2_filtprot,
-                               model.str = "~0 + Aza + cellsort + patient",
-                               coef.str = "Aza",
-                               contrasts = contrasts_aza) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-#Tallies and pvalue histograms
-res_aza_all %>% filter(adj.P.Val< 0.05) %>%
-  group_by(contrast) %>%
-  tally()
-
-ggplot(res_aza_all) +
-  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
-                 color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
-  theme_bw()
-
-#Separately within each cell type; controlling for sort type and patient (?)
-contrasts_aza_celltypes <- c("cell_azaCD14_Resistant - cell_azaCD14_Sensitive",
-                             "cell_azaCD34_Resistant - cell_azaCD34_Sensitive",
-                             "cell_azaMSC_Resistant - cell_azaMSC_Sensitive")
-
-res_aza_celltypes <- limma_contrasts(v2_filtprot,
-                                     model.str = "~0 + cell_aza + Sort.Type",
-                                     coef.str = "cell_aza",
-                                     contrasts = contrasts_aza_celltypes) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-
-res_aza_celltypes2 <- limma_contrasts(v2_filtprot,
-                                      model.str = "~0 + cell_aza + Sort.Type + patient",
-                                      coef.str = "cell_aza",
-                                      contrasts = contrasts_aza_celltypes) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-#Tallies and pvalue histograms
-res_aza_celltypes %>% filter(adj.P.Val< 0.05) %>%
-  group_by(contrast) %>%
-  tally()
-
-ggplot(res_aza_celltypes) +
-  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
-                 color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
-  theme_bw()
-
-
-##Testing Ven sensitivity
-#All samples together; controlling for celltype+sort type (cellsort) and patient
-contrasts_ven <- c("VenResistant - VenSensitive")
-
-res_ven_all <- limma_contrasts(v2_filtprot,
-                               model.str = "~0 + Ven + cellsort + patient",
-                               coef.str = "Ven",
-                               contrasts = contrasts_ven) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-#Tallies and pvalue histograms
-res_ven_all %>% filter(adj.P.Val< 0.05) %>%
-  group_by(contrast) %>%
-  tally()
-
-ggplot(res_ven_all) +
-  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
-                 color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
-  theme_bw()
-
-#Separately within each cell type; controlling for sort type and patient (?)
-contrasts_ven_celltypes <- c("cell_venCD14_Resistant - cell_venCD14_Sensitive",
-                             "cell_venCD34_Resistant - cell_venCD34_Sensitive",
-                             "cell_venMSC_Resistant - cell_venMSC_Sensitive")
-
-
-res_ven_celltypes <- limma_contrasts(v2_filtprot,
-                                     model.str = "~0 + cell_ven + Sort.Type",
-                                     coef.str = "cell_ven",
-                                     contrasts = contrasts_ven_celltypes) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-
-res_ven_celltypes2 <- limma_contrasts(v2_filtprot,
-                                      model.str = "~0 + cell_ven + Sort.Type + patient",
-                                      coef.str = "cell_ven",
-                                      contrasts = contrasts_ven_celltypes) %>%
-  group_by(contrast) %>%
-  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
-
-#Tallies and pvalue histograms
-res_ven_celltypes2 %>% filter(adj.P.Val< 0.05) %>%
-  group_by(contrast) %>%
-  tally()
-
-ggplot(res_ven_celltypes2) +
-  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
-                 color = "black", fill = "grey") +
-  facet_wrap(vars(contrast), ncol = 4) +
-  theme_bw()
-```
-
-Comparing results from the various statistical analyses: generating heatmaps of correlations (logFC and t-statistic) and UpSet plots of significant proteins (adjusted p-value <0.05).
-
-```{r heatmaps and upset plots of various stats, message=FALSE}
-##Correlation heatmap of results
-dfs <- list(
-  "CD14/CD34" = res_CD, 
-  "MSC" = res_MSC,
-  "Aza+Ven" = res_azaven_all, 
-  "Aza" = res_aza_all,
-  "Ven" = res_ven_all)
-
-logfc_list <- lapply(dfs, function(x) {
+logfc_list <- lapply(res_list, function(x) {
   v <- x$logFC
   names(v) <- x$feature   # adjust if your gene column has another name
   v
 })
 
-tstat_list <- lapply(dfs, function(x) {
+tstat_list <- lapply(res_list, function(x) {
   v <- x$t
   names(v) <- x$feature   # adjust if your gene column has another name
   v
@@ -313,8 +249,9 @@ pheatmap(
   main = "log(FC) Correlations",
 )
 
+##UpSet plot for these different comparisons
 ##UpSet plot: significant proteins
-sig_lists <- lapply(dfs, function(x) {
+sig_lists <- lapply(res_list, function(x) {
   subset(x, adj.P.Val < 0.05)$feature   # change padj / gene if needed
 })
 
@@ -322,14 +259,14 @@ sig_lists <- lapply(dfs, function(x) {
 upset_input <- UpSetR::fromList(sig_lists)
 
 # Create UpSet plot
-desired_order <- c("CD14/CD34", "MSC", "Aza+Ven", "Ven", "Aza")
+desired_order <- c("MSC - CD34", "MSC - CD14", "MSC - Non_MSC", "CD34_Pos - CD34_Neg", "CD14_Pos - CD14_Neg", "CD14 - CD34")
 
 UpSetR::upset(
   upset_input,
   sets = desired_order,
   keep.order = T,
   nsets = length(sig_lists),      # number of sets to show
-  # nintersects = 10,               # show all intersections (can limit if too many)
+  nintersects = 15,               # show all intersections (can limit if too many)
   order.by = "freq",              # order intersections by size
   sets.x.label = "Significant Genes (p.adj<0.05)",
   mainbar.y.label = "Intersection size",
@@ -338,285 +275,390 @@ UpSetR::upset(
 )
 ```
 
-For additional comparison, we import the statistics previously generated from this work.
+The results of these comparisons look interesting- lots of signal between many of the cell types and some correlations that make sense (for example, both CD14 analyses (directly against CD34 or against all non-CD14) correlate well, and anti-correlate with results that should have opposite directionality (MSC-CD14, or CD34+ vs non-CD34)). 
 
-```{r Comparisons with previous statistics, message=FALSE}
-#Import Belinda's previous DA data
-res_bel <- readxl::read_xlsx(synapser::synGet("syn74024893")$path, 
-                                 sheet = "Differential_expression")
-res_bel_drug <- filter(res_bel, Contrast == "Ven_Sensitive_vs_Resistant")
-res_bel <- filter(res_bel, Contrast == "CD14_Pos_vs_Neg")
+Need to figure out what's going on with the MSC vs Non_MSC comparison though- without any sort of cellType covariate (to account for CD14 and CD34 cells being so different), we get essentially no significance (only 23 proteins). MSC seem to show a decent signal when compared directly to CD14+ cells, and little signal when compared directly to CD34+ cells--this seems reasonable based on the updated PCA plots above, as MSC and CD34+ cells overlap significantly more. However, I'm still skeptical of the limma issues that arise in the last 3 models from this section and need to get this figured out.
 
-res_bel_drug_sig <- filter(res_bel_drug, adj.P.Val <=0.05)
-res_bel_sig <- filter(res_bel, adj.P.Val <=0.05)
+Next we will run some over-representation analysis (ORA) to look at pathway-level enrichments from the results.
 
-#Parse out my data for some comparisons
-res_CD_sig <- filter(res_CD, adj.P.Val <=0.05)
-res_ven_sig <- filter(res_ven_all, adj.P.Val <=0.05)
+```{r Enrichment analysis: ORA from clusterProfiler, cell type differences, message=FALSE}
+##Set background to all the features we tested
+ORA_background <- unique(res_cells$feature)
 
-res_ven_CD14 <- filter(res_ven_celltypes2, contrast == "CD14_Resistant - CD14_Sensitive")
-res_ven_CD34 <- filter(res_ven_celltypes2, contrast == "CD34_Resistant - CD34_Sensitive")
-res_ven_MSC <- filter(res_ven_celltypes2, contrast == "MSC_Resistant - MSC_Sensitive")
+##Pull lists of significant features from various comparisons
 
-res_ven_CD14_sig <- filter(res_ven_CD14, adj.P.Val <=0.05)
-res_ven_CD34_sig <- filter(res_ven_CD34, adj.P.Val <=0.05)
-res_ven_MSC_sig <- filter(res_ven_MSC, adj.P.Val <=0.05)
+#CD14+ vs CD34+ directly (no MSCs)
+CD14_up_v1 <- filter(res_cells, contrast == "CD14 - CD34" & adj.P.Val <=0.05 & logFC >0)
+CD14_up_v1 <- CD14_up_v1$feature
 
+CD34_up_v1 <- filter(res_cells, contrast == "CD14 - CD34" & adj.P.Val <=0.05 & logFC <0)
+CD34_up_v1 <- CD34_up_v1$feature
 
-##Venn Diagrams
-p <- plot(euler(list("Belinda"=res_bel_drug_sig$Gene,
-                     "Updated"=res_ven_sig$feature)), 
+#CD14+ or CD34+ vs all other cells (including MSCs)
+CD14_up_v2 <- filter(res_cells, contrast == "CD14_Pos - CD14_Neg" & adj.P.Val <=0.05 & logFC >0)
+CD14_up_v2 <- CD14_up_v2$feature
+
+CD14_down_v2 <- filter(res_cells, contrast == "CD14_Pos - CD14_Neg" & adj.P.Val <=0.05 & logFC <0)
+CD14_down_v2 <- CD14_down_v2$feature
+
+CD34_up_v2 <- filter(res_cells, contrast == "CD34_Pos - CD34_Neg" & adj.P.Val <=0.05 & logFC >0)
+CD34_up_v2 <- CD34_up_v2$feature
+
+CD34_down_v2 <- filter(res_cells, contrast == "CD34_Pos - CD34_Neg" & adj.P.Val <=0.05 & logFC <0)
+CD34_down_v2 <- CD34_down_v2$feature
+
+#How similar are these CD14+ or CD34+ results?
+p <- plot(euler(list("CD14 vs CD34"=CD14_up_v1,
+                     "CD14 vs all others"=CD14_up_v2)), 
           fills=list(fill=c('#0072b2','#d55e00'), 
                      alpha=c(0.5,0.5)),quantities = list(type = "counts"),
-          main="Protein ID Overlap: Ven Resistant vs Sensitive",
-          eulerr_options(labels = list(col = "black", fontsize = 20),
-                         quantities = list(col = "black", fontsize=20),
-                         main = list(col = "black", fontsize=16)))
+          main="Enriched in CD14+ cells")
 print(p)
 
-##More analysis in progress, will update later
+p <- plot(euler(list("CD34 vs CD14"=CD34_up_v1,
+                     "CD34 vs all others"=CD34_up_v2)), 
+          fills=list(fill=c('#0072b2','#d55e00'), 
+                     alpha=c(0.5,0.5)),quantities = list(type = "counts"),
+          main="Enriched in CD34+ cells")
+print(p)
+#Good overlap
 
-```
+#MSC against all others
+MSC_up_v1 <- filter(res_cells, contrast == "MSC - Non_MSC" & adj.P.Val <=0.05 & logFC >0)
+MSC_up_v1 <- MSC_up_v1$feature
 
-Using the results of the statistics generated above, we can run some pathway-level enrichment analysis (over-representation analysis, ORA) using functions form the clusterProfiler package.
+nonMSC_up_v1 <- filter(res_cells, contrast == "MSC - Non_MSC" & adj.P.Val <=0.05 & logFC <0)
+nonMSC_up_v1 <- nonMSC_up_v1$feature
 
-```{r Enrichment analysis: ORA from clusterProfiler, message=FALSE}
-##CD14 vs CD34
-CD14_up <- filter(res_CD, adj.P.Val <=0.05 & logFC >0)
-CD14_up <- CD14_up$feature
+#MSC against CD14
+MSC_up_v2 <- filter(res_cells, contrast == "MSC - CD14" & adj.P.Val <=0.05 & logFC >0)
+MSC_up_v2 <- MSC_up_v2$feature
 
-CD34_up <- filter(res_CD, adj.P.Val <0.05 & logFC <0)
-CD34_up <- CD34_up$feature
+CD14_up_v3 <- filter(res_cells, contrast == "MSC - CD14" & adj.P.Val <=0.05 & logFC <0)
+CD14_up_v3 <- CD14_up_v3$feature
 
-ORA_background <- res_CD$feature
+#MSC against CD34
+MSC_up_v3 <- filter(res_cells, contrast == "MSC - CD34" & adj.P.Val <=0.05 & logFC >0)
+MSC_up_v3 <- MSC_up_v3$feature
 
-ORA_CD14_up <- enrichGO(gene = CD14_up, 
+CD34_up_v3 <- filter(res_cells, contrast == "MSC - CD34" & adj.P.Val <=0.05 & logFC <0)
+CD34_up_v3 <- CD34_up_v3$feature
+
+
+##Significant feature lists are now set, let's run some ORA and generate plots
+#Pull some databases to use with clusterProfiler::enricher function
+msig_h <- msigdbr::msigdbr(species = "Homo sapiens", category = "H") %>%
+  dplyr::select(gs_name, gene_symbol) %>%
+  dplyr::rename(ont = gs_name, gene = gene_symbol)
+
+msig_BP <- msigdbr::msigdbr(species = "Homo sapiens", category = "C5", subcategory = "BP") %>%
+  dplyr::select(gs_name, gene_symbol) %>%
+  dplyr::rename(ont = gs_name, gene = gene_symbol)
+
+#Compare all CD14-related enrichments, using GO:BP or HALLMARK databases
+ORA_CD14_clusters <- list("Up: CD14 vs CD34" = CD14_up_v1,
+                          "Up: CD14 Pos vs Neg" = CD14_up_v2,
+                          "Down: CD34 Pos vs Neg" = CD34_down_v2, #does CD34-down align with CD14-up?
+                          "Up: CD14 vs MSC" = CD14_up_v3)
+
+ORA_CD14_combo <- compareCluster(geneClusters = ORA_CD14_clusters,
+                           fun = enrichGO,
+                           OrgDb = "org.Hs.eg.db", 
+                           ont="BP", 
+                           keyType = "SYMBOL",
+                           pAdjustMethod = "BH",
+                           universe = ORA_background)
+
+dotplot(ORA_CD14_combo, showCategory = 10) + ggtitle("ORA: CD14+ Enrichments")
+
+ORA_CD14_combo_hallmark <- compareCluster(geneClusters = ORA_CD14_clusters,
+                           fun = enricher, 
+                           TERM2GENE = msig_h, 
+                           pAdjustMethod = "BH",
+                           universe = ORA_background)
+
+dotplot(ORA_CD14_combo_hallmark, showCategory = 10) + ggtitle("ORA: CD14+ Enrichments")
+
+#Compare all CD34-related enrichments
+ORA_CD34_clusters <- list("Up: CD34 vs CD14" = CD34_up_v1,
+                          "Up: CD34 Pos vs Neg" = CD34_up_v2,
+                          "Down: CD14 Pos vs Neg" = CD14_down_v2, #does CD14-down align with CD34-up?
+                          "Up: CD34 vs MSC" = CD34_up_v3)
+
+ORA_CD34_combo <- compareCluster(geneClusters = ORA_CD34_clusters,
+                           fun = enrichGO,
+                           OrgDb = "org.Hs.eg.db", 
+                           ont="BP", 
+                           keyType = "SYMBOL",
+                           pAdjustMethod = "BH",
+                           universe = ORA_background)
+
+dotplot(ORA_CD34_combo, showCategory = 10) + ggtitle("ORA: CD34+ Enrichments")
+
+ORA_CD34_combo_hallmark <- compareCluster(geneClusters = ORA_CD34_clusters,
+                           fun = enricher, 
+                           TERM2GENE = msig_h, 
+                           pAdjustMethod = "BH",
+                           universe = ORA_background)
+
+dotplot(ORA_CD34_combo_hallmark, showCategory = 10) + ggtitle("ORA: CD34+ Enrichments")
+
+#Compare MSC vs CD14 results
+ORA_MSC_CD14_clusters <- list("Up: MSC" = MSC_up_v2,
+                              "Up: CD14+" = CD14_up_v3)
+
+ORA_MSC_CD14_combo <- compareCluster(geneClusters = ORA_MSC_CD14_clusters,
+                           fun = enrichGO,
+                           OrgDb = "org.Hs.eg.db", 
+                           ont="BP", 
+                           keyType = "SYMBOL",
+                           pAdjustMethod = "BH",
+                           universe = ORA_background)
+
+dotplot(ORA_MSC_CD14_combo, showCategory = 10) + ggtitle("ORA: MSC vs CD14+ Enrichments")
+
+ORA_MSC_CD14_combo_hallmark <- compareCluster(geneClusters = ORA_MSC_CD14_clusters,
+                           fun = enricher, 
+                           TERM2GENE = msig_h, 
+                           pAdjustMethod = "BH",
+                           universe = ORA_background)
+
+dotplot(ORA_MSC_CD14_combo_hallmark, showCategory = 10) + ggtitle("ORA: MSC vs CD14+ Enrichments")
+
+#Specific enrichments can be run for any individual set as well, if desired
+ORA_MSC <- enrichGO(gene = MSC_up_v1, 
                              universe = ORA_background, 
                              OrgDb = "org.Hs.eg.db", 
                              pvalueCutoff=0.05, 
                              keyType = "SYMBOL", 
                              ont = "BP")
 
-dotplot(ORA_CD14_up, x="Count", showCategory = 15) + ggtitle("Enriched in CD14+")
+dotplot(ORA_MSC, x="Count", showCategory = 15) + ggtitle("Enriched in MSC over non-MSC")
 
-ORA_CD34_up <- enrichGO(gene = CD34_up, 
-                        universe = ORA_background, 
-                        OrgDb = "org.Hs.eg.db", 
-                        pvalueCutoff=0.05, 
-                        keyType = "SYMBOL", 
-                        ont = "BP")
+ORA_nonMSC <- enrichGO(gene = nonMSC_up_v1, 
+                             universe = ORA_background, 
+                             OrgDb = "org.Hs.eg.db", 
+                             pvalueCutoff=0.5, 
+                             keyType = "SYMBOL", 
+                             ont = "BP")
 
-dotplot(ORA_CD34_up, x="Count", showCategory = 15) + ggtitle("Enriched in CD34+")
+dotplot(ORA_nonMSC, x="Count", showCategory = 15) + ggtitle("Enriched in non-MSC over MSC")
+```
 
-ORA_CD_clusters <- list(CD14 = CD14_up,
-                     CD34 = CD34_up)
+This section sets up more limma analysis, this time looking at drug sensitivity. We have data for sensitivity to venetoclax, azacytidine, or combination of Ven + Aza. For each drug, we compare sensitive vs resistant across the entire dataset (controlling for cell type and patient), as well as within each cell type (CD14+, CD34+, MSC) individually.
 
-ORA_CD_both <- compareCluster(geneClusters = ORA_CD_clusters,
-                           fun = enrichGO,
-                           OrgDb = "org.Hs.eg.db", 
-                           ont="BP", 
-                           keyType = "SYMBOL",
-                           pAdjustMethod = "BH",
-                           universe = ORA_background)
+```{r limma analsis, drug sensitivities, message=FALSE}
+##Testing Aza, Ven, or Aza.Ven sensitivity
+#All samples together; controlling for celltype+sort type (cellsort) and patient
+contrasts_azaven <- c("Aza.VenResistant - Aza.VenSensitive")
+contrasts_aza <- c("AzaResistant - AzaSensitive")
+contrasts_ven <- c("VenResistant - VenSensitive")
 
-dotplot(ORA_CD_both, showCategory = 10) + ggtitle("ORA: CD14+ vs CD34+ Proteomics")
+res_azaven_all <- limma_contrasts(v2_filtprot_no_outliers,
+                                  model.str = "~0 + Aza.Ven + cellsort + patient",
+                                  coef.str = "Aza.Ven",
+                                  contrasts = contrasts_azaven)
 
-#Hack to use Hallmark database 
-msig_h <- msigdbr(species = "Homo sapiens", category = "H") %>%
+res_aza_all <- limma_contrasts(v2_filtprot_no_outliers,
+                               model.str = "~0 + Aza + cellsort + patient",
+                               coef.str = "Aza",
+                               contrasts = contrasts_aza)
+
+res_ven_all <- limma_contrasts(v2_filtprot_no_outliers,
+                               model.str = "~0 + Ven + cellsort + patient",
+                               coef.str = "Ven",
+                               contrasts = contrasts_ven)
+
+#Adjust contrast names in results so they're more clear/ can rbind together
+res_azaven_all$contrast = "Aza.Ven: Resistant vs Sensitive"
+res_aza_all$contrast = "Aza: Resistant vs Sensitive"
+res_ven_all$contrast = "Ven: Resistant vs Sensitive"
+
+res_drugs_all <- rbind(res_azaven_all, res_aza_all, res_ven_all)
+
+#Tallies and pvalue histograms
+res_drugs_all %>% filter(adj.P.Val< 0.05) %>%
+  group_by(contrast) %>%
+  tally()
+
+ggplot(res_drugs_all) +
+  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
+                 color = "black", fill = "grey") +
+  facet_wrap(vars(contrast), ncol = 3) +
+  theme_bw()
+
+
+#Now separately within each cell type; controlling for sort type and patient (?)
+contrasts_azaven_celltypes <- c("cell_azavenCD14_Resistant - cell_azavenCD14_Sensitive",
+                                "cell_azavenCD34_Resistant - cell_azavenCD34_Sensitive",
+                                "cell_azavenMSC_Resistant - cell_azavenMSC_Sensitive")
+
+contrasts_aza_celltypes <- c("cell_azaCD14_Resistant - cell_azaCD14_Sensitive",
+                             "cell_azaCD34_Resistant - cell_azaCD34_Sensitive",
+                             "cell_azaMSC_Resistant - cell_azaMSC_Sensitive")
+
+contrasts_ven_celltypes <- c("cell_venCD14_Resistant - cell_venCD14_Sensitive",
+                             "cell_venCD34_Resistant - cell_venCD34_Sensitive",
+                             "cell_venMSC_Resistant - cell_venMSC_Sensitive")
+
+
+
+res_azaven_cells <- limma_contrasts(v2_filtprot_no_outliers,
+                                        model.str = "~0 + cell_azaven + Sort.Type",
+                                        coef.str = "cell_azaven",
+                                        contrasts = contrasts_azaven_celltypes) %>%
+  group_by(contrast) %>%
+  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
+
+res_aza_cells <- limma_contrasts(v2_filtprot_no_outliers,
+                                     model.str = "~0 + cell_aza + Sort.Type",
+                                     coef.str = "cell_aza",
+                                     contrasts = contrasts_aza_celltypes) %>%
+  group_by(contrast) %>%
+  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
+
+res_ven_cells <- limma_contrasts(v2_filtprot_no_outliers,
+                                     model.str = "~0 + cell_ven + Sort.Type",
+                                     coef.str = "cell_ven",
+                                     contrasts = contrasts_ven_celltypes) %>%
+  group_by(contrast) %>%
+  mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
+
+#Adjust contrast names in results so they're more clear/ can rbind together
+res_azaven_cells$contrast = paste0("Aza.Ven:", res_azaven_cells$contrast)
+res_aza_cells$contrast = paste0("Aza:", res_aza_cells$contrast)
+res_ven_cells$contrast = paste0("Ven:", res_ven_cells$contrast)
+
+res_drugs_cells <- rbind(res_azaven_cells, res_aza_cells, res_ven_cells)
+
+res_drugs_cells$contrast <- gsub("_Resistant", "_Res", res_drugs_cells$contrast)
+res_drugs_cells$contrast <- gsub("_Sensitive", "_Sens", res_drugs_cells$contrast)
+
+#Tallies and pvalue histograms
+res_drugs_cells %>% filter(adj.P.Val< 0.05) %>%
+  group_by(contrast) %>%
+  tally()
+
+ggplot(res_drugs_cells) +
+  geom_histogram(aes(x = P.Value), breaks = seq(0, 1, 0.05),
+                 color = "black", fill = "grey") +
+  facet_wrap(vars(contrast), ncol = 3) +
+  theme_bw()
+
+##Saving this for reference later; adding patient results in "Coefficients not estimable" warning for particular patient IDs and dramatically changes numbers of significant proteins
+# res_azaven_cells2 <- limma_contrasts(v2_filtprot_no_outliers,
+#                                          model.str = "~0 + cell_azaven + Sort.Type + patient",
+#                                          coef.str = "cell_azaven",
+#                                          contrasts = contrasts_azaven_celltypes) %>%
+#   group_by(contrast) %>%
+#   mutate(adj.P.Val = p.adjust(P.Value, method = "BH"))
+```
+
+
+As with the previous sets of limma analysis, I'm skeptical of the results that have been generated so far based on the warnings related to non-estimable coefficients and overall low numbers of differences in some comparisons. Need to dig into this more. For now I'll set up the framework for some enrichment analysis below.
+
+Next we will run some over-representation analysis (ORA) to look at pathway-level enrichments from the results.
+
+```{r Enrichment analysis: ORA from clusterProfiler, message=FALSE}
+##Set background to all the features we tested
+ORA_background <- unique(res_drugs_all$feature)
+
+##Pull lists of significant features from various comparisons
+##Contrasts are set up as Resistant - Sensitive, so logFC>0 means higher in resistant group
+
+#Aza resistance, all cells grouped
+aza_res_all <- filter(res_drugs_all, contrast == "Aza: Resistant vs Sensitive" & adj.P.Val <=0.05 & logFC >0)
+aza_res_all <- aza_res_all$feature
+
+aza_sens_all <- filter(res_drugs_all, contrast == "Aza: Resistant vs Sensitive" & adj.P.Val <=0.05 & logFC <0)
+aza_sens_all <- aza_sens_all$feature
+
+#Ven resistance, all cells grouped
+ven_res_all <- filter(res_drugs_all, contrast == "Ven: Resistant vs Sensitive" & adj.P.Val <=0.05 & logFC >0)
+ven_res_all <- ven_res_all$feature
+
+ven_sens_all <- filter(res_drugs_all, contrast == "Ven: Resistant vs Sensitive" & adj.P.Val <=0.05 & logFC <0)
+ven_sens_all <- ven_sens_all$feature
+
+#Aza.Ven resistance, all cells grouped
+azaven_res_all <- filter(res_drugs_all, contrast == "Aza.Ven: Resistant vs Sensitive" & adj.P.Val <=0.05 & logFC >0)
+azaven_res_all <- azaven_res_all$feature
+
+azaven_sens_all <- filter(res_drugs_all, contrast == "Aza.Ven: Resistant vs Sensitive" & adj.P.Val <=0.05 & logFC <0)
+azaven_sens_all <- azaven_sens_all$feature
+
+##Significant feature lists are now set, let's run some ORA and generate plots
+#Pull some databases to use with clusterProfiler::enricher function
+msig_h <- msigdbr::msigdbr(species = "Homo sapiens", category = "H") %>%
   dplyr::select(gs_name, gene_symbol) %>%
   dplyr::rename(ont = gs_name, gene = gene_symbol)
 
-ORA_CD14_up_HALL <- enricher(gene = CD14_up,
-                     universe = ORA_background,
-                     TERM2GENE = msig_h,
-                     pvalueCutoff = 1,
-                     qvalueCutoff = 1) 
+msig_BP <- msigdbr::msigdbr(species = "Homo sapiens", category = "C5", subcategory = "BP") %>%
+  dplyr::select(gs_name, gene_symbol) %>%
+  dplyr::rename(ont = gs_name, gene = gene_symbol)
 
-dotplot(ORA_CD14_up_HALL, x = "Count") + ggtitle("Enriched in CD14+")
+#Compare all drug resistance-related enrichments, using GO:BP or HALLMARK databases
+drug_res_clusters_all <- list("Aza" = aza_res_all,
+                              "Ven" = ven_res_all,
+                              "Aza.Ven" = azaven_res_all)
 
-ORA_CD34_up_HALL <- enricher(gene = CD34_up,
-                             universe = ORA_background,
-                             TERM2GENE = msig_h,
-                             pvalueCutoff = 1,
-                             qvalueCutoff = 1) 
-
-dotplot(ORA_CD34_up_HALL, x = "Count") + ggtitle("Enriched in CD34+")
-
-
-#Aza.Ven sensitivity
-azaven_sens <- filter(res_azaven_all, adj.P.Val <=0.05 & logFC <0)
-azaven_sens <- azaven_sens$feature
-
-azaven_res <- filter(res_azaven_all, adj.P.Val <0.05 & logFC >0)
-azaven_res <- azaven_res$feature
-
-ORA_azaven_sens <- enrichGO(gene = azaven_sens, 
-                        universe = ORA_background, 
-                        OrgDb = "org.Hs.eg.db", 
-                        pvalueCutoff=0.5, 
-                        qvalueCutoff = 0.5,
-                        keyType = "SYMBOL", 
-                        ont = "BP")
-
-dotplot(ORA_azaven_sens, x="Count", showCategory = 15) + ggtitle("Enriched in Aza.Ven Sensitive")
-
-ORA_azaven_res <- enrichGO(gene = azaven_res, 
-                        universe = ORA_background, 
-                        OrgDb = "org.Hs.eg.db", 
-                        pvalueCutoff=0.5, 
-                        qvalueCutoff = 0.5,
-                        keyType = "SYMBOL", 
-                        ont = "BP")
-
-dotplot(ORA_azaven_res, x="Count", showCategory = 15) + ggtitle("Enriched in Aza.Ven Resistant")
-
-ORA_azaven_clusters <- list(Sensitive = azaven_sens,
-                            Resistant = azaven_res)
-
-ORA_azaven_both <- compareCluster(geneClusters = ORA_azaven_clusters,
+drug_res_all_combo <- compareCluster(geneClusters = drug_res_clusters_all,
                            fun = enrichGO,
                            OrgDb = "org.Hs.eg.db", 
-                           pvalueCutoff = 0.5,
-                           qvalueCutoff = 0.5,
                            ont="BP", 
                            keyType = "SYMBOL",
                            pAdjustMethod = "BH",
-                           universe = ORA_background)
+                           universe = ORA_background,
+                           pvalueCutoff=0.5, 
+                           qvalueCutoff = 0.5)
 
-dotplot(ORA_azaven_both, showCategory = 10) + ggtitle("ORA: Aza.Ven Sensitive vs Resistant")
+dotplot(drug_res_all_combo, showCategory = 10) + ggtitle("ORA: Drug Resistance Enrichments, All Cells")
 
-ORA_azaven_sens_HALL <- enricher(gene = azaven_sens,
-                             universe = ORA_background,
-                             TERM2GENE = msig_h,
-                             pvalueCutoff = 1,
-                             qvalueCutoff = 1) 
+drug_res_all_combo_hallmark <- compareCluster(geneClusters = drug_res_clusters_all,
+                           fun = enricher, 
+                           TERM2GENE = msig_h, 
+                           pAdjustMethod = "BH",
+                           universe = ORA_background,
+                           pvalueCutoff=0.5, 
+                           qvalueCutoff = 0.5)
 
-dotplot(ORA_azaven_sens_HALL, x = "Count") + ggtitle("Enriched in Aza.Ven Sens")
+dotplot(drug_res_all_combo_hallmark, showCategory = 10) + ggtitle("ORA: Drug Resistance Enrichments, All Cells")
 
-ORA_azaven_res_HALL <- enricher(gene = azaven_res,
-                             universe = ORA_background,
-                             TERM2GENE = msig_h,
-                             pvalueCutoff = 1,
-                             qvalueCutoff = 1) 
+#Compare all drug sensitive-related enrichments, using GO:BP or HALLMARK databases
+drug_sens_clusters_all <- list("Aza" = aza_sens_all,
+                              "Ven" = ven_sens_all,
+                              "Aza.Ven" = azaven_sens_all)
 
-dotplot(ORA_azaven_res_HALL, x = "Count") + ggtitle("Enriched in Aza.Ven Res")
-
-
-#Aza sensitivity
-aza_sens <- filter(res_aza_all, adj.P.Val <=0.05 & logFC <0)
-aza_sens <- aza_sens$feature
-
-aza_res <- filter(res_aza_all, adj.P.Val <0.05 & logFC >0)
-aza_res <- aza_res$feature
-
-ORA_aza_sens <- enrichGO(gene = aza_sens, 
-                            universe = ORA_background, 
-                            OrgDb = "org.Hs.eg.db", 
-                            pvalueCutoff=0.5, 
-                            qvalueCutoff = 0.5,
-                            keyType = "SYMBOL", 
-                            ont = "BP")
-
-dotplot(ORA_aza_sens, x="Count", showCategory = 15) + ggtitle("Enriched in Aza Sensitive")
-
-ORA_aza_res <- enrichGO(gene = aza_res, 
-                           universe = ORA_background, 
+drug_sens_all_combo <- compareCluster(geneClusters = drug_sens_clusters_all,
+                           fun = enrichGO,
                            OrgDb = "org.Hs.eg.db", 
-                           pvalueCutoff=0.5,
-                        qvalueCutoff = 0.5,
-                           keyType = "SYMBOL", 
-                           ont = "BP")
+                           ont="BP", 
+                           keyType = "SYMBOL",
+                           pAdjustMethod = "BH",
+                           universe = ORA_background,
+                           pvalueCutoff=0.5, 
+                           qvalueCutoff = 0.5)
 
-dotplot(ORA_aza_res, x="Count", showCategory = 15) + ggtitle("Enriched in Aza Resistant")
+dotplot(drug_sens_all_combo, showCategory = 10) + ggtitle("ORA: Drug Sensitive Enrichments, All Cells")
 
-ORA_aza_clusters <- list(Sensitive = aza_sens,
-                            Resistant = aza_res)
+drug_sens_all_combo_hallmark <- compareCluster(geneClusters = drug_sens_clusters_all,
+                           fun = enricher, 
+                           TERM2GENE = msig_h, 
+                           pAdjustMethod = "BH",
+                           universe = ORA_background,
+                           pvalueCutoff=0.5, 
+                           qvalueCutoff = 0.5)
 
-ORA_aza_both <- compareCluster(geneClusters = ORA_aza_clusters,
-                                  fun = enrichGO,
-                                  OrgDb = "org.Hs.eg.db", 
-                                  pvalueCutoff = 0.5,
-                                  qvalueCutoff = 0.5,
-                                  ont="BP", 
-                                  keyType = "SYMBOL",
-                                  pAdjustMethod = "BH",
-                                  universe = ORA_background)
-
-dotplot(ORA_aza_both, showCategory = 10) + ggtitle("ORA: Aza Sensitive vs Resistant")
-
-ORA_aza_sens_HALL <- enricher(gene = aza_sens,
-                                 universe = ORA_background,
-                                 TERM2GENE = msig_h,
-                                 pvalueCutoff = 1,
-                                 qvalueCutoff = 1) 
-
-dotplot(ORA_aza_sens_HALL, x = "Count") + ggtitle("Enriched in Aza Sensitive")
-
-ORA_aza_res_HALL <- enricher(gene = aza_res,
-                                universe = ORA_background,
-                                TERM2GENE = msig_h,
-                                pvalueCutoff = 1,
-                                qvalueCutoff = 1) 
-
-dotplot(ORA_aza_res_HALL, x = "Count") + ggtitle("Enriched in Aza Resistant")
+dotplot(drug_sens_all_combo_hallmark, showCategory = 10) + ggtitle("ORA: Drug Sensitive Enrichments, All Cells")
 
 
-#Ven sensitivity
-ven_sens <- filter(res_ven_all, adj.P.Val <=0.05 & logFC <0)
-ven_sens <- ven_sens$feature
+#Single sets of results can be analyzed individually if desired, saving simple code here for that
+ORA_azaven_sens_all <- enrichGO(gene = azaven_sens_all, 
+                             universe = ORA_background, 
+                             OrgDb = "org.Hs.eg.db", 
+                             pvalueCutoff=0.05, 
+                             keyType = "SYMBOL", 
+                             ont = "BP")
 
-ven_res <- filter(res_ven_all, adj.P.Val <0.05 & logFC >0)
-ven_res <- ven_res$feature
-
-ORA_ven_sens <- enrichGO(gene = ven_sens, 
-                         universe = ORA_background, 
-                         OrgDb = "org.Hs.eg.db", 
-                         pvalueCutoff=0.5, 
-                         qvalueCutoff = 0.5,
-                         keyType = "SYMBOL", 
-                         ont = "BP")
-
-dotplot(ORA_ven_sens, x="Count", showCategory = 15) + ggtitle("Enriched in Ven Sensitive")
-
-ORA_ven_res <- enrichGO(gene = ven_res, 
-                        universe = ORA_background, 
-                        OrgDb = "org.Hs.eg.db", 
-                        pvalueCutoff=0.,
-                        qvalueCutoff = 0.5,
-                        keyType = "SYMBOL", 
-                        ont = "BP")
-
-dotplot(ORA_ven_res, x="Count", showCategory = 15) + ggtitle("Enriched in Ven Resistant")
-
-ORA_ven_clusters <- list(Sensitive = ven_sens,
-                         Resistant = ven_res)
-
-ORA_ven_both <- compareCluster(geneClusters = ORA_ven_clusters,
-                               fun = enrichGO,
-                               OrgDb = "org.Hs.eg.db", 
-                               pvalueCutoff = 0.5,
-                               qvalueCutoff = 0.5,
-                               ont="BP", 
-                               keyType = "SYMBOL",
-                               pAdjustMethod = "BH",
-                               universe = ORA_background)
-
-dotplot(ORA_ven_both, showCategory = 10) + ggtitle("ORA: Ven Sensitive vs Resistant")
-
-ORA_ven_sens_HALL <- enricher(gene = ven_sens,
-                              universe = ORA_background,
-                              TERM2GENE = msig_h,
-                              pvalueCutoff = 1,
-                              qvalueCutoff = 1) 
-
-dotplot(ORA_ven_sens_HALL, x = "Count") + ggtitle("Enriched in Ven Sensitive")
-
-ORA_ven_res_HALL <- enricher(gene = ven_res,
-                             universe = ORA_background,
-                             TERM2GENE = msig_h,
-                             pvalueCutoff = 1,
-                             qvalueCutoff = 1) 
-
-dotplot(ORA_ven_res_HALL, x = "Count") + ggtitle("Enriched in Ven Resistant")
-
+dotplot(ORA_azaven_sens_all, x="Count", showCategory = 15) + ggtitle("Enriched in Aza.Ven Sensitive")
 ```
