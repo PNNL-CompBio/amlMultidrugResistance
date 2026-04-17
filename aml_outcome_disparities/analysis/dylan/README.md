@@ -92,8 +92,33 @@
 ## 5. Single -ome differential expression
 - [differential_expression.ipynb](./differential_expression.ipynb)
     - perform basic differential expression analysis (Welch's t-test) to identify top features within each block for all mutation state comparisons
+    - inputs (for all mutation comparison subsets):
+        - `_cache/*_cols.pkl`: tuple of lists (WT columns, mutant columns) for each subset
+        - `_cache/*.arrow`: combined -omics data table for each subset
+    - outputs (for all mutation comparison subsets x -omes combinations): 
+        - significantly up/down regulated feature lists: `_cache/diffex/*.txt`
+        - significantly up/down regulated features with sample data: `_cache/diffex/*.csv`
+        - volcano plots: `_figures/volcano/*.png`
 
 ## 6. Associate lipids with proteins
 - [associate_lipids_and_proteins.ipynb](./associate_lipids_and_proteins.ipynb)
-    - Uses coexpression (Spearman correlation) of lipids and proteins (Proteomics and Transcriptomics) to find proteins that are associated with significantly differentially expressed lipids
-    - This generates lists of proteins that can be used for pathway enrichment
+    - Uses coexpression (Spearman correlation) of lipids and proteins (Proteomics and Transcriptomics) to find proteins that are associated with significantly differentially expressed lipids to use as inputs for pathway enrichment
+    - inputs: 
+        - `_cache/*_cols.pkl`: tuple of lists (WT columns, mutant columns) for each subset
+        - `_cache/*.arrow`: combined -omics data table for each subset
+    - outputs: 
+        - significantly up/down regulated lipid-associated protein lists: `_cache/diffex/*_Lipid-Protein-Association_*.txt`
+        - significantly up/down regulated lipid-associated proteins with sample data: `_cache/diffex/*_Lipid-Protein-Association_*.csv`
+
+## 7. Run pathway enrichment analysis (ORA)
+- [kegg_pathway_enrichment.Rmd](./kegg_pathway_enrichment.Rmd)
+    - uses KEGG, Reactome, and MSigDB Hallmark databases to perform pathway enrichment (ORA) to highlight pathways from significantly differentially expressed proteins
+    - knit from command-line: `Rscript -e 'rmarkdown::render("run_pathway_enrichment.Rmd", output_dir = "./_cache/pathway_enrichment/")'`
+    - inputs: 
+        - lists of differentially expressed proteins (from Proteomics, Transcriptomics, or Lipid-Protein associations): `_cache/diffex/*.txt`
+    - outputs: 
+        - knitted PDF from Rmd: `_cache/pathway_enrichment/run_pathway_enrichment.pdf`
+        - dot plot figures showing enriched pathways: `_figures/pathway_enrichment/*/*.png`
+            - separate subdirectories for the different pathway databases
+        - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*.csv`
+            - separate subdirectories for the different pathway databases
