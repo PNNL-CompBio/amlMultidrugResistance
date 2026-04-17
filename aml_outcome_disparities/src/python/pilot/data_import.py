@@ -1013,7 +1013,9 @@ def import_meta(
     return meta
 
 
-def import_acetyl(syn: sc.Synapse | None = None) -> pd.DataFrame:
+def import_acetyl(
+    syn: sc.Synapse | None = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads Acetylomics data.
 
