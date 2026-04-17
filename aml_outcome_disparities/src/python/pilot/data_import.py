@@ -1027,13 +1027,28 @@ def import_acetyl(syn: sc.Synapse | None = None) -> pd.DataFrame:
     if syn is None:
         syn = syn_login()
 
-    acetyl = pd.read_csv(syn.get("syn69075568").path, index_col=0, sep="\t")
-    _, pilot_conversion = import_sample_conversion(syn)
+    ptrc = pd.read_csv(syn.get("syn53484994").path, index_col=0, sep="\t")
+    pilot = pd.read_csv(syn.get("syn69075568").path, index_col=0, sep="\t")
+    ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
 
-    acetyl.rename(columns=pilot_conversion, inplace=True)
-    acetyl = acetyl.loc[~acetyl.index.str.contains("NULL"), :]
+    ptrc.columns = [int(col.split("_")[-1]) for col in ptrc.columns]
 
-    return acetyl.T
+    ptrc.rename(columns=ptrc_conversion, inplace=True)
+    pilot.rename(columns=pilot_conversion, inplace=True)
+
+    ptrc = ptrc.loc[~ptrc.index.str.contains("NULL"), :]
+    pilot = pilot.loc[~pilot.index.str.contains("NULL"), :]
+
+    ptrc = ptrc.loc[ptrc.index.intersection(pilot.index), :]
+    pilot = pilot.loc[ptrc.index, :]
+
+    bridge_columns = pilot.columns.intersection(ptrc.columns)
+    pilot.rename(
+        columns=pd.Series(bridge_columns + "-Bridge", index=bridge_columns),
+        inplace=True,
+    )
+
+    return ptrc.T, pilot.T
 
 
 def import_sample_conversion(

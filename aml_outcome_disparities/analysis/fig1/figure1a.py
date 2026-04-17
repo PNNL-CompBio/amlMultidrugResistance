@@ -51,14 +51,6 @@ def make_figure():
         }
     )
 
-    # Reformat acetyl
-    bridge_ids = (
-        phospho[1].loc[phospho[1].index.str.contains("Bridge"), :].index
-    )
-    bridge_ids = {bridge_id[:-7]: bridge_id for bridge_id in bridge_ids}
-    acetyl.rename(index=bridge_ids, inplace=True)
-    acetyl = (None, acetyl)
-
     # Format matplotlib axes
     datasets = {
         "Metabolites": metabolites,
@@ -81,9 +73,7 @@ def make_figure():
         # Merge 210 and Pilot cohorts, then scale features
         ptrc, pilot = dataset
 
-        if ptrc is None:
-            data = pilot
-        elif dataset_name == "Transcriptomics":
+        if dataset_name == "Transcriptomics":
             data = pd.concat(dataset, axis=0)
             data = data.loc[data.index.intersection(meta.index), :]
             data.loc[:] = scale(data, axis=1)
