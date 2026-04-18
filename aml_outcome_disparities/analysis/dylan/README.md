@@ -111,7 +111,7 @@
         - significantly up/down regulated lipid-associated proteins with sample data: `_cache/diffex/*_Lipid-Protein-Association_*.csv`
 
 ## 7. Run pathway enrichment analysis (ORA)
-- [kegg_pathway_enrichment.Rmd](./kegg_pathway_enrichment.Rmd)
+- [run_pathway_enrichment.Rmd](./run_pathway_enrichment.Rmd)
     - uses KEGG, Reactome, and MSigDB Hallmark databases to perform pathway enrichment (ORA) to highlight pathways from significantly differentially expressed proteins
     - knit from command-line: `Rscript -e 'rmarkdown::render("run_pathway_enrichment.Rmd", output_dir = "./_cache/pathway_enrichment/")'`
     - inputs: 
@@ -120,5 +120,9 @@
         - knitted PDF from Rmd: `_cache/pathway_enrichment/run_pathway_enrichment.pdf`
         - dot plot figures showing enriched pathways: `_figures/pathway_enrichment/*/*.png`
             - separate subdirectories for the different pathway databases
-        - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*.csv`
+        - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*/*.csv`
             - separate subdirectories for the different pathway databases
+- [pathway_enrichment_summary.ipynb](./pathway_enrichment_summary.ipynb)
+    - Generate summary plots from pathway enrichment analysis across conditions and -omes
+    - inputs:
+        - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*/*.csv`

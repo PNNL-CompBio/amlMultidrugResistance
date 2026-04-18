@@ -27,6 +27,22 @@ hallmark_t2g  <- hallmark_sets[, c("gs_name", "entrez_gene")]
 
 ## Function Definitions
 
+### Helper
+```{r helper}
+get_full_pathway_genes <- function(enrich_obj, pathway_ids) {
+  sapply(pathway_ids, function(pid) {
+    entrez_ids <- enrich_obj@geneSets[[pid]]
+    if (is.null(entrez_ids)) return(NA_character_)
+    mapped <- suppressMessages(
+      bitr(entrez_ids,
+           fromType = "ENTREZID",
+           toType   = "SYMBOL",
+           OrgDb    = org.Hs.eg.db)
+    )
+    paste(sort(mapped$SYMBOL), collapse = "/")
+  })
+}
+
 ### KEGG
 
 ```{r function-kegg}
@@ -93,12 +109,16 @@ run_kegg_enrichment <- function(population, mutation, block, direction,
          dpi    = 300)
   message(sprintf("  Dotplot saved: %s", plot_file))
   # --- CSV ---
+  # note: use the original object (ke/re/he), not the readable version,
+  # because @geneSets still has Entrez IDs we need to convert
   output_df <- data.frame(
-    pathway_id   = result_df$ID,
-    pathway_name = result_df$Description,
-    p_adjust     = result_df$p.adjust,
-    gene_count   = result_df$Count,
-    gene_symbols = result_df$geneID,
+    pathway_id       = result_df$ID,
+    pathway_name     = result_df$Description,
+    p_adjust         = result_df$p.adjust,
+    gene_count       = result_df$Count,
+    gene_symbols     = result_df$geneID,
+    pathway_size     = lengths(ke@geneSets[result_df$ID]),
+    pathway_genes    = get_full_pathway_genes(ke, result_df$ID),
     stringsAsFactors = FALSE
   )
   write.csv(output_df, csv_file, row.names = FALSE)
@@ -172,12 +192,16 @@ run_reactome_enrichment <- function(population, mutation, block, direction,
          dpi    = 300)
   message(sprintf("  Dotplot saved: %s", plot_file))
   # --- CSV ---
+  # note: use the original object (ke/re/he), not the readable version,
+  # because @geneSets still has Entrez IDs we need to convert
   output_df <- data.frame(
-    pathway_id   = result_df$ID,
-    pathway_name = result_df$Description,
-    p_adjust     = result_df$p.adjust,
-    gene_count   = result_df$Count,
-    gene_symbols = result_df$geneID,
+    pathway_id       = result_df$ID,
+    pathway_name     = result_df$Description,
+    p_adjust         = result_df$p.adjust,
+    gene_count       = result_df$Count,
+    gene_symbols     = result_df$geneID,
+    pathway_size     = lengths(re@geneSets[result_df$ID]),
+    pathway_genes    = get_full_pathway_genes(re, result_df$ID),
     stringsAsFactors = FALSE
   )
   write.csv(output_df, csv_file, row.names = FALSE)
@@ -255,12 +279,16 @@ run_hallmark_enrichment <- function(population, mutation, block, direction,
          dpi    = 300)
   message(sprintf("  Dotplot saved: %s", plot_file))
   # --- CSV ---
+  # note: use the original object (ke/re/he), not the readable version,
+  # because @geneSets still has Entrez IDs we need to convert
   output_df <- data.frame(
-    gene_set_id   = result_df$ID,
-    gene_set_name = result_df$Description,
-    p_adjust      = result_df$p.adjust,
-    gene_count    = result_df$Count,
-    gene_symbols  = result_df$geneID,
+    pathway_id       = result_df$ID,
+    pathway_name     = result_df$Description,
+    p_adjust         = result_df$p.adjust,
+    gene_count       = result_df$Count,
+    gene_symbols     = result_df$geneID,
+    pathway_size     = lengths(he@geneSets[result_df$ID]),
+    pathway_genes    = get_full_pathway_genes(he, result_df$ID),
     stringsAsFactors = FALSE
   )
   write.csv(output_df, csv_file, row.names = FALSE)
