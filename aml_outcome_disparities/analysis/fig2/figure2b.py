@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from pilot.data_import import import_meta, import_phospho, syn_login
-from pilot.figures.figure_setup import get_setup
+from pilot.figures.figure_setup import get_setup, compare_means
 
 sys.path.append(
     join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
@@ -90,6 +90,16 @@ def make_figure():
         )
         white_bp["boxes"][0].set_facecolor("tab:purple")
         black_bp["boxes"][0].set_facecolor("tab:red")
+
+    ax = compare_means(
+        phospho,
+        race,
+        1,
+        3,
+        ax,
+        star_only=True,
+        alternative="less"
+    )
 
     # Reformat plot, add labels, note MANOVA result
     ax.set(

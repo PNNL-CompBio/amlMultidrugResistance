@@ -1,6 +1,7 @@
 import requests
-from os import PathLike
+from os import makedirs, PathLike
 from os.path import abspath, dirname, exists, join, splitext
+from pathlib import Path
 from typing import Iterable
 
 import datashader as ds
@@ -70,6 +71,15 @@ def preranked_enrichment(
     if gene_libraries is None:
         gene_libraries = ["GO_Biological_Process_2025"]
 
+    # Uses default white background
+    plt.style.use("default")
+
+    # Sets to output_path to PathLike, if not already
+    if not isinstance(output_path, PathLike):
+        output_path = Path(output_path)
+
+    makedirs(output_path, exist_ok=True)
+
     # Iterate through queued libraries
     for library in gene_libraries:
         # Runs pre-ranked enrichment
@@ -85,8 +95,8 @@ def preranked_enrichment(
                 continue
 
             # Export results to .csv
-            out_file = output_path + "_" + library + f"_{exp}expressed"
-            df.to_csv(out_file + ".csv")
+            out_file = output_path / f"{library}_{exp}expressed"
+            df.to_csv(out_file.with_suffix(".csv"))
 
             # Trims term tags if using GO Biological Process
             if library == "GO_Biological_Process_2025":
@@ -119,7 +129,7 @@ def preranked_enrichment(
                 cutoff=0.25,
                 top_term=8,
                 cmap=plt.cm.viridis,
-                ofname=out_file + ".png",
+                ofname=out_file.with_suffix(".png"),
             )
 
 
@@ -155,6 +165,9 @@ def enrichment_analysis(
     # Adds -log(p) column to results
     result.loc[:, "-log(p)"] = -np.log10(result.loc[:, "Adjusted P-value"])
     result.to_csv(output_path + ".csv")
+
+    # Uses default white background
+    plt.style.use("default")
 
     # Plots dotplot
     gp.dotplot(
