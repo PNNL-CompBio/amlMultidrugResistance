@@ -1,9 +1,23 @@
-# Info
-## Setup
+# Setup
 - Follow instructions [here](../../src/python/README.md) to set up Python environment
     - must be able to import and use functions from [data import module](../../src/python/pilot/data_import.py)
 - intermediate data files and generated figures are saved in the (untracked) `_cache` and `_figures` directories, respectively
-    - create these if they do not exist
+    - create these if they do not exist:
+```sh
+mkdir _cache
+mkdir _cache/diffex
+mkdir _cache/pathway_enrichment
+mkdir _cache/pathway_enrichment/hallmark
+mkdir _cache/pathway_enrichment/kegg
+mkdir _cache/pathway_enrichment/reactome
+mkdir _figures
+mkdir _figures/assoc
+mkdir _figures/pathway_enrichment
+mkdir _figures/pathway_enrichment/hallmark
+mkdir _figures/pathway_enrichment/kegg
+mkdir _figures/pathway_enrichment/reactome
+mkdir _figures/volcano
+```
 
 # Analysis
 ## 1. Create a Combined Data table to support analyses
