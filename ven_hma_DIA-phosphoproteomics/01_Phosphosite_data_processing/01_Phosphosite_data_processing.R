@@ -2,8 +2,7 @@ library(dplyr)
 library(stringr)
 library(openxlsx)
 
-## load phosphosite level data and metadata
-meta <- read.xlsx("PTRC_metadata_Exp28_removesamples.xlsx",check.names=FALSE)
+## load phosphosite level data 
 df <- read.xlsx("PTRC_EXP28_InSilico_DiaNN_phosphosites_90_removesamples.xlsx", check.names=FALSE)
 
 ## make sure columns containing intensity values are in numeric
@@ -46,4 +45,4 @@ boxplot(df[,2:37], cex.axis=1, las=2)
 # remove sites with NAs across all samples.
 df <- df[rowSums(!is.na(df[ , 2:37])) > 0, ] 
 
-write.xlsx(df, "PTRC_EXP28_InSilico_Cleaned_PhosphositeData.xlsx")
+write.xlsx(df, "PTRC_EXP28_InSilico_Cleaned_PhosphositeData.xlsx", rowNames=FALSE)
