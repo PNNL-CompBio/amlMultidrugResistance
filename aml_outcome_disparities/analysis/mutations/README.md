@@ -21,7 +21,7 @@ mkdir _figures/volcano
 
 # Analysis
 ## 1. Create a Combined Data table to support analyses
-- [combined_data_table.ipynb](./combined_data_table.ipynb)
+- [1_combined_data_table.ipynb](./1_combined_data_table.ipynb)
     - metadata:
         - basic sample-level metadata:
             - Age
@@ -47,12 +47,12 @@ mkdir _figures/volcano
 
 ## 2. Analyze combinations of different mutations, stratified by race
 - mutations of interest from [Stiff, et al. Nat. Genet. (2024)](https://doi.org/10.1038/s41588-024-01929-x)
-- [mutations.ipynb](./mutations.ipynb)
+- [2_mutations.ipynb](./2_mutations.ipynb)
     - input: `_cache/meta.arrow`
     - output: `_figures/mutations_upset_race-stratified.png`
 
 ## 3. Look at additional metadata comparisons
-- [metadata_comparisons.ipynb](./metadata_comparisons.ipynb)
+- [3_metadata_comparisons.ipynb](./3_metadata_comparisons.ipynb)
     - input: `_cache/meta.arrow`
     - output: 
         - Age:
@@ -67,7 +67,7 @@ mkdir _figures/volcano
             - `_figures/sex_comparison_white.png`
 
 ## 4. Create subsets of the -omics data for specific mutation state comparisons
-- [subset_omics_data.ipynb](./subset_omics_data.ipynb)
+- [4_subset_omics_data.ipynb](./4_subset_omics_data.ipynb)
     - input: 
         - `_cache/meta.arrow`
         - `_cache/combined.arrow`
@@ -104,7 +104,7 @@ mkdir _figures/volcano
             - require at least 5 samples within WT and mutant groups to z-score normalize
 
 ## 5. Single -ome differential expression
-- [differential_expression.ipynb](./differential_expression.ipynb)
+- [5_differential_expression.ipynb](./5_differential_expression.ipynb)
     - perform basic differential expression analysis (Welch's t-test) to identify top features within each block for all mutation state comparisons
     - inputs (for all mutation comparison subsets):
         - `_cache/*_cols.pkl`: tuple of lists (WT columns, mutant columns) for each subset
@@ -115,7 +115,7 @@ mkdir _figures/volcano
         - volcano plots: `_figures/volcano/*.png`
 
 ## 6. Associate lipids with proteins
-- [associate_lipids_and_proteins.ipynb](./associate_lipids_and_proteins.ipynb)
+- [6_associate_lipids_and_proteins.ipynb](./6_associate_lipids_and_proteins.ipynb)
     - Uses coexpression (Spearman correlation) of lipids and proteins (Proteomics and Transcriptomics) to find proteins that are associated with significantly differentially expressed lipids to use as inputs for pathway enrichment
     - inputs: 
         - `_cache/*_cols.pkl`: tuple of lists (WT columns, mutant columns) for each subset
@@ -125,7 +125,7 @@ mkdir _figures/volcano
         - significantly up/down regulated lipid-associated proteins with sample data: `_cache/diffex/*_Lipid-Protein-Association_*.csv`
 
 ## 7. Run pathway enrichment analysis (ORA)
-- [run_pathway_enrichment.Rmd](./run_pathway_enrichment.Rmd)
+- [7a_run_pathway_enrichment.Rmd](./7a_run_pathway_enrichment.Rmd)
     - uses KEGG, Reactome, and MSigDB Hallmark databases to perform pathway enrichment (ORA) to highlight pathways from significantly differentially expressed proteins
     - knit from command-line: `Rscript -e 'rmarkdown::render("run_pathway_enrichment.Rmd", output_dir = "./_cache/pathway_enrichment/")'`
     - inputs: 
@@ -136,7 +136,7 @@ mkdir _figures/volcano
             - separate subdirectories for the different pathway databases
         - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*/*.csv`
             - separate subdirectories for the different pathway databases
-- [pathway_enrichment_summary.ipynb](./pathway_enrichment_summary.ipynb)
+- [7b_pathway_enrichment_summary.ipynb](./7b_pathway_enrichment_summary.ipynb)
     - Generate summary plots from pathway enrichment analysis across conditions and -omes
     - inputs:
         - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*/*.csv`
