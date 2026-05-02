@@ -8,7 +8,6 @@ sys.path.append(
     join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
 )
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
