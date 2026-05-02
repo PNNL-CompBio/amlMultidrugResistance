@@ -1,4 +1,4 @@
-"""Plots figure 3c: Compares young AML cases."""
+"""Plots figure S1b: Compares young AML cases."""
 import os
 import sys
 from os.path import abspath, dirname, join
