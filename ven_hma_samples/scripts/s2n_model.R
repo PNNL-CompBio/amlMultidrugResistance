@@ -254,26 +254,6 @@ logistic_model_helper3 <- function(m1_, test, contrast, N_markers, var.equal, me
 }
 
 
-lr_model <- function(msnset, response, pred.cls, select_features = T){
-   dSet <- cbind(pData(msnset), t(exprs(msnset)))
-   if (unique(dSet[, response])[1] == pred.cls) {
-      lvlz <- rev(unique(dSet[, response]))
-   }
-   else {
-      lvlz <- unique(dSet[, response])
-   }
-   dSet[, response] <- factor(dSet[, response], levels = lvlz)
-   if(select_features){
-      features.sel <- MSnSet.utils:::select_features_lasso(x = dSet, y = dSet[, response])
-   }else{
-      features.sel <- featureNames(msnset)
-   }
-   # train model
-   mdl <- MSnSet.utils:::train_model_lr(x = dSet[, features.sel, drop = F], y = dSet[, response])
-   return(mdl)
-}
-
-
 eln_model <- function(msnset, response, pred.cls, alpha){
    dSet <- cbind(pData(msnset), t(exprs(msnset)))
    if (unique(dSet[, response])[1] == pred.cls) {
@@ -294,283 +274,50 @@ eln_model <- function(msnset, response, pred.cls, alpha){
 }
 
 
-# function (msnset, features, response, pred.cls, K = NULL, sel.feat = T, 
-#           par.backend = c("mc", "foreach", "none"), skip_loo = FALSE) 
-# {
-#    par.backend <- match.arg(par.backend)
-#    if (.Platform$OS.type != "unix" & par.backend == "mc") 
-#       par.backend <- "foreach"
-#    dSet <- cbind(pData(msnset), t(exprs(msnset)))
-#    stopifnot(length(unique(dSet[, response])) == 2)
-#    stopifnot(pred.cls %in% dSet[, response])
-#    if (unique(dSet[, response])[1] == pred.cls) {
-#       lvlz <- rev(unique(dSet[, response]))
-#    }
-#    else {
-#       lvlz <- unique(dSet[, response])
-#    }
-#    dSet[, response] <- factor(dSet[, response], levels = lvlz)
-#    if (is.null(K)) 
-#       K <- nrow(dSet)
-#    num_rep <- ceiling(nrow(dSet)/K)
-#    cv_idx <- sample(rep(seq_len(K), num_rep)[seq_len(nrow(dSet))])
-#    res <- switch(par.backend, mc = cv_mclapply(response, dSet, features, cv_idx, sel.feat), 
-#                  foreach = cv_foreach(response, dSet, features, cv_idx, sel.feat), none = cv_onethread(response, dSet, features, cv_idx, sel.feat))
-#    pred_prob <- unlist(res[[1]])[rownames(dSet)]
-#    pred <- prediction(pred_prob, dSet[, response] == pred.cls)
-#    return(list(prob = pred_prob, features = unlist(res[[2]]), 
-#                top = rev(sort(table(unlist(res[[2]])))), auc = performance(pred, 
-#                                                                            "auc")@y.values[[1]], pred = pred))
-# }
+###SG: added this from ../../drug_treated_samples
 
-
-
-
-# s2n_model <- function(msnset, group_var, pred_group, N_markers, sample_pooling = NA){
-#    m1 <- msnset
-#    meta <- pData(m1) %>% dplyr::select(!!group_var) %>% mutate(sample_name_unique = rownames(.)) %>%
-#       dplyr::select(group_ = !!group_var, sample = sample_name_unique) 
-#    group_lvls <- unique(meta$group_)
-#    
-#    if(length(group_lvls) != 2){
-#       print("Only implemented for comparisons of two classes.")
-#       break
-#    } else {
-#       control_group = setdiff(unique(meta$group_), pred_group)
-#    }
-#    
-#    ## Ensures limma_gen computes LogFC as case_group - control_group
-#    meta <- meta %>%
-#       mutate(group_ = factor(group_, levels = c(control_group, pred_group)))
-#    m1$group_ <- meta$group_
-#    
-#    all_samples <- sampleNames(m1)
-#    loocv_probs = data.frame(sample = meta$sample, group_ = meta$group_) %>%
-#       mutate(group_ = case_when(group_ == pred_group ~ 1,
-#                                 group_ == control_group ~ 0))
-#    rownames(loocv_probs) <- loocv_probs$sample
-#    feature_df <- data.frame()
-#    m <- m1
-#    for (loo_sample in all_samples){
-#       # print(loo_sample)
-#       if (is.data.frame(sample_pooling)){
-#          ## Find the patient of the loo_sample
-#          patient <- sample_pooling %>%
-#             filter(sample_name == loo_sample) %>% pull(patient_name)
-#          ## Find the samples from that patient
-#          exclude_samples <- sample_pooling %>%
-#             filter(patient_name == patient) %>%
-#             pull(sample_name)
-#          ## Exclude the other samples from that patient, since they're not independent from loo_sample
-#          exclude_samples <- setdiff(exclude_samples, loo_sample)
-#          m1 <- m[, setdiff(sampleNames(m), exclude_samples)]
-#       }
-#       samples_keep = sampleNames(m1) != loo_sample
-#       m1_ <- m1[, samples_keep]
-#       
-#       ###############################################
-#       # choose features to maximize signal-to-noise #
-#       ###############################################
-#       
-#       ## The choice of features is based on all BUT the loo_sample
-#       test <- limma_gen(m1_, "~group_", "group_")
-#       case_marker <- test %>% filter(logFC > 0) %>% arrange(P.Value) %>% head(N_markers) %>% rownames(.)
-#       control_marker <- test %>% filter(logFC < 0) %>% arrange(P.Value) %>% head(N_markers) %>% rownames(.)
-#       
-#       feature_df <- rbind(data.frame(feature = case_marker, group_ = pred_group, loo_sample = loo_sample),
-#                           data.frame(feature = control_marker, group_ = control_group, loo_sample = loo_sample)) %>%
-#          rbind(feature_df, .)
-#       
-#       signal_case <- apply(exprs(m1)[case_marker, ], 2, mean, na.rm = T)
-#       signal_control <- apply(exprs(m1)[control_marker, ], 2, mean, na.rm = T)
-#       signal_ <- signal_case - signal_control
-#    
-#       ###################
-#       # Logistic method #
-#       ###################
-#       
-#       logistic_df <- data.frame(sample = sampleNames(m1), signal = signal_, group_ = m1$group_ == pred_group)
-#       rownames(logistic_df) <- logistic_df$sample
-#       
-#       ## Using the met_signal in logistic regression
-#       logistic_df_test <- logistic_df %>% filter(sample == loo_sample) %>% dplyr::select(-sample, -group_)
-#       logistic_df_train <- logistic_df %>% filter(sample != loo_sample) %>% dplyr::select(-sample)
-#       model_logistic = suppressWarnings(glm(group_ ~ ., data = logistic_df_train, family = "binomial"))
-#       loo_logistic_pred = predict.glm(model_logistic, logistic_df_test, type = "response")
-#       loocv_probs[loo_sample, "loocv_logistic_prob"] <- loo_logistic_pred[[1]]
-#    }
-#    
-#    predProb = loocv_probs[, "loocv_logistic_prob"]
-#    pred = ROCR::prediction(predProb, loocv_probs[, "group_"])
-#    
-#    feature_summary <- feature_df %>% group_by(loo_sample) %>% 
-#       summarize(features = list(feature))
-#    selected <- feature_summary$features
-#    names(selected) <- feature_summary$loo_sample
-#    
-#    return(list(prob = predProb, features = selected, top = rev(sort(table(unlist(selected)))), 
-#                auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred))
-# }
-# 
-# 
-# 
-# logistic_model <- function(msnset, group_var, pred_group, N_markers, sample_pooling = NA, 
-#                            pval_cutoff = 0.01, combine_markers = TRUE){
-#    m1 <- msnset
-#    meta <- pData(m1) %>% dplyr::select(!!group_var) %>% mutate(sample_name_unique = rownames(.)) %>%
-#       dplyr::select(group_ = !!group_var, sample = sample_name_unique) 
-#    group_lvls <- unique(meta$group_)
-#    
-#    if(length(group_lvls) != 2){
-#       print("Only implemented for comparisons of two classes.")
-#       break
-#    } else {
-#       control_group = setdiff(unique(meta$group_), pred_group)
-#    }
-#    
-#    ## Ensures limma_gen computes LogFC as case_group - control_group
-#    meta <- meta %>%
-#       mutate(group_ = factor(group_, levels = c(control_group, pred_group)))
-#    m1$group_ <- meta$group_
-#    
-#    all_samples <- sampleNames(m1)
-#    loocv_probs = data.frame(sample = meta$sample, group_ = meta$group_) %>%
-#       mutate(group_ = case_when(group_ == pred_group ~ 1,
-#                                 group_ == control_group ~ 0))
-#    rownames(loocv_probs) <- loocv_probs$sample
-#    feature_df <- data.frame()
-#    m <- m1
-#    for (loo_sample in all_samples){
-#       # print(loo_sample)
-#       if (is.data.frame(sample_pooling)){
-#          ## Find the patient of the loo_sample
-#          patient <- sample_pooling %>%
-#             filter(sample_name == loo_sample) %>% pull(patient_name)
-#          ## Find the samples from that patient
-#          exclude_samples <- sample_pooling %>%
-#             filter(patient_name == patient) %>%
-#             pull(sample_name)
-#          ## Exclude the other samples from that patient, since they're not independent from loo_sample
-#          exclude_samples <- setdiff(exclude_samples, loo_sample)
-#          m1 <- m[, setdiff(sampleNames(m), exclude_samples)]
-#       }
-#       samples_keep = sampleNames(m1) != loo_sample
-#       m1_ <- m1[, samples_keep]
-#       
-#       ###############################################
-#       # choose features to maximize signal-to-noise #
-#       ###############################################
-#       
-#       ## The choice of features is based on all BUT the loo_sample
-#       # test <- limma_gen(m1_, "~group_", "group_")
-#       test <- diffexp_helper(m1_, "group_", paste(pred_group, control_group, sep = "-")) %>%
-#          select(feature, logFC, P.Value = t_test_pval)
-#       
-#       if ((length(sampleNames(m1_)) < 2*N_markers + 1) && !combine_markers){
-#          print("Reducing number of markers to have full rank in model regression")
-#          N_markers = floor(length(sampleNames(m1_))/2) - 1
-#       }
-#       case_marker <- test %>% filter(logFC > 0) %>% arrange(P.Value) %>% filter(P.Value < pval_cutoff) %>% head(N_markers) %>% pull(feature)
-#       control_marker <- test %>% filter(logFC < 0) %>% arrange(P.Value) %>% filter(P.Value < pval_cutoff) %>% head(N_markers) %>% pull(feature)
-#       print(loo_sample)
-#       case_df = data.frame()
-#       control_df = data.frame()
-#       try(case_df <- data.frame(feature = case_marker, group_ = pred_group, loo_sample = loo_sample))
-#       try(control_df <- data.frame(feature = control_marker, group_ = control_group, loo_sample = loo_sample))
-#       feature_df <- rbind(case_df, control_df) %>%
-#          rbind(feature_df, .)
-#       
-#       case_mat = t(exprs(m1)[case_marker, , drop = FALSE]) %>% as.data.frame()
-#       control_mat = t(exprs(m1)[control_marker, , drop = FALSE]) %>% as.data.frame()
-#       if (combine_markers){
-#          if (ncol(control_mat) > 0){
-#             control_mat$control_avg = rowSums(control_mat)/ncol(control_mat)
-#             control_mat <- control_mat %>% select(control_avg)
-#          }
-#          if (ncol(case_mat) > 0){
-#             case_mat$case_avg = rowSums(case_mat)/ncol(case_mat)
-#             case_mat <- case_mat %>% select(case_avg)
-#          }
-#       }
-#       
-#       logistic_df <- data.frame(sample = sampleNames(m1), group_ = m1$group_ == pred_group) %>% 
-#          cbind(case_mat, control_mat)
-#       
-#       # signal_case <- apply(exprs(m1)[case_marker, ], 2, mean, na.rm = T)
-#       # signal_control <- apply(exprs(m1)[control_marker, ], 2, mean, na.rm = T)
-#       # signal_ <- signal_case - signal_control
-#       
-#       ###################
-#       # Logistic method #
-#       ###################
-#       
-#       # logistic_df <- data.frame(sample = sampleNames(m1), signal = signal_, group_ = m1$group_ == pred_group)
-#       # rownames(logistic_df) <- logistic_df$sample
-#       
-#       ## Using the met_signal in logistic regression
-#       logistic_df_test <- logistic_df %>% filter(sample == loo_sample) %>% dplyr::select(-sample, -group_)
-#       logistic_df_train <- logistic_df %>% filter(sample != loo_sample) %>% dplyr::select(-sample)
-#       model_logistic = suppressWarnings(glm(group_ ~ ., data = logistic_df_train, family = "binomial"))
-#       loo_logistic_pred = predict.glm(model_logistic, logistic_df_test, type = "response")
-#       loocv_probs[loo_sample, "loocv_logistic_prob"] <- loo_logistic_pred[[1]]
-#    }
-#    
-#    predProb = loocv_probs[, "loocv_logistic_prob"]
-#    pred = ROCR::prediction(predProb, loocv_probs[, "group_"])
-#    
-#    feature_summary <- feature_df %>% group_by(loo_sample) %>% 
-#       summarize(features = list(feature))
-#    selected <- feature_summary$features
-#    names(selected) <- feature_summary$loo_sample
-#    
-#    return(list(prob = predProb, features = selected, top = rev(sort(table(unlist(selected)))), 
-#                auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred))
-# }
-
-
-# logistic_model_helper3 <- function(test, m1_, N_markers, contrast, use_limma, method, N_tries = 5000, seed = 777){
-#    set.seed(seed)
-#    if (method == "simple"){
-#       N_tries = 1
-#    }
-#    new_mat = exprs(m1_)
-#    means_ = -log10(test$P.Value)
-#    if (N_markers > 1.5*nrow(test)){
-#       N_tries = min(50, N_tries)
-#    }
-#    for (i in 1:N_tries){
-#       if (i == 1){
-#          markers = arrange(test, P.Value) %>% head(., N_markers) %>% pull(feature)
-#       } else {
-#          test$random_pos = rnorm(nrow(test), mean = 0, sd = 0.3) + means_
-#          markers = arrange(test, -random_pos) %>% head(., N_markers) %>% pull(feature)
-#       }
-#       
-#       # markers_lab = paste(i, paste(markers, collapse = "__"))
-#       markers_lab = paste(markers, collapse = "__")
-#       marker_mat = exprs(m1_)[markers, , drop = FALSE]
-#       new_row = data.frame(t(colSums(marker_mat)/nrow(marker_mat)))
-#       colnames(new_row) = sub("X", "", colnames(new_row))
-#       rownames(new_row) = markers_lab
-#       new_mat = rbind(new_mat, new_row)
-#    }
-#    new_mat = new_mat[(nrow(m1_)+1):(nrow(m1_)+N_tries), ] %>% as.matrix()
-#    new_m = MSnSet(exprs = new_mat, pData = pData(m1_))
-#    if (N_tries > 1){
-#       test_ = diffexp_helper(new_m, "group_", contrast) 
-#       if (use_limma){
-#          test_ = test_ %>% select(feature, logFC, P.Value)
-#       } else{
-#          test_ = test_ %>% select(feature, logFC, P.Value = t_test_pval)
-#       }
-#       test_ = test_ %>% arrange(P.Value)
-#       label = sub("^[0-9]+ ", "", test_$feature[[1]])
-#    } else {
-#       label = featureNames(new_m)[[1]]
-#    } 
-#    markers = strsplit(label, "__")[[1]]
-#    return(markers)
-# }
+diffexp_helper <- function(m, contrast_var, contrasts){
+   pData(m)$bgd_ <- pData(m)[[contrast_var]]
+   pData(m)$Sample <- sampleNames(m)
+   
+   all_results <- data.frame()
+   
+   for (contrast in contrasts){
+      contrast_groups = strsplit(contrast, "-")[[1]]
+      contrast = paste0("bgd_", contrast_groups[[1]], "-bgd_", contrast_groups[[2]])
+      limma_res <- limma_contrasts(m, model.str = "~0 + bgd_", 
+                                   coef.str = "bgd_", contrasts = contrast) %>% as.data.frame()
+      rownames(limma_res) <- limma_res$feature
+      counter = 1
+      
+      m_contrast <- m[, m$bgd_ %in% contrast_groups]
+      p_values_t_test <- vector(mode="character", length = nrow(limma_res))
+      p_values_welch_test <- vector(mode="character", length = nrow(limma_res))
+      for (feature in limma_res$feature){
+         data_df <- data.frame(value = exprs(m_contrast)[feature, ],
+                               Sample = colnames(exprs(m_contrast))) %>%
+            filter(!is.na(value)) %>%
+            merge(pData(m_contrast) %>% select(Sample, bgd_), by = "Sample")
+         
+         p_values_t_test[[counter]] <- tryCatch({t.test(value ~ bgd_, data = data_df, 
+                                                        alternative = "two.sided", var.equal = TRUE)[[3]]}, 
+                                                error = function(e) {NA}) 
+         p_values_welch_test[[counter]] <- tryCatch({t.test(value ~ bgd_, data = data_df, 
+                                                            alternative = "two.sided", var.equal = FALSE)[[3]]}, 
+                                                    error = function(e) {NA}) 
+         counter = counter + 1
+      }
+      
+      limma_res <- limma_res %>%
+         mutate(t_test_pval = as.numeric(p_values_t_test),
+                t_test_adj = p.adjust(t_test_pval, method = "BH"),
+                welch_pval = as.numeric(p_values_welch_test),
+                welch_adj = p.adjust(welch_pval, method = "BH"))
+      all_results <- rbind(all_results, limma_res)
+   }
+   
+   return(all_results)
+}
 
 
 
