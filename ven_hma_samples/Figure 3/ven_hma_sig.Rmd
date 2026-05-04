@@ -1,0 +1,309 @@
+
+
+
+
+
+
+```{r include=FALSE}
+source("../scripts/loading_data.R")
+source("../scripts/plot_helper.R")
+source("../scripts/compute_lsc17.R")
+source("../scripts/predict_helper.R")
+
+samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
+m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
+
+features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 19]
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+
+plot_folder = "./many_plots/"
+if (!dir.exists(plot_folder)){
+   dir.create(plot_folder)
+}
+
+# diffexp_results = diffexp_helper(m_exp28, "subcohort", c("Refractory-Response_no_relapse", "Refractory-Relapse"))
+
+```
+
+
+
+```{r}
+
+
+```
+
+```{r}
+
+
+diffexp = diffexp_helper(m_exp28_[complete_features, ], contrast_var = "refractory", 
+                         contrasts = "Refractory-Not_Refractory")
+diffexp2 = diffexp_helper(m_exp28_[complete_features, ], contrast_var = "subcohort", 
+                          contrasts = "Refractory-Response_no_relapse")
+```
+
+
+
+```{r}
+pData(m_exp28) = pData(m_exp28) %>%
+   mutate(refractory = case_when(subcohort == "Refractory" ~ "Refractory",
+                                 TRUE ~ "Not_Refractory"))
+m_exp28_ = m_exp28[, m_exp28$subcohort != "Paired_relapse_sample"]
+m_4pat_complete_features = featureNames(m_4pat)[(rowSums(is.na(exprs(m_4pat))) == 0)]
+
+make_title <- function(pval_cutoff, feature_df){
+   title_top = paste0("pval_cutoff = ", pval_cutoff, "\n")
+   M_ = feature_df %>% pull(feature)
+   n_ = intersect(M_, m_4pat_complete_features)
+   full_title = paste0(title_top, "using", length(n_), "/", length(M_), "markers")
+   return(full_title)
+}
+```
+
+
+
+```{r}
+
+for (pval_cutoff in seq(11, 30)/1000){
+   ### Refractory - Relapse signature applied to 4 patient cell lines
+   test = logistic_model(m_exp28_[complete_features, ],
+                          group_var = "subcohort", pred_group = "Refractory", N_markers = 50, mode = "simple", 
+                          control_group = "Relapse", combine_markers = TRUE, skip_loo = TRUE, pval_cutoff = pval_cutoff)
+   xx = predict_helper_(m_4pat, case_markers = test$full_model$features %>%
+                      filter(group_ == "Refractory") %>% pull(feature), 
+                      control_markers = test$full_model$features %>%
+                      filter(group_ != "Refractory") %>% pull(feature)) %>% 
+      filter(grepl("UT", sample) | grepl("DV", sample)) %>%
+      mutate(group = case_when(grepl("DV", sample) ~ "DV",
+                               TRUE ~ "UT"))
+   treatment_colors = c("DV" = "#00798c", "UT" = "forestgreen")
+   q = ggplot(xx, aes(x = group, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+      ylab("Refractory-Relapse signal") + scale_fill_manual(values = treatment_colors) +
+      theme(text = element_text(size = 15)) + 
+      ggtitle(make_title(pval_cutoff, test$full_model$features))
+   q1 = t_test_ann(q, c("DV", "UT"))
+   ggsave(plot = q1, filename = paste0("many_plots/refractory_relapse_signature_pval_", pval_cutoff, ".png"))
+   
+   
+   
+   
+   ### Refractory - Response_no_relapse signature applied to 4 patient cell lines
+   test = logistic_model(m_exp28_[complete_features, ],
+                          group_var = "subcohort", pred_group = "Refractory", N_markers = 50, mode = "simple", 
+                          control_group = "Response_no_relapse", combine_markers = TRUE, 
+                         skip_loo = TRUE, pval_cutoff = pval_cutoff)
+   xx = predict_helper_(m_4pat, case_markers = test$full_model$features %>%
+                      filter(group_ == "Refractory") %>% pull(feature), 
+                      control_markers = test$full_model$features %>%
+                      filter(group_ != "Refractory") %>% pull(feature)) %>% 
+      filter(grepl("UT", sample) | grepl("DV", sample)) %>%
+      mutate(group = case_when(grepl("DV", sample) ~ "DV",
+                               TRUE ~ "UT"))
+   treatment_colors = c("DV" = "#00798c", "UT" = "forestgreen")
+   q = ggplot(xx, aes(x = group, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+      ylab("Refractory-Response_no_relapse signal") + scale_fill_manual(values = treatment_colors) +
+      theme(text = element_text(size = 15)) + 
+      ggtitle(make_title(pval_cutoff, test$full_model$features))
+   q1 = t_test_ann(q, c("DV", "UT"))
+   ggsave(plot = q1, filename = paste0("many_plots/refractory_response_no_relapse_signature_pval_", pval_cutoff, ".png"))
+   
+   
+   
+   
+   ### Refractory - response signature applied to 4 patient cell lines
+   test = logistic_model(m_exp28_[complete_features, ],
+                          group_var = "refractory", pred_group = "Refractory", N_markers = 50, mode = "simple", 
+                          control_group = "Not_Refractory", combine_markers = TRUE, 
+                         skip_loo = TRUE, pval_cutoff = pval_cutoff)
+   xx = predict_helper_(m_4pat, case_markers = test$full_model$features %>%
+                      filter(group_ == "Refractory") %>% pull(feature), 
+                      control_markers = test$full_model$features %>%
+                      filter(group_ != "Refractory") %>% pull(feature)) %>% 
+      filter(grepl("UT", sample) | grepl("DV", sample)) %>%
+      mutate(group = case_when(grepl("DV", sample) ~ "DV",
+                               TRUE ~ "UT"))
+   treatment_colors = c("DV" = "#00798c", "UT" = "forestgreen")
+   q = ggplot(xx, aes(x = group, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+      ylab("Refractory-Relapse signal") + scale_fill_manual(values = treatment_colors) +
+      theme(text = element_text(size = 15)) + 
+      ggtitle(make_title(pval_cutoff, test$full_model$features))
+   q1 = t_test_ann(q, c("DV", "UT"))
+   ggsave(plot = q1, filename = paste0("many_plots/refractory_response_signature_pval_", pval_cutoff, ".png"))
+}
+
+
+```
+
+
+
+```{r}
+sig_pval_df = data.frame(pval_cutoff = seq(1, 16)/1000, DV_UT_pvalue = c(0.014, 0.0035, 0.0035, 0.28, 0.59, 1, 0.62, 0.62,
+                                                                         0.55, 0.55, 0.25, 0.28, 0.33, 0.12, 0.11, 0.096),
+                         N_markers = c("2", "5", "5", "6", "7", "8", "11", "11","12", "12", "14", "15", "16", "18", "19", "21"))
+ggplot(sig_pval_df, aes(x = pval_cutoff, y = DV_UT_pvalue, label = N_markers)) + geom_bar(stat = 'identity') + geom_label() + 
+   ggtitle("Ven+HMA signature performance on 4 patient data")
+
+```
+
+
+
+
+```{r}
+pval_cutoff = 0.025
+test = logistic_model(m_exp28_[complete_features, ],
+                      group_var = "subcohort", pred_group = "Refractory", N_markers = 50, mode = "simple", 
+                      control_group = "Response_no_relapse", combine_markers = TRUE, 
+                      skip_loo = TRUE, pval_cutoff = pval_cutoff)
+xx = predict_helper_(m_4pat, case_markers = test$full_model$features %>%
+                   filter(group_ == "Refractory") %>% pull(feature), 
+                   control_markers = test$full_model$features %>%
+                   filter(group_ != "Refractory") %>% pull(feature)) %>% 
+   filter(grepl("UT", sample) | grepl("DV", sample)) %>%
+   mutate(group = case_when(grepl("DV", sample) ~ "DV",
+                            TRUE ~ "UT"))
+treatment_colors = c("DV" = "#00798c", "UT" = "forestgreen")
+q = ggplot(xx, aes(x = group, y = signal, fill = group)) + geom_boxplot(width = 0.67) + 
+   ylab("Signal") + scale_fill_manual(values = treatment_colors) +
+   theme_bw() + theme(text = element_text(size = 23), plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Ven+HMA resistance signature")
+q1 = t_test_ann(q, c("DV", "UT"))
+ggsave(plot = q1, filename = paste0("many_plots/refractory_response_no_relapse_signature_pval_", pval_cutoff, ".png"))
+ggsave(plot = q1, filename = paste0("many_plots/refractory_response_no_relapse_signature_pval_", pval_cutoff, ".pdf"))
+
+pred = ROCR::prediction(xx$signal, xx$group == "DV")
+modelresult1 = list(prob = xx$signal, features = NA, top = NA, 
+      auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+
+p <- plotAUC_gg(modelresult1) +
+   theme(text = element_text(size = 25), 
+         panel.background = element_rect(fill = "white", colour = "black"),
+         panel.grid.major = element_line(colour = "grey90"),
+         panel.grid.minor = element_line(colour = "grey95"))
+ggsave(plot = p, filename = "many_plots/refractory_signature_DV_auc.pdf", width = 7, height = 6.7)
+
+
+# for (pval_cutoff in c(0.013, 0.014, 0.015, 0.016)){
+#    ### Refractory - response signature applied to 4 patient cell lines
+#    test = logistic_model(m_exp28_[complete_features, ],
+#                           group_var = "refractory", pred_group = "Refractory", N_markers = 20, mode = "simple", 
+#                           control_group = "Not_Refractory", combine_markers = TRUE, 
+#                          skip_loo = TRUE, pval_cutoff = pval_cutoff)
+#    xx = predict_helper_(m_4pat, case_markers = test$full_model$features %>%
+#                       filter(group_ == "Refractory") %>% pull(feature), 
+#                       control_markers = test$full_model$features %>%
+#                       filter(group_ != "Refractory") %>% pull(feature)) %>% 
+#       filter(grepl("UT", sample) | grepl("DV", sample)) %>%
+#       mutate(group = case_when(grepl("DV", sample) ~ "DV",
+#                                TRUE ~ "UT"))
+#    treatment_colors = c("DV" = "#00798c", "UT" = "forestgreen")
+#    q = ggplot(xx, aes(x = group, y = signal, fill = group)) + geom_boxplot(width = 0.75) + 
+#       ylab("Refractory-Relapse signal") + scale_fill_manual(values = treatment_colors) +
+#       theme(text = element_text(size = 15)) + 
+#       ggtitle(make_title(pval_cutoff, test$full_model$features))
+#    q1 = t_test_ann(q, c("DV", "UT"))
+#    ggsave(plot = q1, filename = paste0("many_plots/refractory_response_signature_pval_", pval_cutoff, ".png"))
+# }
+
+
+
+```
+
+
+
+
+
+```{r}
+diffexp_results_venhma = diffexp_helper(m_exp28_[complete_features, ], "subcohort", c("Refractory-Response_no_relapse"))
+
+logFC_cutoff = 2
+plot_df = diffexp_results_venhma %>% filter(feature %in% m_4pat_complete_features) %>%
+   mutate(pvalue_ = -log10(t_test_pval),
+          alpha = case_when(t_test_pval <= pval_cutoff ~ 1,
+                            logFC > logFC_cutoff | logFC < -logFC_cutoff ~ 1,
+                            TRUE ~ 0.01),
+          color = case_when(t_test_pval < pval_cutoff & logFC > 0 ~ "logFC > 0",
+                            t_test_pval < pval_cutoff & logFC < 0 ~ "logFC < 0",
+                            logFC > logFC_cutoff ~ "logFC > 0",
+                            logFC < -logFC_cutoff ~ "logFC < 0",
+                            TRUE ~ ""),
+          size = case_when(t_test_pval < pval_cutoff ~ "A",
+                           abs(logFC) > logFC_cutoff ~ "A",
+                           TRUE ~ "B")) %>% select(-feature) %>% unique()
+plot_df$feature = rownames(plot_df)
+p = ggplot(plot_df, aes(x = logFC, y = pvalue_, alpha = alpha, color = color, size = size)) +
+   geom_point() + scale_color_manual(values = c("grey20", "steelblue4", "firebrick4")) +
+   geom_hline(aes(yintercept = -log10(pval_cutoff)), linetype = "dashed", color = "forestgreen", linewidth = 0.7) +
+   guides(alpha = "none", size = "none", color = "none") + ylab("pvalue") + xlim(-3.3, 3.3) + 
+   scale_y_continuous(breaks = c(0,2,3,4,6,8), labels = c("1", "0.01", "0.001", "1e-4", "1e-6", "1e-8")) + theme_bw() +
+   scale_size_manual(values = c("A" = 7, "B" = 3)) + ggtitle("Refractory - Response no relapse") + 
+   theme(text = element_text(size = 27), strip.background = element_rect(fill = NA, color = "black")) + 
+   ggrepel::geom_label_repel(data = plot_df %>% filter(t_test_pval < pval_cutoff | abs(logFC) > logFC_cutoff),
+                             aes(label = feature), min.segment.length = 1, size = 5)
+p
+plot_path = "many_plots/volcano_plots_refractory_response_no_relapse.png"
+ggsave(plot = p, filename = plot_path, width = 7.5, height = 7)
+plot_path = "many_plots/volcano_plots_refractory_response_no_relapse.pdf"
+ggsave(plot = p, filename = plot_path, width = 7.5, height = 7)
+
+
+```
+
+
+
+
+```{r}
+all_features_df_ <- test$full_model$features
+xx = predict_helper(m_exp28, test$full_model, case_group = "Refractory", control_group = "Response_no_relapse") %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(logistic_signal2, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2))) %>%
+   mutate(refractory = case_when(`sub-cohort.PNNL` == "Refractory" ~ 1,
+                                 TRUE ~ 0))
+
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = logistic_signal2, fill = group)) + geom_boxplot(width = 0.6) + 
+   ylab("Signal") + scale_fill_manual(values = subcohort_colors) + theme_bw() +
+   ggtitle("Refractory - Response no relapse") +
+   theme(text = element_text(size = 27))
+
+ggsave(plot = q, filename = "many_plots/m_exp28_refractory_response_no_relapse_signature_boxplot.pdf", width = 10, height = 7)
+```
+
+
+
+```{r}
+# seed_ = 654654651
+# set.seed(seed_)
+# data2 = data.frame(id = sampleNames(m_exp28), subcohort = m_exp28$subcohort) %>%
+#    filter(subcohort %in% c("Refractory", "Response_no_relapse"))
+# n_folds = 3
+# x = groupdata2::fold(data2, k = n_folds, cat_col = "subcohort")
+# 
+# for (i in range(n_folds)){
+#    excluded_samples = x %>% filter(.folds == i)
+#    train_samples = x %>% filter(.folds != i)
+#    m_train = m_exp28[complete_features, train_samples$id]
+#    m_test = m_exp28[complete_features, excluded_samples$id]
+# 
+#    model = logistic_model(m_train, group_var = "subcohort", pred_group = "Refractory", N_markers = 10, mode = "s2n_max_v2",
+#                           control_group = "Response_no_relapse", combine_markers = TRUE, skip_loo = TRUE, pval_cutoff = 0.005)
+# 
+#    xx = predict_helper(m_test, model$full_model, case_group = "Refractory", control_group = "Response_no_relapse") %>%
+#             left_join(., p_data, by = c("sample" = "sample_name"))
+# }
+
+```
+
+
+
+```{r}
+# feat1 = all_features_df_      # using the exvivo model
+# feat2 = all_features_df_      # using the ven+hma model
+common = intersect(feat1$feature, feat2$feature)
+
+feat1 = left_join(feat1, diffexp_results_venhma %>% select(logFC, feature, t_test_pval), by = "feature")
+feat2 = left_join(feat2, diffexp_results_4pat %>% select(logFC, feature, t_test_pval), by = "feature")
+
+```
+
+

@@ -1,0 +1,277 @@
+
+
+```{r include=FALSE}
+source("../scripts/loading_data.R")
+source("../scripts/plot_helper.R")
+source("../scripts/compute_lsc17.R")
+source("../scripts/predict_helper.R")
+
+samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
+m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
+
+features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 19]
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+
+plot_folder = "./many_plots/"
+if (!dir.exists(plot_folder)){
+   dir.create(plot_folder)
+}
+
+```
+
+## Load msigdb
+
+```{r}
+
+library(msigdbr)
+t2g_hallmark <- msigdbr(species = "Homo sapiens", category = "H") %>%
+   dplyr::select(gs_name, gene_symbol)
+
+t2g_reactome <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "CP:REACTOME") %>%
+   dplyr::select(gs_name, gene_symbol) %>%
+   mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_kegg <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "CP:KEGG_LEGACY") %>%
+   dplyr::select(gs_name, gene_symbol) %>%
+   mutate(gs_name = gsub("_", " ", gs_name))
+
+t2g_gobp <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "BP") %>%
+   dplyr::select(gs_name, gene_symbol) %>%
+   mutate(gs_name = gsub("_", " ", gs_name))
+
+
+```
+
+
+SSGSEA
+
+
+```{r}
+library(GSVA)
+
+pathway_df  = t2g_kegg %>% unique() %>%
+  group_by(gs_name) %>%
+  summarise(genes = list(gene_symbol))
+pathway_list = pathway_df$genes
+names(pathway_list) = pathway_df$gs_name
+
+m_exp28_complete = m_exp28[rowSums(is.na(exprs(m_exp28))) <= 0, ]
+my_params <- ssgseaParam(expr = exprs(m_exp28_complete), 
+                         geneSets = pathway_list)
+results_kegg <- gsva(my_params)
+
+
+pathway_df  = t2g_hallmark %>% unique() %>%
+  group_by(gs_name) %>%
+  summarise(genes = list(gene_symbol))
+pathway_list = pathway_df$genes
+names(pathway_list) = pathway_df$gs_name
+
+m_exp28_complete = m_exp28[rowSums(is.na(exprs(m_exp28))) <= 0, ]
+my_params <- ssgseaParam(expr = exprs(m_exp28_complete), 
+                         geneSets = pathway_list)
+results_hallmark <- gsva(my_params)
+
+
+pathway_df  = t2g_reactome %>% unique() %>%
+  group_by(gs_name) %>%
+  summarise(genes = list(gene_symbol))
+pathway_list = pathway_df$genes
+names(pathway_list) = pathway_df$gs_name
+
+m_exp28_complete = m_exp28[rowSums(is.na(exprs(m_exp28))) <= 0, ]
+my_params <- ssgseaParam(expr = exprs(m_exp28_complete), 
+                         geneSets = pathway_list)
+results_reactome <- gsva(my_params)
+
+
+pathway_df  = t2g_gobp %>% unique() %>%
+  group_by(gs_name) %>%
+  summarise(genes = list(gene_symbol))
+pathway_list = pathway_df$genes
+names(pathway_list) = pathway_df$gs_name
+
+m_exp28_complete = m_exp28[rowSums(is.na(exprs(m_exp28))) <= 0, ]
+my_params <- ssgseaParam(expr = exprs(m_exp28_complete), 
+                         geneSets = pathway_list)
+results_gobp <- gsva(my_params)
+
+
+m_exp28_ssgsea = MSnSet(exprs = rbind(results_kegg, results_reactome, results_hallmark, results_gobp), 
+                                      pData = pData(m_exp28))
+xx = plot_pca(m_exp28, "subcohort", output_type = "full")
+yy = plot_pca(m_exp28_ssgsea, "subcohort", output_type = "full") 
+zz = plot_pca(m_4pat[, m_4pat$Treatment %in% c("DV", "UT")], "Treatment", output_type = "full")
+
+```
+
+
+PCA of SSGSEA
+
+```{r}
+treatment_colors = c("DV" = "#00798c", "UT" = "forestgreen")
+subcohort_colors_ = subcohort_colors
+subcohort_colors_[[1]] = "#bd7b13"
+df.u = xx$data.u
+df.u$subcohort = pData(m_exp28)[, "subcohort"]
+df.v = xx$data.v
+
+p <- ggplot(data = df.u, mapping = aes(x = df.u[, 1], y = df.u[, 2], 
+                                       color = subcohort)) + geom_point(size = 2) +
+   geom_hline(yintercept = 0, lty = "longdash", color = "darkgrey") +
+   geom_vline(xintercept = 0, lty = "longdash", color = "darkgrey") +
+   labs(x = xx$axis_labs[1], y = xx$axis_labs[2]) +
+   theme_bw() + theme(aspect.ratio = 1, text = element_text(size = 15)) +
+   stat_ellipse(mapping = aes(fill = subcohort, color = NULL),
+                geom = "polygon", type = "norm",
+                level = 0.5, alpha = 0.1, show.legend = FALSE) + 
+   ggtitle("PCA of (5309 features)") + scale_fill_manual(values = subcohort_colors) +
+   scale_color_manual(values = subcohort_colors)
+p
+ggsave(plot = p, filename = paste0(plot_folder, "pca_m_exp28.pdf"))
+
+df.u = yy$data.u
+df.u$subcohort = pData(m_exp28)[, "subcohort"]
+df.v = yy$data.v
+
+p <- ggplot(data = df.u, mapping = aes(x = df.u[, 1], y = df.u[, 2], 
+                                       color = subcohort)) + geom_point(size = 2) +
+   geom_hline(yintercept = 0, lty = "longdash", color = "darkgrey") +
+   geom_vline(xintercept = 0, lty = "longdash", color = "darkgrey") +
+   labs(x = yy$axis_labs[1], y = yy$axis_labs[2]) +
+   theme_bw() + theme(aspect.ratio = 1, text = element_text(size = 15)) +
+   stat_ellipse(mapping = aes(fill = subcohort, color = NULL),
+                geom = "polygon", type = "norm",
+                level = 0.5, alpha = 0.07, show.legend = FALSE) + 
+   ggtitle("PCA of (8844 pathways)") + scale_fill_manual(values = subcohort_colors) +
+   scale_color_manual(values = subcohort_colors)
+p
+ggsave(plot = p, filename = paste0(plot_folder, "pca_m_exp28_sigs.pdf"))
+
+
+df.u = zz$data.u
+df.u$Treatment = pData(m_4pat[, m_4pat$Treatment %in% c("DV", "UT")])[, "Treatment"]
+df.v = zz$data.v
+
+p <- ggplot(data = df.u, mapping = aes(x = df.u[, 1], y = df.u[, 2], 
+                                       color = Treatment)) + geom_point(size = 2) +
+   geom_hline(yintercept = 0, lty = "longdash", color = "darkgrey") +
+   geom_vline(xintercept = 0, lty = "longdash", color = "darkgrey") +
+   labs(x = zz$axis_labs[1], y = zz$axis_labs[2]) +
+   theme_bw() + theme(aspect.ratio = 1, text = element_text(size = 15)) +
+   stat_ellipse(mapping = aes(fill = Treatment, color = NULL),
+                geom = "polygon", type = "norm",
+                level = 0.5, alpha = 0.1, show.legend = FALSE) + 
+   ggtitle("PCA of 3982 features") + scale_fill_manual(values = treatment_colors) +
+   scale_color_manual(values = treatment_colors)
+p
+ggsave(plot = p, filename = paste0(plot_folder, "pca_m_4pat.pdf"))
+
+
+```
+
+
+Diffexp of SSGSEA
+
+```{r}
+diffexp_results = diffexp_helper(m_exp28, "subcohort", c("Refractory-Response_no_relapse", "Refractory-Relapse")) 
+diffexp_results_sigs = diffexp_helper(m_exp28_ssgsea, "subcohort", c("Refractory-Response_no_relapse", "Refractory-Relapse")) 
+
+```
+
+
+```{r}
+logFC_cutoff = 3
+plot_df = diffexp_results %>%
+   mutate(pvalue_ = -log10(t_test_pval),
+          alpha = case_when(t_test_pval <= 0.001 ~ 1,
+                            logFC > logFC_cutoff | logFC < -logFC_cutoff ~ 1,
+                            TRUE ~ 0.01),
+          color = case_when(t_test_pval < 0.001 & logFC > 0 ~ "logFC > 0",
+                            t_test_pval < 0.001 & logFC < 0 ~ "logFC < 0",
+                            logFC > logFC_cutoff ~ "logFC > 0",
+                            logFC < -logFC_cutoff ~ "logFC < 0",
+                            TRUE ~ ""),
+          size = case_when(t_test_pval < 0.001 ~ "A",
+                           abs(logFC) > logFC_cutoff ~ "A",
+                           TRUE ~ "B")) %>% select(-feature) %>% unique()
+plot_df$feature = rownames(plot_df)
+p = ggplot(plot_df, aes(x = logFC, y = pvalue_, alpha = alpha, color = color, size = size)) +
+   geom_point() + facet_wrap(~contrast) + scale_color_manual(values = c("grey20", "steelblue4", "firebrick4")) +
+   geom_hline(aes(yintercept = -log10(0.001)), linetype = "dashed", color = "forestgreen", linewidth = 0.7) +
+   guides(alpha = "none", size = "none", color = "none") + ylab("pvalue") + xlim(-5.4, 5.4) + 
+   scale_y_continuous(breaks = c(0,2,3,4,6,8), labels = c("1", "0.01", "0.001", "1e-4", "1e-6", "1e-8")) + theme_bw() +
+   scale_size_manual(values = c("A" = 7, "B" = 3)) + 
+   theme(text = element_text(size = 27), strip.background = element_rect(fill = NA, color = "black")) + 
+   ggrepel::geom_label_repel(data = plot_df %>% filter(t_test_pval < 0.001 | abs(logFC) > logFC_cutoff),
+                             aes(label = feature), min.segment.length = 1, size = 5)
+p
+plot_path = paste0(plot_folder, "volcano_plots_m_exp28.png")
+ggsave(plot = p, filename = plot_path, width = 15, height = 7)
+plot_path = paste0(plot_folder, "volcano_plots_m_exp28.pdf")
+ggsave(plot = p, filename = plot_path, width = 15, height = 7)
+
+
+logFC_cutoff = 0.2
+plot_df = diffexp_results_sigs %>%
+   mutate(pvalue_ = -log10(t_test_pval),
+          alpha = case_when(t_test_pval <= 0.001 ~ 1,
+                            logFC > logFC_cutoff | logFC < -logFC_cutoff ~ 1,
+                            TRUE ~ 0.01),
+          color = case_when(t_test_pval < 0.001 & logFC > 0 ~ "logFC > 0",
+                            t_test_pval < 0.001 & logFC < 0 ~ "logFC < 0",
+                            logFC > logFC_cutoff ~ "logFC > 0",
+                            logFC < -logFC_cutoff ~ "logFC < 0",
+                            TRUE ~ ""),
+          size = case_when(t_test_pval < 0.001 ~ "A",
+                           abs(logFC) > logFC_cutoff ~ "A",
+                           TRUE ~ "B")) %>% select(-feature) %>% unique()
+plot_df <- plot_df %>%
+   mutate(feature = rownames(.) %>% as.character()) %>%
+   mutate(feature = stringr::str_wrap(feature, width = 30))
+p = ggplot(plot_df, aes(x = logFC, y = pvalue_, alpha = alpha, color = color, size = size)) +
+   geom_point() + facet_wrap(~contrast) + scale_color_manual(values = c("grey20", "steelblue4", "firebrick4")) +
+   geom_hline(aes(yintercept = -log10(0.001)), linetype = "dashed", color = "forestgreen", linewidth = 0.7) +
+   guides(alpha = "none", size = "none", color = "none") + ylab("pvalue") + xlim(-0.35, 0.35) + 
+   scale_y_continuous(breaks = c(0,2,3,4,6,8), labels = c("1", "0.01", "0.001", "1e-4", "1e-6", "1e-8")) + theme_bw() +
+   scale_size_manual(values = c("A" = 7, "B" = 3)) + 
+   theme(text = element_text(size = 27), strip.background = element_rect(fill = NA, color = "black")) + 
+   ggrepel::geom_label_repel(data = plot_df %>% filter(t_test_pval < 0.001 | abs(logFC) > logFC_cutoff), 
+                             aes(label = feature), point.padding = unit(0.5, "lines"), nudge_y = 0.7,
+                             min.segment.length = 1, size = 5)
+p
+plot_path = paste0(plot_folder, "volcano_plots_m_exp28_sigs.png")
+ggsave(plot = p, filename = plot_path, width = 15, height = 7)
+plot_path = paste0(plot_folder, "volcano_plots_m_exp28_sigs.pdf")
+ggsave(plot = p, filename = plot_path, width = 15, height = 7)
+
+
+```
+
+
+
+```{r}
+
+plot_df = diffexp_results_sigs %>%
+   mutate(pvalue_ = -log10(t_test_pval),
+          alpha = case_when(t_test_pval <= 0.05 ~ 1,
+                            TRUE ~ 0.01),
+          color = case_when(t_test_pval < 0.05 & logFC > 0 ~ "pvalue < 0.05, logFC > 0",
+                            t_test_pval < 0.05 & logFC < 0 ~ "pvalue < 0.05, logFC < 0",
+                            TRUE ~ ""),
+          size = case_when(t_test_pval < 0.05 ~ "A",
+                           TRUE ~ "B"))
+p = ggplot(plot_df, aes(x = logFC, y = pvalue_, alpha = alpha, color = color, size = size)) +
+   geom_point() + facet_wrap(~contrast) + scale_color_manual(values = c("grey20", "steelblue4", "firebrick4")) +
+   geom_hline(aes(yintercept = -log10(0.05)), linetype = "dashed", color = "forestgreen", linewidth = 0.7) +
+   guides(alpha = "none", size = "none") + ylab("pvalue") + theme(text = element_text(size = 15)) + xlim(-0.27, 0.27) + 
+   scale_y_continuous(breaks = c(0,2,4,6,8), labels = c("1", "0.01", "1e-4", "1e-6", "1e-8")) + theme_bw() +
+   scale_size_manual(values = c("A" = 3, "B" = 1)) + theme(text = element_text(size = 18))
+p
+# plot_path = paste0(folder_path, "volcano_plots.png")
+# ggsave(plot = p, filename = plot_path, width = 10, height = 7)
+
+```
+
+
+

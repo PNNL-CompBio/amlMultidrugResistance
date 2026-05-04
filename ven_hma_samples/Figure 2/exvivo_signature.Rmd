@@ -1,14 +1,15 @@
 
 
 
-```{r}
-source("../../synapseUtil.R")
+```{r include=FALSE}
+source("../scripts/loading_data.R")
 source("../scripts/plot_helper.R")
 source("../scripts/compute_lsc17.R")
 source("../scripts/predict_helper.R")
+
+source("../../synapseUtil.R")
 source("../scripts/s2n_model.R")
 
-source("../scripts/loading_data.R")
 
 samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
 m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
@@ -17,20 +18,203 @@ features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 19]
 complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
 
 plot_folder = "./many_plots/"
-if (!file.exists(plot_folder))
-  dir.create(plot_folder)
+if (!dir.exists(plot_folder)){
+   dir.create(plot_folder)
+}
+
+complete_DV_UT_features <- complete.cases(exprs(m_4pat[, m_4pat$Treatment %in% c("UT", "DV")]))
+complete_DV_UT_features_ = intersect(featureNames(m_4pat)[complete_DV_UT_features], complete_features)
 # diffexp_results = diffexp_helper(m_exp28, "subcohort", c("Refractory-Response_no_relapse", "Refractory-Relapse")) 
 
 ```
 
 
+PCA of 4 patient ex vivo data
+
+```{r}
+pat_colors = subcohort_colors
+pat_colors = c("DV Resistant" = "#00798c", "Untreated" = "#e8991b")
+m_ = m_4pat[, m_4pat$Treatment %in% c("UT", "DV")]
+yy = plot_pca(m_, phenotype = "Treatment", output_type = "full")
+df.u = yy$data.u
+df.u$Treatment = pData(m_)[, "Treatment"]
+df.u = df.u %>%
+   mutate(Group = case_when(Treatment == "DV" ~ "DV Resistant",
+                            TRUE ~ "Untreated"))
+df.v = yy$data.v
+
+p <- ggplot(data = df.u, mapping = aes(x = df.u[, 1], y = df.u[, 2], 
+                                       color = Group)) + geom_point(size = 2) +
+   geom_hline(yintercept = 0, lty = "longdash", color = "darkgrey") +
+   geom_vline(xintercept = 0, lty = "longdash", color = "darkgrey") +
+   labs(x = yy$axis_labs[1], y = yy$axis_labs[2]) +
+   theme_bw() + theme(aspect.ratio = 1, text = element_text(size = 15)) +
+   stat_ellipse(mapping = aes(fill = Group, color = NULL),
+                geom = "polygon", type = "norm",
+                level = 0.5, alpha = 0.07, show.legend = FALSE) + 
+   ggtitle("PCA of 3932 features") + scale_fill_manual(values = pat_colors) +
+   scale_color_manual(values = pat_colors)
+p
+ggsave(plot = p, filename = paste0(plot_folder, "pca_m_4pat.pdf"))
+
+```
+
+
+Volcano plot showing the markers within the exvivo data
+
+```{r}
+diffexp_results_4pat = diffexp_helper(m_4pat[complete_DV_UT_features_, ], "Treatment", c("DV-UT"))
+
+logFC_cutoff = 4
+plot_df = diffexp_results %>%
+   mutate(pvalue_ = -log10(t_test_pval),
+          alpha = case_when(t_test_pval <= 0.001 ~ 1,
+                            logFC > logFC_cutoff | logFC < -logFC_cutoff ~ 1,
+                            TRUE ~ 0.01),
+          color = case_when(t_test_pval < 0.001 & logFC > 0 ~ "logFC > 0",
+                            t_test_pval < 0.001 & logFC < 0 ~ "logFC < 0",
+                            logFC > logFC_cutoff ~ "logFC > 0",
+                            logFC < -logFC_cutoff ~ "logFC < 0",
+                            TRUE ~ ""),
+          size = case_when(t_test_pval < 0.001 ~ "A",
+                           abs(logFC) > logFC_cutoff ~ "A",
+                           TRUE ~ "B")) %>% select(-feature) %>% unique()
+plot_df$feature = rownames(plot_df)
+p = ggplot(plot_df, aes(x = logFC, y = pvalue_, alpha = alpha, color = color, size = size)) +
+   geom_point() + scale_color_manual(values = c("grey20", "steelblue4", "firebrick4")) +
+   geom_hline(aes(yintercept = -log10(0.001)), linetype = "dashed", color = "forestgreen", linewidth = 0.7) +
+   guides(alpha = "none", size = "none", color = "none") + ylab("pvalue") + xlim(-3.3, 3.3) + 
+   scale_y_continuous(breaks = c(0,2,3,4,6,8), labels = c("1", "0.01", "0.001", "1e-4", "1e-6", "1e-8")) + theme_bw() +
+   scale_size_manual(values = c("A" = 7, "B" = 3)) + ggtitle("DV Resistant - Untreated") + 
+   theme(text = element_text(size = 27), strip.background = element_rect(fill = NA, color = "black")) + 
+   ggrepel::geom_label_repel(data = plot_df %>% filter(t_test_pval < 0.001 | abs(logFC) > logFC_cutoff),
+                             aes(label = feature), min.segment.length = 1, size = 5)
+p
+plot_path = paste0(plot_folder, "volcano_plots_m_4pat.png")
+ggsave(plot = p, filename = plot_path, width = 7.5, height = 7)
+plot_path = paste0(plot_folder, "volcano_plots_m_4pat.pdf")
+ggsave(plot = p, filename = plot_path, width = 7.5, height = 7)
+
+
+```
+
+
+
+Showing the signature in the exvivo data (training data)
+
+```{r}
+# model <- logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = TRUE,
+#                         pred_group = "DV", control_group = "UT",
+#                         ## Tune-able parameters
+#                         N_markers = 12, pval_cutoff = 0.001, 
+#                         method = "simple", var.equal = TRUE)
+
+all_features_df_ <- model$full_model$features
+xx = predict_helper(m_4pat, model$full_model, case_group = "DV", control_group = "UT") %>%
+   left_join(., pData(m_4pat), by = "sample") %>%
+   mutate(Group = case_when(Treatment == "DV" ~ "DV Resistant",
+                            TRUE ~ "Untreated"))
+
+## Boxplot with no annotations
+q = ggplot(xx %>% filter(Treatment %in% c("UT", "DV")), 
+           aes(x = Group, y = logistic_signal2, fill = Group)) + geom_boxplot(width = 0.6) + 
+   ylab("Dec-Ven resistance signal") + scale_fill_manual(values = pat_colors) + theme_bw() + 
+   theme(text = element_text(size = 25)) + ggtitle("DV Resistance signature") + 
+   guides(fill = "none")
+
+plot_path = paste0(plot_folder, "training_data_signal_boxplot.png")
+ggsave(plot = q, filename = plot_path, width = 8, height = 7)
+
+
+```
+
+
+Using all the markers we have (21 in total)
+
+```{r}
+model <- logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = TRUE,
+                        pred_group = "DV", control_group = "UT",
+                        ## Tune-able parameters
+                        N_markers = 12, pval_cutoff = 0.001,
+                        method = "s2n_max_v2", var.equal = TRUE)
+
+all_features_df_ <- model$full_model$features
+xx = predict_helper(m_exp28, model$full_model, case_group = "DV", control_group = "UT") %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   group_by(subcohort) %>%
+   mutate(corr = cor(logistic_signal2, survival_days)) %>% ungroup() %>%
+   mutate(subcohort_corr = paste(subcohort, formatC(corr, digits = 2))) %>%
+   mutate(refractory = case_when(`sub-cohort.PNNL` == "Refractory" ~ 1,
+                                 TRUE ~ 0))
+xx_ = xx %>% filter(subcohort != "Paired_relapse_sample")
+pred = ROCR::prediction(xx_$logistic_signal2, xx_$refractory)
+modelresult1 = list(prob = xx_$logistic_signal2, features = NA, top = NA, 
+      auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+
+xx_ = xx %>% filter(subcohort %in% c("Refractory", "Response_no_relapse"))
+pred = ROCR::prediction(xx_$logistic_signal2, xx_$refractory)
+modelresult2 = list(prob = xx_$logistic_signal2, features = NA, top = NA, 
+      auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+
+
+pooled_t_test = stat_test_(xx %>% mutate(x = subcohort, y = logistic_signal2))
+t_test_pval = sub(" \n.*", "", pooled_t_test) %>% sub(".* = ", "", .) %>% as.numeric()
+## Boxplot with no annotations
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = logistic_signal2, fill = group)) + geom_boxplot(width = 0.6) + 
+   ylab("Dec-Ven signal") + scale_fill_manual(values = subcohort_colors) + theme_bw() +
+   ggtitle("DV resistance signature") +
+   theme(text = element_text(size = 27))
+
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response_no_relapse"))
+q2 = t_test_ann(q1, c("Relapse", "Response_no_relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapse"), y_start = 1.07)
+# plots[[paste(N_markers, pval_cutoff, method, sep = "_")]] = list(q2)
+q2
+ggsave(plot = q2, filename = paste0(plot_folder, "m_exp28_exvivo_signature_boxplot.png"), width = 10, height = 7)
+ggsave(plot = q2, filename = paste0(plot_folder, "m_exp28_exvivo_signature_boxplot.pdf"), width = 10, height = 7)
+
+
+model_features = all_features_df_$feature
+yy = plot_pca(m_exp28[model_features, ], phenotype = "subcohort", output_type = "full")
+
+df.u = yy$data.u
+df.u$subcohort = pData(m_exp28)[, "subcohort"]
+df.v = yy$data.v
+
+p <- ggplot(data = df.u, mapping = aes(x = df.u[, 1], y = df.u[, 2], 
+                                       color = subcohort)) + geom_point(size = 2) +
+   geom_hline(yintercept = 0, lty = "longdash", color = "darkgrey") +
+   geom_vline(xintercept = 0, lty = "longdash", color = "darkgrey") +
+   labs(x = yy$axis_labs[1], y = yy$axis_labs[2]) +
+   theme_bw() + theme(aspect.ratio = 1, text = element_text(size = 15)) +
+   stat_ellipse(mapping = aes(fill = subcohort, color = NULL),
+                geom = "polygon", type = "norm",
+                level = 0.5, alpha = 0.07, show.legend = FALSE) + 
+   ggtitle("PCA of 21 exvivo markers") + scale_fill_manual(values = subcohort_colors) +
+   scale_color_manual(values = subcohort_colors)
+p
+ggsave(plot = p, filename = paste0(plot_folder, "pca_m_exp28_exvivo_markers.pdf"))
+
+
+p <- plotAUC_gg(modelresult1) +
+   theme(text = element_text(size = 25), 
+         panel.background = element_rect(fill = "white", colour = "black"),
+         panel.grid.major = element_line(colour = "grey90"),
+         panel.grid.minor = element_line(colour = "grey95"))
+ggsave(plot = p, filename = paste0(plot_folder, "exvivo_signature_refractory_auc.pdf"), width = 7, height = 6.7)
+
+```
+
+
+Using different numbers of markers
 
 
 ```{r}
 ############################## DV - UT signature ############################## 
 # N_markers = 10
-complete_DV_UT_features <- complete.cases(exprs(m_4pat[, m_4pat$Treatment %in% c("UT", "DV")]))
-complete_DV_UT_features_ = intersect(featureNames(m_4pat)[complete_DV_UT_features], complete_features)
 var.equal = TRUE
 plots = list()
 results_ttest = data.frame()
@@ -209,10 +393,6 @@ p = ggplot(plot_df, aes(x = alpha, y = t_test, fill = method)) +
 p
 
 ```
-
-
-
-
 
 
 

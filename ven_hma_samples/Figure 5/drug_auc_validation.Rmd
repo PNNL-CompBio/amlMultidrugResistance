@@ -1,0 +1,193 @@
+
+
+```{r}
+source("../scripts/loading_data.R")
+source("../scripts/plot_helper.R")
+source("../scripts/compute_lsc17.R")
+source("../scripts/predict_helper.R")
+library(MSnSet.utils)
+
+m_exp28 = readRDS("msnset_exp28_global.RDS")
+samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
+m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
+
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+m_210$new = paste(m_210$InitialAMLDiagnosis, m_210$PostChemotherapy)
+beataml_clinical = openxlsx::read.xlsx("../../PNNL_clinical_summary_12_08_2021_updated_OS_4patients_02_28_2022.xlsx")
+```
+
+
+
+```{r}
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+complete_DV_UT_features <- complete.cases(exprs(m_4pat[, m_4pat$Treatment %in% c("UT", "DV")]))
+complete_DV_UT_features_ = intersect(featureNames(m_4pat)[complete_DV_UT_features], complete_features)
+complete_V_UT_features <- complete.cases(exprs(m_4pat[, m_4pat$Treatment %in% c("UT", "V")]))
+complete_V_UT_features_ = intersect(featureNames(m_4pat)[complete_V_UT_features], complete_features)
+model <- logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = TRUE,
+                        pred_group = "DV", control_group = "UT",
+                        ## Tune-able parameters
+                        N_markers = 12, pval_cutoff = 0.001,
+                        method = "s2n_max_v2", var.equal = TRUE)
+
+refractory_markers = model$full_model$features %>% filter(group_ == "DV") %>% pull(feature)
+longresponse_markers = model$full_model$features %>% filter(group_ != "DV") %>% pull(feature)
+
+xx = predict_helper_(m_md_anderson, refractory_markers, longresponse_markers) %>%
+   left_join(., pData(m_md_anderson), by = c("sample" = "sample_name")) 
+
+ggplot(xx, aes(x = subcohort, y = signal, fill = subcohort)) + geom_boxplot()
+m_md_anderson$subcohort_ = gsub(" ", "_", m_md_anderson$subcohort)
+yy = diffexp_helper(m_md_anderson, "subcohort_", "Long_response-Refractory")
+
+```
+
+
+
+```{r}
+# model <- logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = TRUE,
+#                         pred_group = "DV", control_group = "UT",
+#                         ## Tune-able parameters
+#                         N_markers = 12, pval_cutoff = 0.001,
+#                         method = "simple", var.equal = TRUE)
+
+refractory_markers = model$full_model$features %>% filter(group_ == "DV") %>% pull(feature)
+longresponse_markers = model$full_model$features %>% filter(group_ != "DV") %>% pull(feature)
+
+beataml_210_predictions = predict_helper_(m_210, refractory_markers, longresponse_markers) %>%
+   left_join(., drug_data_df, by = c("sample" = "sample_id")) %>%
+   left_join(., pData(m_210), by = c("sample" = "Barcode.ID"))
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Azacytidine - Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo signature vs Ven+Aza drug AUC\n", "correlation = ", formatC(a$estimate, 2),
+                    ", p_value = ", formatC(a$p.value, 2))
+ggplot(ll, aes(x = auc, y = signal, color = FLT3.ITD, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven+Aza drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo signature vs Ven drug AUC\n", "correlation = ", formatC(a$estimate, 2), 
+                    ", p_value = ", formatC(a$p.value, 2))
+ggplot(ll, aes(x = auc, y = signal, color = FLT3.ITD, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+
+
+```
+
+
+
+
+
+```{r}
+# diffexp2 = diffexp_helper(m_exp28[complete_features, ], contrast_var = "subcohort",
+#                           contrasts = "Refractory-Response_no_relapse")
+
+refractory_markers = diffexp2 %>% filter(logFC > 0, t_test_pval < 0.025) %>% pull(feature)
+longresponse_markers = diffexp2 %>% filter(logFC < 0, t_test_pval < 0.025) %>% pull(feature)
+
+beataml_210_predictions = predict_helper_(m_210, refractory_markers, longresponse_markers) %>%
+   left_join(., drug_data_df, by = c("sample" = "sample_id")) %>%
+   left_join(., pData(m_210), by = c("sample" = "Barcode.ID"))
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Azacytidine - Venetoclax")
+ggplot(plot_df, aes(x = auc, fill = new)) + geom_density(alpha = 0.2)
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("In-vivo signature vs Ven+Aza drug AUC\n", "correlation = ", formatC(a$estimate, 2),
+                    ", p_value = ", formatC(a$p.value, 2))
+ggplot(ll, aes(x = auc, y = signal, color = FLT3.ITD, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven+Aza drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Venetoclax")
+ggplot(plot_df, aes(x = auc, fill = new)) + geom_density(alpha = 0.2)
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("In-vivo signature vs Ven drug AUC\n", "correlation = ", formatC(a$estimate, 2), 
+                    ", p_value = ", formatC(a$p.value, 2))
+ggplot(ll, aes(x = auc, y = signal, color = FLT3.ITD, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+
+
+```
+
+
+
+
+```{r}
+# model <- logistic_model(m_4pat[complete_V_UT_features_, ], "Treatment", skip_loo = TRUE,
+#                         pred_group = "V", control_group = "UT",
+#                         ## Tune-able parameters
+#                         N_markers = 12, pval_cutoff = 0.001,
+#                         method = "simple", var.equal = TRUE)
+
+refractory_markers = model$full_model$features %>% filter(group_ == "V") %>% pull(feature)
+longresponse_markers = model$full_model$features %>% filter(group_ != "V") %>% pull(feature)
+
+beataml_210_predictions = predict_helper_(m_210, refractory_markers, longresponse_markers) %>%
+   left_join(., drug_data_df, by = c("sample" = "sample_id")) %>%
+   left_join(., pData(m_210), by = c("sample" = "Barcode.ID"))
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Azacytidine - Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo signature (ven vs Untreated) vs Ven+Aza drug AUC\n", "correlation = ", formatC(a$estimate, 2),
+                    ", p_value = ", formatC(a$p.value, 2))
+ggplot(ll, aes(x = auc, y = signal, color = FLT3.ITD, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven+Aza drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo signature (ven vs Untreated) vs Ven drug AUC\n", "correlation = ", formatC(a$estimate, 2), 
+                    ", p_value = ", formatC(a$p.value, 2))
+ggplot(ll, aes(x = auc, y = signal, color = FLT3.ITD, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+
+```
+

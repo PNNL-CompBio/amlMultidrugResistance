@@ -1,0 +1,100 @@
+
+
+
+
+
+
+```{r include=FALSE}
+source("../scripts/loading_data.R")
+source("../scripts/plot_helper.R")
+source("../scripts/compute_lsc17.R")
+source("../scripts/predict_helper.R")
+
+samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
+m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
+
+features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 19]
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+
+plot_folder = "./many_plots/"
+if (!dir.exists(plot_folder)){
+   dir.create(plot_folder)
+}
+
+# diffexp_results = diffexp_helper(m_exp28, "subcohort", c("Refractory-Response_no_relapse", "Refractory-Relapse"))
+
+```
+
+
+```{r}
+library("survival")
+library("survminer")
+
+pData(m_exp28) = pData(m_exp28) %>%
+   mutate(refractory = case_when(subcohort == "Refractory" ~ "Refractory",
+                                 TRUE ~ "Not_Refractory"),
+          status = case_when(vitalStatus == "Dead" ~ 2,  # 2=dead, 1=censored
+                             TRUE ~ 1),
+          time = survival_days)
+m_exp28_ = m_exp28[, m_exp28$subcohort != "Paired_relapse_sample"]
+
+hazards_helper = function(msnset, feature){
+   hazards_df = data.frame(time = msnset$time, status = msnset$status, 
+                           value = exprs(msnset)[feature, ])
+   res_ = coxph(Surv(time, status) ~ value, data = hazards_df)
+   out = data.frame(feature = feature, wald_pval = summary(res_)$waldtest["pvalue"],
+                    LR_pval = summary(res_)$logtest["pvalue"])
+   return(out)
+}
+
+hazards_ = function(msnset){
+   res_ = data.frame()
+   for (feature in featureNames(msnset)){
+      res_ = rbind(res_, hazards_helper(msnset, feature))
+   }
+   return(res_)
+}
+
+hazards_res = hazards_(msnset[features_50perc, ])
+m___ = m_exp28_[hazards_res %>% filter(wald_pval < 0.05) %>% pull(feature), ]
+plot_pca(m___, "subcohort", output_type = "")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
