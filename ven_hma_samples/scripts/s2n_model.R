@@ -318,10 +318,3 @@ diffexp_helper <- function(m, contrast_var, contrasts){
    
    return(all_results)turn(all_results)
 }
-
-
-
-
-
-
-
