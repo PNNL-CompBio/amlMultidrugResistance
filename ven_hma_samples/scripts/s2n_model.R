@@ -316,5 +316,5 @@ diffexp_helper <- function(m, contrast_var, contrasts){
       all_results <- rbind(all_results, limma_res)
    }
    
-   return(all_results)turn(all_results)
+   return(all_results)
 }
