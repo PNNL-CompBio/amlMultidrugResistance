@@ -5,12 +5,11 @@ Loading data
 
 ```{r}
 source("../../synapseUtil.R")
+source("../scripts/loading_data.R")
 source("../scripts/plot_helper.R")
 source("../scripts/compute_lsc17.R")
 source("../scripts/predict_helper.R")
 source("../scripts/s2n_model.R")
-
-source("../scripts/loading_data.R")
 
 samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
 m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]

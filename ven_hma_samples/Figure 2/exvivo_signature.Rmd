@@ -2,12 +2,11 @@
 
 
 ```{r include=FALSE}
+source("../../synapseUtil.R")
 source("../scripts/loading_data.R")
 source("../scripts/plot_helper.R")
 source("../scripts/compute_lsc17.R")
 source("../scripts/predict_helper.R")
-
-source("../../synapseUtil.R")
 source("../scripts/s2n_model.R")
 
 
@@ -66,6 +65,7 @@ Volcano plot showing the markers within the exvivo data
 diffexp_results_4pat = diffexp_helper(m_4pat[complete_DV_UT_features_, ], "Treatment", c("DV-UT"))
 
 logFC_cutoff = 4
+diffexp_results = diffexp_results_4pat
 plot_df = diffexp_results %>%
    mutate(pvalue_ = -log10(t_test_pval),
           alpha = case_when(t_test_pval <= 0.001 ~ 1,
@@ -106,8 +106,8 @@ Showing the signature in the exvivo data (training data)
 # model <- logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = TRUE,
 #                         pred_group = "DV", control_group = "UT",
 #                         ## Tune-able parameters
-#                         N_markers = 12, pval_cutoff = 0.001, 
-#                         method = "simple", var.equal = TRUE)
+#                         N_markers = 12, pval_cutoff = 0.001,
+#                         method = "s2n_max_v2", var.equal = TRUE)
 
 all_features_df_ <- model$full_model$features
 xx = predict_helper(m_4pat, model$full_model, case_group = "DV", control_group = "UT") %>%

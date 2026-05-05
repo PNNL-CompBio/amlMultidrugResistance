@@ -43,7 +43,8 @@ meta_path = syn$get("syn69058992")$path
 meta = openxlsx::read.xlsx(meta_path)
 meta$survival_days = meta[[13]]
 p_data = meta %>% mutate(sample_name = datasetNameGlobal,
-                         subcohort = gsub(" - ", "_", `sub-cohort.PNNL`),
+                         subcohort = gsub(" - ", "_", `sub-cohortPNNL`),
+                         `sub-cohort.PNNL` = subcohort,
                          subcohort = gsub(" ", "_", subcohort),
                          group = subcohort,
                          group = factor(group, levels = c("Response_no_relapse", "Refractory", "Relapse", "Paired_relapse_sample")),
