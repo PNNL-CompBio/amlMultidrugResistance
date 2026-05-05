@@ -2,22 +2,6 @@
 - Follow instructions [here](../../src/python/README.md) to set up Python environment
     - must be able to import and use functions from [data import module](../../src/python/pilot/data_import.py)
 - intermediate data files and generated figures are saved in the (untracked) `_cache` and `_figures` directories, respectively
-    - create these if they do not exist:
-```sh
-mkdir _cache
-mkdir _cache/diffex
-mkdir _cache/pathway_enrichment
-mkdir _cache/pathway_enrichment/hallmark
-mkdir _cache/pathway_enrichment/kegg
-mkdir _cache/pathway_enrichment/reactome
-mkdir _figures
-mkdir _figures/assoc
-mkdir _figures/pathway_enrichment
-mkdir _figures/pathway_enrichment/hallmark
-mkdir _figures/pathway_enrichment/kegg
-mkdir _figures/pathway_enrichment/reactome
-mkdir _figures/volcano
-```
 
 # Analysis
 ## 1. Create a Combined Data table to support analyses
@@ -127,11 +111,11 @@ mkdir _figures/volcano
 ## 7. Run pathway enrichment analysis (ORA)
 - [7a_run_pathway_enrichment.Rmd](./7a_run_pathway_enrichment.Rmd)
     - uses KEGG, Reactome, and MSigDB Hallmark databases to perform pathway enrichment (ORA) to highlight pathways from significantly differentially expressed proteins
-    - knit from command-line: `Rscript -e 'rmarkdown::render("run_pathway_enrichment.Rmd", output_dir = "./_cache/pathway_enrichment/")'`
+    - knit from command-line: `Rscript -e 'rmarkdown::render("7a_run_pathway_enrichment.Rmd")'`
     - inputs: 
         - lists of differentially expressed proteins (from Proteomics, Transcriptomics, or Lipid-Protein associations): `_cache/diffex/*.txt`
     - outputs: 
-        - knitted PDF from Rmd: `_cache/pathway_enrichment/run_pathway_enrichment.pdf`
+        - knitted PDF from Rmd: `7a_run_pathway_enrichment.pdf`
         - dot plot figures showing enriched pathways: `_figures/pathway_enrichment/*/*.png`
             - separate subdirectories for the different pathway databases
         - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*/*.csv`
