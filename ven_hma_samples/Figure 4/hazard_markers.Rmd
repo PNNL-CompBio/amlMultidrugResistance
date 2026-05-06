@@ -57,7 +57,7 @@ hazards_ = function(msnset){
    return(res_)
 }
 
-hazards_res = hazards_(msnset[features_50perc, ])
+hazards_res = hazards_(m_exp28_[features_50perc, ])
 m___ = m_exp28_[hazards_res %>% filter(wald_pval < 0.05) %>% pull(feature), ]
 plot_pca(m___, "subcohort", output_type = "")
 ```
