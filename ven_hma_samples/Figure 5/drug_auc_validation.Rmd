@@ -8,13 +8,13 @@ source("../scripts/compute_lsc17.R")
 source("../scripts/predict_helper.R")
 source("../scripts/s2n_model.R")
 
-m_exp28 = readRDS("msnset_exp28_global.RDS")
+# m_exp28 = readRDS("msnset_exp28_global.RDS")
 samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
 m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
 
 complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
 m_210$new = paste(m_210$InitialAMLDiagnosis, m_210$PostChemotherapy)
-beataml_clinical = openxlsx::read.xlsx("../../PNNL_clinical_summary_12_08_2021_updated_OS_4patients_02_28_2022.xlsx")
+beataml_clinical = openxlsx::read.xlsx(syn$get("syn74822940")$path)
 ```
 
 

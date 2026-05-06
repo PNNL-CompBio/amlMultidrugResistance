@@ -28,23 +28,6 @@ if (!dir.exists(plot_folder)){
 ```
 
 
-
-```{r}
-
-
-```
-
-```{r}
-
-
-diffexp = diffexp_helper(m_exp28_[complete_features, ], contrast_var = "refractory", 
-                         contrasts = "Refractory-Not_Refractory")
-diffexp2 = diffexp_helper(m_exp28_[complete_features, ], contrast_var = "subcohort", 
-                          contrasts = "Refractory-Response_no_relapse")
-```
-
-
-
 ```{r}
 pData(m_exp28) = pData(m_exp28) %>%
    mutate(refractory = case_when(subcohort == "Refractory" ~ "Refractory",
@@ -60,6 +43,15 @@ make_title <- function(pval_cutoff, feature_df){
    return(full_title)
 }
 ```
+
+
+```{r}
+diffexp = diffexp_helper(m_exp28_[complete_features, ], contrast_var = "refractory", 
+                         contrasts = "Refractory-Not_Refractory")
+diffexp2 = diffexp_helper(m_exp28_[complete_features, ], contrast_var = "subcohort", 
+                          contrasts = "Refractory-Response_no_relapse")
+```
+
 
 
 
