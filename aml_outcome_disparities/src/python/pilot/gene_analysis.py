@@ -36,7 +36,7 @@ HAS_SCORES = pd.Series(
         "VCAN": 0.047,
         "S100A12": 0.041,
         "MEIS1": 0.041,
-        "PSAP": -0.19,
+        # "PSAP": -0.19,
     }
 )
 
@@ -234,16 +234,11 @@ def cell_type_scores() -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: AML cell type scores for each sample.
-
-    Notes:
-         If not already present, saves van Galen gene sets to data directory.
     """
     # Load RNA-seq data
     data = pd.concat(import_rna(), axis=0)
 
     # Loads van Galen genes
-    # If file is not found in data directory, instead loads from van Galen
-    # supplement URL and saves to data directory for future use
     vg_genes = pd.read_excel(
         join(REPO_PATH, "data", "mmc3.xlsx"), header=1, index_col=0
     )
@@ -279,6 +274,81 @@ def cell_type_scores() -> pd.DataFrame:
     return vg_scores
 
 
+def cell_type_scores_not_svd(
+    tpm: bool = False,
+    puram: bool = False
+) -> pd.DataFrame:
+    """
+    Calculates AML subtype scores using approaches outlined in van Galen et al.
+    (doi.org/10.1016/j.cell.2019.01.031) and Puram et al.
+    (https://doi.org/10.1016/j.cell.2017.10.044).
+
+    Args:
+        tpm (bool): TPM measurements prior to score derivation.
+        puram (bool): Use binning-based approach in Puram et al. False uses
+            approach outlined in van Galen et al. instead.
+
+    Returns:
+        pd.DataFrame: AML cell type scores for each RNA-seq sample.
+    """
+    # Load RNA-seq data
+    data = np.log2(
+        pd.concat(
+            import_rna(tpm=tpm),
+            axis=0
+        ) + 1
+    )
+
+    # Loads van Galen genes
+    vg_genes = pd.read_excel(
+        join(REPO_PATH, "data", "mmc3.xlsx"), header=1, index_col=0
+    )
+
+    # Reformat GMP-like column
+    gmp_like = vg_genes.loc[:, "GMP-like"].iloc[:-2]
+    vg_genes = vg_genes.iloc[:-2, -7:-1]
+    vg_genes.rename(columns={"GMP-like.1": "GMP-like"}, inplace=True)
+    vg_genes.loc[:, "GMP-like"] = gmp_like
+    vg_genes.index = vg_genes.index.astype(int)
+
+    if puram:
+        raise NotImplementedError
+    else:
+        # Pre-compute means for each gene
+        gene_means = data.mean(axis=0)
+
+        # Initialize DataFrame for storage
+        ct_scores = pd.DataFrame(
+            np.nan,
+            dtype=float,
+            index=data.index,
+            columns=vg_genes.columns
+        )
+        for cell_type in vg_genes.columns:
+            # Get signature genes
+            ct_data = data.loc[
+                :,
+                data.columns.intersection(
+                    vg_genes.loc[
+                        :,
+                        cell_type
+                    ].values
+                )
+            ]
+
+            # Adjust each gen with genes with similar mean expression
+            for gene in ct_data.columns:
+                similar = abs(
+                    gene_means - gene_means.loc[gene]
+                ).nsmallest(n=101).drop(gene).index
+                ct_data.loc[:, gene] -= gene_means.loc[similar].mean()
+
+            # Store scores
+            ct_scores.loc[:, cell_type] = ct_data.mean(axis=1)
+
+    return ct_scores
+
+
 def get_has_scores():
     """
     Calculates Hematopoietic Aging Signature (HAS) scores via Cheng et al.
@@ -294,7 +364,7 @@ def get_has_scores():
     """
     data = pd.concat(import_global(), axis=0)
     data = data.loc[:, HAS_SCORES.index]
-    data = 2**data
+    data = 2 ** data
 
     has_scores = pd.DataFrame(
         0,
@@ -311,7 +381,20 @@ def get_has_scores():
     # HAS score without coefficients
     # Not in-place, so the Weighted HAS score stays in data
     # PSAP is negatively associated with HAS, so removed
-    has_scores.loc[:, "Unweighted HAS"] = data.drop("PSAP", axis=1).mean(axis=1)
+    # has_scores.loc[:, "Unweighted HAS"] = data.drop("PSAP", axis=1).mean(axis=1)
+    has_scores.loc[:, "Unweighted HAS"] = data.mean(axis=1)
+
+    # Try a PCA-based scoring
+    data.loc[:] = scale(np.log2(data), axis=0)
+    pca = PCA(
+        data,
+        ncomp=1,
+        missing="fill-em",
+        demean=False,
+        standardize=False,
+        method="nipals",
+    )
+    has_scores.loc[:, "PCA HAS"] = pca.scores.iloc[:, 0].values
 
     return has_scores
 

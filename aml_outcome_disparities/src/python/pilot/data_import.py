@@ -425,9 +425,9 @@ def import_rna(
         )
         ptrc.rename(columns=ptrc_conversion, inplace=True)
 
-        # Removes low coverage genes
-        ptrc = ptrc.loc[ptrc.mean(axis=1) > 1, :]
-        pilot = pilot.loc[pilot.mean(axis=1) > 1, :]
+    # Removes low coverage genes
+    ptrc = ptrc.loc[ptrc.mean(axis=1) > 1, :]
+    pilot = pilot.loc[pilot.mean(axis=1) > 1, :]
 
     # Trims to genes in both datasets
     shared_genes = ptrc.index.intersection(pilot.index)
