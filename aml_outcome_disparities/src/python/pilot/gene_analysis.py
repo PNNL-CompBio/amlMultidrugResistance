@@ -274,7 +274,7 @@ def cell_type_scores() -> pd.DataFrame:
     return vg_scores
 
 
-def cell_type_scores_not_svd(
+def cell_type_scores_vg(
     tpm: bool = False,
     puram: bool = False
 ) -> pd.DataFrame:
@@ -311,19 +311,21 @@ def cell_type_scores_not_svd(
     vg_genes.loc[:, "GMP-like"] = gmp_like
     vg_genes.index = vg_genes.index.astype(int)
 
-    if puram:
-        raise NotImplementedError
-    else:
-        # Pre-compute means for each gene
-        gene_means = data.mean(axis=0)
+    # Initialize DataFrame for storage
+    ct_scores = pd.DataFrame(
+        np.nan,
+        dtype=float,
+        index=data.index,
+        columns=vg_genes.columns
+    )
 
-        # Initialize DataFrame for storage
-        ct_scores = pd.DataFrame(
-            np.nan,
-            dtype=float,
-            index=data.index,
-            columns=vg_genes.columns
-        )
+    if puram:
+        # Setup RNG
+        rng = np.random.default_rng(20170215)
+
+        # Define bins for expression
+        bins = pd.qcut(data.mean(axis=0), 25, labels=np.arange(25))
+
         for cell_type in vg_genes.columns:
             # Get signature genes
             ct_data = data.loc[
@@ -336,7 +338,33 @@ def cell_type_scores_not_svd(
                 )
             ]
 
-            # Adjust each gen with genes with similar mean expression
+            # Adjust each gene with genes in same expression bin
+            for gene in ct_data.columns:
+                ct_data.loc[:, gene] -= data.loc[
+                    :,
+                    rng.choice(bins.loc[bins == bins.loc[gene]].index, 100)
+                ].mean(axis=1)
+
+            # Store scores
+            ct_scores.loc[:, cell_type] = ct_data.mean(axis=1)
+
+    else:
+        # Pre-compute means for each gene
+        gene_means = data.mean(axis=0)
+
+        for cell_type in vg_genes.columns:
+            # Get signature genes
+            ct_data = data.loc[
+                :,
+                data.columns.intersection(
+                    vg_genes.loc[
+                        :,
+                        cell_type
+                    ].values
+                )
+            ]
+
+            # Adjust each gene with genes with similar mean expression
             for gene in ct_data.columns:
                 similar = abs(
                     gene_means - gene_means.loc[gene]

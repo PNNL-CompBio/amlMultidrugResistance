@@ -469,6 +469,8 @@ def import_rna(
             index=gene_lengths.loc[:, "UniProtKB Gene Name symbol"],
             inplace=True
         )
+        ptrc = ptrc.loc[~ptrc.index.duplicated(), :]
+        pilot = pilot.loc[~pilot.index.duplicated(), :]
 
     # Normalize genes across samples (z-score)
     if normalize:
