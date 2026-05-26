@@ -19,12 +19,14 @@ library(msigdbr)
 library(stringr)
 
 source("../../synapseUtil.R")
+library(synapser)
+synLogin()
+global_crosstab <- read.table(synGet("syn70198035")$path, sep = "\t")
+phospho_crosstab <- read.table(synGet("syn52623908")$path, sep = "\t")
 
-global_crosstab <- read.table(syn$get("syn70198035")$path, sep = "\t")
-phospho_crosstab <- read.table(syn$get("syn52623908")$path, sep = "\t")
-
-meta <- read.table("data/samples.txt", sep = "\t", header = T) %>%
-  select(Sample = ReporterAlias, MeasurementName, PlexID) %>%
+#meta <- read.table("data/samples.txt", sep = "\t", header = T) %>% #this doesn't exist
+meta <- readxl::read_xlsx(synGet('syn52653527')$path)  |>
+  select(Sample, MeasurementName, PlexID) %>%
   mutate(Time = sub("^([0-9]+ HR): MOLM14 Late Gilteritinib Resistant Flask .*$", "\\1", Sample),
          Volume = sub("MOLM14 Late Gilteritinib Resistant Flask ([0-9]L)", "\\1", Sample),
          Volume = sub(" Tube_.*$", "", Volume),
@@ -40,7 +42,7 @@ meta <- read.table("data/samples.txt", sep = "\t", header = T) %>%
          Volume = case_when(grepl("baseline", Volume) ~ "baseline", 
                             TRUE ~ Volume)) %>%
   filter(!grepl("ref", Sample))
-rownames(meta) <- meta$MeasurementName
+meta<- tibble::column_to_rownames(meta,'MeasurementName')
 
 meta <- meta %>%
   mutate(Group = gsub(" ", "_", Group),
@@ -84,14 +86,14 @@ plot_pca(m_global, "Group") + ggtitle("Global data uncorrected")
 # plot_pca(m_global, "bio_group_detailed")
 plot_pca(m_global, "PlexID") + ggtitle("Global data uncorrected")
 plot_pca(m_global, "Time") + ggtitle("Global data uncorrected")
-plot_pca(m_global, "Group", shape = "Time") + ggtitle("Global data uncorrected")
+#plot_pca(m_global, "Group", shape = "Time") + ggtitle("Global data uncorrected")
 
 # plot_pca(m_phospho, "bio_group", label = "Sample")
 plot_pca(m_phospho, "Group") + ggtitle("Phospho data uncorrected")
 # plot_pca(m_phospho, "bio_group_detailed")
 plot_pca(m_phospho, "PlexID") + ggtitle("Phospho data uncorrected")
 plot_pca(m_phospho, "Time") + ggtitle("Phospho data uncorrected")
-plot_pca(m_phospho, "Group", shape = "Time") + ggtitle("Phospho data uncorrected")
+#plot_pca(m_phospho, "Group", shape = "Time") + ggtitle("Phospho data uncorrected")
 
 ```
 
@@ -122,13 +124,17 @@ plot_pca(m_global_c, "Group") + ggtitle("Global data corrected")
 # plot_pca(m_global, "bio_group_detailed")
 plot_pca(m_global_c, "PlexID") + ggtitle("Global data corrected")
 plot_pca(m_global_c, "Time") + ggtitle("Global data corrected")
-plot_pca(m_global_c, "Group", shape = "Time") + ggtitle("Global data corrected")
+#plot_pca(m_global_c, "Group", shape = "Time") + ggtitle("Global data corrected")
 
 # plot_pca(m_phospho, "bio_group", label = "Sample")
 plot_pca(m_phospho_c, "Group") + ggtitle("Phospho data corrected")
 # plot_pca(m_phospho, "bio_group_detailed")
 plot_pca(m_phospho_c, "PlexID") + ggtitle("Phospho data corrected")
 plot_pca(m_phospho_c, "Time") + ggtitle("Phospho data corrected")
-plot_pca(m_phospho_c, "Group", shape = "Time") + ggtitle("Phospho data corrected")
+#plot_pca(m_phospho_c, "Group", shape = "Time") + ggtitle("Phospho data corrected")
+
+saveRDS(m_global_c,file='exp_20_global.rds')
+saveRDS(m_phospho_c,file='exp_20_phospho.rds')
+
 
 ```

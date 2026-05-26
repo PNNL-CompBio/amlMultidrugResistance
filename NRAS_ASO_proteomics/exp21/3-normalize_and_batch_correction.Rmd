@@ -1,5 +1,5 @@
 ---
-title: "Ex1 Phospho proteomics"
+title: "Ex 21 Phospho proteomics"
 output: html_document
 ---
 
@@ -13,12 +13,15 @@ library(MSnSet.utils)
 library(dplyr)
 library(ggplot2)
 library(readxl)
+library(synapser)
+synLogin()
 
-global_crosstab <- read.table("../proteomics/data/global_data/ptrc_ex21_crosstab_global_gene_original.txt")
-phospho_crosstab <- read.table("../proteomics/data/phospho_data/ptrc_ex21_crosstab_phospho_siteID_original.txt")
+global_crosstab <- read.table(synapser::synGet('syn52751332')$path)
+  #"../proteomics/data/global_data/ptrc_ex21_crosstab_global_gene_original.txt")
+phospho_crosstab <- read.table(synapser::synGet('syn52751608')$path)
+  #"../proteomics/data/phospho_data/ptrc_ex21_crosstab_phospho_siteID_original.txt")
 #phospho_crosstab_prot <- read.table("../proteomics/data/phospho_data/ptrc_ex21_crosstab_phospho_siteID_prot_original.txt", sep = "\t")
 
-synapser::synLogin()
 meta <- read_excel(synapser::synGet("syn64732333")$path, sheet = 2) %>%
   filter(!is.na(Tube)) %>%
   mutate(Tube = as.character(Tube),
@@ -223,13 +226,7 @@ combo.pca.df <- data.frame(prcomp(t(complete.global))$x)
 combo.pca.df$id2 <- rownames(combo.pca.df)
 combo.pca.df2 <- merge(combo.pca.df, meta)
 
-# plot PCA
-abs.max <- ceiling(max(abs(c(combo.pca.df2$PC1, combo.pca.df2$PC2))))
-global.pca <- ggplot2::ggplot(combo.pca.df2, aes(x=PC1, y=PC2, size = `Time point (hr)`, color = PDX, shape = Drug, label = Replicate)) + 
-  geom_point() + theme_bw() + xlim(-abs.max, abs.max) + ylim(-abs.max, abs.max) +
-  theme(text=element_text(size=20)) +
-  labs(title= global.title)
-ggplot2::ggsave(paste0("Global_PCA_8.5x12_equalAxisLimits_textSize20_", Sys.Date(), ".pdf"), global.pca, width = 12, height = 8.5)
+# plot PCA #this code was deleted
 
 # phospho
 # run PCA
@@ -238,25 +235,16 @@ combo.pca.df$id2 <- rownames(combo.pca.df)
 combo.pca.df2 <- merge(combo.pca.df, meta)
 
 # plot PCA
-abs.max <- ceiling(max(abs(c(combo.pca.df2$PC1, combo.pca.df2$PC2))))
-phospho.pca <- ggplot2::ggplot(combo.pca.df2, aes(x=PC1, y=PC2, size = `Time point (hr)`, color = PDX, shape = Drug, label = Replicate)) + 
-  geom_point() + theme_bw() + xlim(-abs.max, abs.max) + ylim(-abs.max, abs.max) +
-  theme(text=element_text(size=20)) +
-  labs(title= phospho.title)
-ggplot2::ggsave(paste0("phospho_PCA_8.5x12_equalAxisLimits_textSize20_", Sys.Date(), ".pdf"), phospho.pca, width = 12, height = 8.5)
 ```
 
 Push to synapse.
 
 ```{r}
-write.table(exprs(m_global_corrected), 
-            file = "data/global_data/Chr8_UMN1_crosstab_global_gene_corrected.txt",
-            quote=F, sep="\t")
 
-write.table(exprs(m_phospho_corrected), 
-            file = "data/phospho_data/Chr8_UMN1_crosstab_phospho_SiteID_corrected.txt",
-            quote=F, sep="\t")
 
+
+saveRDS(m_global_corrected,file='exp_21_global.rds')
+saveRDS(m_phospho_corrected,file='exp_21_phospho.rds')
 
 # phospho_prot_corrected <- exprs(m_phospho_prot_corrected) %>%
 #   as.data.frame() %>%

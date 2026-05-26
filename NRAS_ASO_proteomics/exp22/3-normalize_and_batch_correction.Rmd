@@ -14,18 +14,20 @@ library(dplyr)
 library(ggplot2)
 library(readxl)
 
-global_crosstab <- read.table("../proteomics/data/global_data/ptrc_ex22_crosstab_global_gene_original.txt")
-phospho_crosstab <- read.table("../proteomics/data/phospho_data/ptrc_ex22_crosstab_phospho_siteID_original.txt")
-phospho_crosstab_prot <- read.table("../proteomics/data/phospho_data/ptrc_ex22_crosstab_phospho_siteID_prot_original.txt", sep = "\t")
+library(synapser)
+synLogin()
+global_crosstab <- read.table(synapser::synGet('syn53212317')$path)#"../proteomics/data/global_data/ptrc_ex22_crosstab_global_gene_original.txt")
+phospho_crosstab <- read.table(synapser::synGet('syn53212324')$path)#"../proteomics/data/phospho_data/ptrc_ex22_crosstab_phospho_siteID_original.txt")
+phospho_crosstab_prot <- read.table(synapser::synGet('syn53212327')$path)#read.table("../proteomics/data/phospho_data/ptrc_ex22_crosstab_phospho_siteID_prot_original.txt", sep = "\t")
 
-meta <- read_excel("../proteomics/data/Expt 22 Design.xlsx", sheet = 2) %>%
-  filter(!is.na(Tube)) %>%
-  mutate(Tube = as.character(Tube),
+meta <- readxl::read_xlsx(synapser::synGet('syn64731726')$path,sheet=2) |> #"../proteomics/data/Expt 22 Design.xlsx", sheet = 2) %>%
+  filter(!is.na(`Tube`)) %>%
+  mutate(Tube = as.character(`Tube`),
          Plex = as.character(Plex)) %>% as.data.frame()
 #rownames(meta) <- meta$Tube # duplicate 'row.names' are not allowed (because of EMPTY and PNNL REFERENCE rows)
 
 # remove EMPTY rows
-meta <- meta[meta$Tube != "EMPTY", ]
+meta <- meta[meta$`Tube` != "EMPTY", ]
 
 colnames(global_crosstab) <- sub("^X", "", colnames(global_crosstab))
 colnames(phospho_crosstab) <- sub("^X", "", colnames(phospho_crosstab))
@@ -122,6 +124,7 @@ plot_pca(m_phospho, phenotype = "Plex") + ggtitle("Phospho PCA - All features by
 
 plot_pca(m_phospho_prot, phenotype = "Plex") + ggtitle("Phospho prot PCA - All features by Plex")
 
+
 ```
 
 
@@ -136,6 +139,11 @@ if (length(unique(meta$Plex)) > 1) {
   m_phospho_corrected <- m_phospho
   m_phospho_prot_corrected <- m_phospho_prot
 }
+
+
+saveRDS(m_global_corrected,file='exp_22_global.rds')
+saveRDS(m_phospho_corrected,file='exp_22_phospho.rds')
+
 ```
 
 
@@ -153,13 +161,13 @@ plot_pca(m_phospho_prot_corrected, phenotype = "Plex") + ggtitle("Phospho prot P
 Push to synapse.
 
 ```{r}
-write.table(exprs(m_global_corrected), 
-            file = "data/global_data/ptrc_ex22_crosstab_global_gene_corrected.txt",
-            quote=F, sep="\t")
+#write.table(exprs(m_global_corrected), 
+#            file = "data/global_data/ptrc_ex22_crosstab_global_gene_corrected.txt",
+#            quote=F, sep="\t")
 
-write.table(exprs(m_phospho_corrected), 
-            file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_corrected.txt",
-            quote=F, sep="\t")
+#write.table(exprs(m_phospho_corrected), 
+#            file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_corrected.txt",
+#            quote=F, sep="\t")
 
 
 phospho_prot_corrected <- exprs(m_phospho_prot_corrected) %>%
@@ -175,9 +183,9 @@ phospho_prot_corrected <- phospho_prot_corrected %>% select(-feature) %>%
   select(SiteID, Peptide_kstar, Protein_kstar, everything())
 
 colnames(phospho_prot_corrected) <- sub("(^[0-9].*$)", "data:\\1", colnames(phospho_prot_corrected))
-write.table(phospho_prot_corrected, 
-            file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_prot_corrected.txt",
-            sep="\t")
+#write.table(phospho_prot_corrected, 
+#            file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_prot_corrected.txt",
+#            sep="\t")
 
 ```
 
@@ -211,7 +219,7 @@ if (length(unique(meta$Plex)) > 1) {
 
 
 
-```{r}
+```{r, eval = FALSE}
 library(readxl)
 ## Finalizing KSTAR input
 crosstab <- read.table(file = "data/phospho_data/ptrc_ex22_crosstab_phospho_SiteID_prot_corrected.txt",

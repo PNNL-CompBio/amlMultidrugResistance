@@ -60,7 +60,7 @@ sig.paths <- list("Sorted" = "analysis/combined24-27/DIA_2batches_noOutliers_noM
 
 # import signatures and filter
 sigs <- list()
-setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/")
+#setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp24_patient_cells/proteomics/")
 for (i in names(sig.paths)) {
   sigs[[i]] <- read.csv(sig.paths[[i]])
   sigs[[i]] <- na.omit(sigs[[i]][sigs[[i]]$adj.P.Val <= 0.05,c("Gene","Log2FC")])
@@ -115,11 +115,11 @@ phospho.inputs <- list("Patient ASO" = "syn66726980",
 all.inputs <- list("Global" = global.inputs, "Phospho" = phospho.inputs)
 for (omics in names(all.inputs)) {
   inputs <- all.inputs[[omics]]
-  setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
-  dir.create("analysis")
-  setwd("analysis")
-  dir.create("Monocyte_vs_progenitor_signatures_20250530")
-  setwd("Monocyte_vs_progenitor_signatures_20250530")
+#  setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
+#  dir.create("analysis")
+#  setwd("analysis")
+#  dir.create("Monocyte_vs_progenitor_signatures_20250530")
+#  setwd("Monocyte_vs_progenitor_signatures_20250530")
   degs <- list()
   for (i in names(inputs)) {
     # read in global diff exp
@@ -339,11 +339,11 @@ for (omics in names(all.inputs)) {
 
 for (omics in names(all.inputs)) {
   inputs <- all.inputs[[omics]]
-  setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
-  dir.create("analysis")
-  setwd("analysis")
-  dir.create("Monocyte_vs_progenitor_signatures_20250530")
-  setwd("Monocyte_vs_progenitor_signatures_20250530")
+  #setwd("./")
+  #dir.create("analysis")
+  #setwd("analysis")
+  #dir.create("Monocyte_vs_progenitor_signatures_20250530")
+  #setwd("Monocyte_vs_progenitor_signatures_20250530")
   degs <- list()
   for (i in names(inputs)) {
     # read in global diff exp
@@ -688,10 +688,10 @@ for (omics in names(all.inputs)) {
 # }
 
 #### run deconvolution for mono vs. prog ####
-setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
-dir.create("analysis")
-setwd("analysis")
-base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
+#setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
+#dir.create("analysis")
+#setwd("analysis")
+#base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
 
 # pt <- list("Meta" = "syn64732333", # exp 21
 #            "Global" = "syn52751324",
@@ -743,9 +743,9 @@ for (i in names(inputs)) {
   }
   global.df100 <- global.df[,colSums(is.na(global.df)) == 0]
   
-  setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
-  dir.create("Monocyte_vs_progenitor_signatures_20250530")
-  setwd("Monocyte_vs_progenitor_signatures_20250530")
+  #setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
+  #dir.create("Monocyte_vs_progenitor_signatures_20250530")
+  #setwd("Monocyte_vs_progenitor_signatures_20250530")
   
   ### evaluate signature
   wv.df <- compareSigs(global.df100, sigs) 
@@ -926,7 +926,7 @@ for (i in names(inputs)) {
       temp.meta[[contrasts[4]]] <- meta.df.nras.gilt
       
       for (j in contrasts) {
-        setwd(base.path)
+    #    setwd(base.path)
         # t-test
         p.df <- data.frame(Signature, p=NA, Paired=FALSE)
         treated.samples <- rownames(temp.meta[[j]][temp.meta[[j]][,j] == "Treated",])
@@ -1031,10 +1031,10 @@ colnames(vg.prog.mono)[2] <- "Log2FC"
 sigs <- list("van Galen" = vg.prog.mono)
 
 ### weighted voting deconvolution
-setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
-dir.create("analysis")
-setwd("analysis")
-base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
+#setwd("~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/")
+#dir.create("analysis")
+#setwd("analysis")
+#base.path <- "~/OneDrive - PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/"
 
 # pt <- list("Meta" = "syn64732333", # exp 21
 #            "Global" = "syn52751324",
@@ -1087,11 +1087,11 @@ for (i in names(inputs)) {
   }
   global.df100 <- global.df[,colSums(is.na(global.df)) == 0]
   
-  setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
-  dir.create("Monocyte_vs_progenitor_signatures_20250530")
-  setwd("Monocyte_vs_progenitor_signatures_20250530")
-  dir.create("vanGalenBinary")
-  setwd("vanGalenBinary")
+#  setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
+#  dir.create("Monocyte_vs_progenitor_signatures_20250530")
+#  setwd("Monocyte_vs_progenitor_signatures_20250530")
+#  dir.create("vanGalenBinary")
+#  setwd("vanGalenBinary")
   
   ### evaluate signature
   wv.df <- compareSigs(global.df100, sigs) 
@@ -1182,11 +1182,11 @@ for (i in names(inputs)) {
   contrast.p.df <- data.frame()
   ## for each contrast:
   for (j in contrasts) {
-    setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
-    dir.create("Monocyte_vs_progenitor_signatures_20250530")
-    setwd("Monocyte_vs_progenitor_signatures_20250530")
-    dir.create("vanGalenBinary")
-    setwd("vanGalenBinary")
+  #  setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
+  #  dir.create("Monocyte_vs_progenitor_signatures_20250530")
+  #  setwd("Monocyte_vs_progenitor_signatures_20250530")
+  #  dir.create("vanGalenBinary")
+  #  setwd("vanGalenBinary")
     # t-test
     p.df <- data.frame(Signature, p=NA, Paired=FALSE)
     treated.samples <- rownames(temp.meta[[j]][temp.meta[[j]][,j] == "Treated",])
@@ -1324,11 +1324,11 @@ for (i in names(inputs)) {
       temp.meta[[contrasts[4]]] <- meta.df.nras.gilt
       
       for (j in contrasts) {
-        setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
-        dir.create("Monocyte_vs_progenitor_signatures_20250530")
-        setwd("Monocyte_vs_progenitor_signatures_20250530")
-        dir.create("vanGalenBinary")
-        setwd("vanGalenBinary")
+      #  setwd("/Users/gara093/Library/CloudStorage/OneDrive-PNNL/Documents/GitHub/Exp21_NRAS_ASO_treated_patients/proteomics/analysis/")
+      #  dir.create("Monocyte_vs_progenitor_signatures_20250530")
+      #  setwd("Monocyte_vs_progenitor_signatures_20250530")
+      #  dir.create("vanGalenBinary")
+      #  setwd("vanGalenBinary")
         # t-test
         p.df <- data.frame(Signature, p=NA, Paired=FALSE)
         treated.samples <- rownames(temp.meta[[j]][temp.meta[[j]][,j] == "Treated",])

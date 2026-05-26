@@ -1,0 +1,229 @@
+---
+title: "Cell type markers"
+author: "Sara Gosline"
+date: "2026-05-21"
+output: html_document
+---
+
+
+Here we look at the expression of known markers in the NRAS ASO dataset
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(synapser)
+library(ggplot2)
+```
+
+## Pull data
+First we pull the data that has been put onto synapse.
+
+```{r cars}
+synLogin()
+
+global.inputs <- list("Patient ASO" = "syn66726954",
+                      "Cell Line ASO" = "syn66726844",
+                      "Cell Line KO" = "syn66727085",
+                      "Cell Line ASO 2HR" = "syn66727770",
+                      "Cell Line ASO 6HR" = "syn66729260",
+                      "Cell Line ASO 24HR" = "syn66730823")
+
+glob <- do.call(rbind,lapply(names(global.inputs), function(s){
+  tab<-readr::read_csv(synapser::synGet(global.inputs[[s]])$path)|>
+    mutate(cond=s)
+  return(tab)
+}))
+
+glob$signif <-ifelse(glob$adj.P.Val<0.05, "*","")
+
+phospho.inputs <- list("Patient ASO" = "syn66726980",
+                       "Cell Line ASO" = "syn66726866",
+                       "Cell Line KO" = "syn66727197",
+                       "Cell Line ASO 2HR" = "syn66727869",
+                       "Cell Line ASO 6HR" = "syn66729468",
+                       "Cell Line ASO 24HR" = "syn66730918")
+
+phos <- do.call(rbind,lapply(names(phospho.inputs), function(s){
+  tab<-readr::read_csv(synapser::synGet(phospho.inputs[[s]])$path)|>
+    mutate(cond=s)
+  return(tab)
+}))
+
+phos$signif <-ifelse(phos$adj.P.Val<0.05, "*","")
+
+#all.inputs <- list("Global" = global.inputs, "Phospho" = phospho.inputs)
+
+```
+
+## Identify proteins
+
+Elie asked for a few sets of proteins:
+
+monocytic markers: CD11b, CD 14, CD16, CD64, CD68, CD56
+primitive markers: CD34, CD117
+Other potentially interesting markers: CD33, CD38, CD123
+
+```{r markers, echo=FALSE}
+
+mono <- c('CD11B','CD14','CD16','CD64','CD58','CD46','ITGAM','FCGR3A','FCGR3B','FCGR1A','NCAM1','HLADRA','HLADRB')
+prim <- c('CD34','CD117','KIT')
+int <- c('CD33','CD38','CD123','IL3RA')
+
+monDiff <- subset(glob, Gene%in%mono)
+print(nrow(monDiff))
+primDiff <- subset(glob,Gene%in%prim)
+print(nrow(primDiff))
+intDiff <- subset(glob, Gene%in%int)
+print(nrow(intDiff))
+```
+So there are no primitive markers in the data, they are all monocytic
+
+```{r FC values}
+
+p1<-ggplot(monDiff,aes(x=Gene, y = Log2FC, fill=cond)) +geom_bar(stat='identity',position='dodge') +ggrepel::geom_text_repel(aes(label=signif))
+
+p2<-ggplot(intDiff,aes(x=Gene, y = Log2FC, fill=cond)) +geom_bar(stat='identity',position='dodge') +ggrepel::geom_text_repel(aes(label=signif))
+
+cowplot::plot_grid(p1,p2,nrow=2)
+ggsave("cellMarkerPlots.pdf")
+readr::write_csv(rbind(monDiff,intDiff),'markerLogFC.csv')
+
+```
+
+## Phospho data
+
+Can we find the proteins in the phospho data?
+
+```{r phospho markers}
+phos_mono <- phos[unlist(lapply(mono, function(x) grep(paste(x,'-',sep=''),phos$SUB_SITE))),]
+print(dim(phos_mono))
+
+phos_prim <-phos[unlist(lapply(prim, function(x) grep(paste(x,'-',sep=''),phos$SUB_SITE))),]
+
+print(dim(phos_prim))
+
+phos_int <- phos[unlist(lapply(int, function(x) grep(paste(x,'-',sep=''),phos$SUB_SITE))),]
+print(dim(phos_int))
+
+```
+
+Now we can plot the phospho data
+
+```{r phospho plots}
+
+
+p1 <- ggplot(phos_mono,aes(x=SUB_SITE, y = Log2FC, fill=cond)) +geom_bar(stat='identity',position='dodge') +
+  ggrepel::geom_text_repel(aes(label=signif)) +
+  coord_flip()
+
+p2 <- ggplot(phos_int,aes(x=SUB_SITE, y = Log2FC, fill=cond)) +geom_bar(stat='identity',position='dodge') +
+  ggrepel::geom_text_repel(aes(label=signif)) + 
+  coord_flip()
+
+p3 <- ggplot(phos_prim,aes(x=SUB_SITE, y = Log2FC, fill=cond)) +geom_bar(stat='identity',position='dodge') +
+  ggrepel::geom_text_repel(aes(label=signif)) +
+  coord_flip()
+
+cowplot::plot_grid(plotlist = c(p1,p2,p3),nrow=3)
+
+ggsave("phos_cellMarkerPlots.pdf")
+readr::write_csv(rbind(phos_mono,phos_int,phos_prim),'phospho_markerLogFC.csv')
+
+
+```
+## Now can we plot raw abundances?
+
+This requires going into the three subdirectories (`exp20`,`exp21`,and `exp22`) and processing the batch correction to save the files locally.
+THen we can get all the data into a single table
+
+```{r get raw data}
+
+msns_to_long <- function(eset, dtype = 'global'){
+  md <- pData(eset) |>
+    tibble::rownames_to_column('tube')
+  pd <- exprs(eset) |>
+     as.data.frame() |>
+     tibble::rownames_to_column('feature') |>
+     tidyr::pivot_longer(cols = c(-feature),
+                         names_to = 'tube',
+                         values_to = 'expr')
+  pd |>
+    left_join(md) |>
+    mutate(data_type = dtype)
+}
+
+#exp20
+e20g <- readRDS('exp20/exp_20_global.rds') |>
+  msns_to_long()
+e20p <- readRDS("exp20/exp_20_phospho.rds") |>
+  msns_to_long(dtype='phospho')
+
+e20 <- rbind(e20g,e20p)
+e20$Treatment = e20$bgd_
+e20$Treatment[e20$Treatment=='baseline'] <- 'Control'
+e20$experiment <- 'Gilteritinib resistant cell line'
+
+#exp21
+e21g <- readRDS('exp21/exp_21_global.rds')|>
+  msns_to_long()
+e21p <- readRDS('exp21/exp_21_phospho.rds')|>
+  msns_to_long(dtype='phospho')
+
+e21 <- rbind(e21g,e21p)
+e21$experiment = 'Patient samples'
+e21$Sample <- e21$PatientID
+
+e21$Treatment[e21$Treatment%in%c('BASELINE','BASELINE (No ASO)')] <- 'Control'
+
+
+
+#exp22
+e22g <- readRDS('exp22/exp_22_global.rds')|>
+  msns_to_long()
+e22p <- readRDS('exp22/exp_22_phospho.rds')|>
+  msns_to_long(dtype='phospho')
+e22 <- rbind(e22g,e22p)
+e22$Treatment <- rep("Control", nrow(e22))
+e22$Treatment[grep('NRAS',e22$`Sample Name`)] <-'NRAS KO'
+e22$Treatment[grep('NT guide',e22$`Sample Name`)] <-'NT Guide'
+e22$experiment = 'Gilteritinib resistant cell line'
+
+vars <-c('experiment','Treatment','feature', 'Sample', 'data_type','expr')
+full_dat<- rbind(select(e20,vars),select(e21,vars), select(e22,vars))
+
+```
+
+Now we can try to plot the plots elie wants
+
+```{r}
+
+mf <- sapply(mono,function(x) grep(paste0('^',x),full_dat$feature))
+
+mono_g <- full_dat[unlist(mf),]
+
+ggplot(mono_g,aes(x=expr, y = feature, fill=Treatment, alpha =0.5)) + ggridges::geom_density_ridges() + facet_grid(~experiment)
+
+ggsave("mono_markers_density.pdf", width=12)
+
+
+
+pf <- sapply(prim,function(x) grep(paste0('^',x),full_dat$feature))
+
+#p_g <- full_dat[unlist(pf),]
+
+#ggplot(p_g,aes(x=expr, y = feature, fill=Treatment, alpha =0.5)) + ggridges::geom_density_ridges() + facet_grid(~experiment)
+
+#ggsave("prim_markers_density.pdf")
+
+
+
+inf <- sapply(int,function(x) grep(paste0('^',x),full_dat$feature))
+
+i_g <- full_dat[unlist(inf),]
+
+ggplot(i_g,aes(x=expr, y = feature, fill=Treatment, alpha =0.5)) + ggridges::geom_density_ridges() + facet_grid(~experiment)
+
+ggsave("interesting_markers_density.pdf", width=12)
+
+
+```
