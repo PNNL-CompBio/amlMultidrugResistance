@@ -39,6 +39,27 @@ HAS_SCORES = pd.Series(
         # "PSAP": -0.19,
     }
 )
+LSC_17 = pd.Series(
+    {
+        "DNMT3B": 0.0874,
+        "ZBTB46": -0.0347,
+        "NYNRIN": 0.00865,
+        "ARHGAP22": -0.0138,
+        "LAPTM4B": 0.00582,
+        "MMRN1": 0.0258,
+        "DPYSL3": 0.0284,
+        "ENSG00000226777": 0.0196,  # ENSEMBL for KIAA0125
+        "CDK6": -0.0704,
+        "CPXM1": -0.0258,
+        "SOCS2": 0.0271,
+        "SMIM24": -0.0226,
+        "EMP1": 0.0146,
+        "BEX3": 0.0465,  # Updated NGFRAP1
+        "CD34": 0.0338,
+        "AKR1C3": -0.0402,
+        "ADGRG1": 0.0501  # Updated GPR56
+    }
+)
 
 
 def preranked_enrichment(
@@ -112,7 +133,7 @@ def preranked_enrichment(
                 char_index = 0
                 current_length = 0
                 while char_index < len(term):
-                    if current_length >= 20 and term[char_index] == " ":
+                    if current_length >= 30 and term[char_index] == " ":
                         term = term[:char_index] + "\n" + term[char_index + 1 :]
                         current_length = 0
 
@@ -304,7 +325,6 @@ def cell_type_scores_vg(
         join(REPO_PATH, "data", "mmc3.xlsx"), header=1, index_col=0
     )
 
-    # Reformat GMP-like column
     gmp_like = vg_genes.loc[:, "GMP-like"].iloc[:-2]
     vg_genes = vg_genes.iloc[:-2, -7:-1]
     vg_genes.rename(columns={"GMP-like.1": "GMP-like"}, inplace=True)
@@ -375,6 +395,25 @@ def cell_type_scores_vg(
             ct_scores.loc[:, cell_type] = ct_data.mean(axis=1)
 
     return ct_scores
+
+
+def get_lsc_17_scores():
+    """
+    Calculates LSC score via Ng et al. (doi.org/10.1038/nature20598)
+
+    Args:
+        None.
+
+    Returns:
+        pd.Series: LSC-17 scores for each RNA-seq sample.
+    """
+    rna = pd.concat(import_rna(tpm=True))
+    rna.loc[:] = np.log2(rna + 1)
+
+    lsc_17 = rna.loc[:, LSC_17.index] * LSC_17
+    lsc_17 = lsc_17.sum(axis=1)
+
+    return lsc_17
 
 
 def get_has_scores():
