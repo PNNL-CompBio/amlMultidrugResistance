@@ -45,7 +45,7 @@ def make_figure():
         # Run enrichment, save dotplots and results to /enrichment
         preranked_enrichment(
             ranks,
-            output_path=f"enrichment/{name}/",
+            output_path=f"enrichment/{name}",
             gene_libraries=[
                 "GO_Biological_Process_2025",
                 "Metabolomics_Workbench_Metabolites_2022",

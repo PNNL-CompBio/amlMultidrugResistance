@@ -14,7 +14,7 @@ library(limma)
 #'  \item results: LIMMA results object
 #'  \item volcano: Volcano plot comparing black & white patients
 #' }
-run_limma <- function(data, meta, p_cutoff = 1e-02) {
+run_limma <- function(data, meta, p_cutoff = 1e-02, fc_cutoff = 1) {
   # Build design matrix
   design <- model.matrix(
     ~0 + Race + Study + Age,
@@ -44,7 +44,8 @@ run_limma <- function(data, meta, p_cutoff = 1e-02) {
     lab = rownames(results),
     x = 'logFC',
     y = 'adj.P.Val',
-    pCutoff = p_cutoff
+    pCutoff = p_cutoff,
+    FCcutoff = fc_cutoff
   )
   
   return(list(results = results, volcano = volcano))
