@@ -275,7 +275,7 @@ def cell_type_scores() -> pd.DataFrame:
 
 
 def cell_type_scores_vg(
-    tpm: bool = False,
+    tpm: bool = True,
     puram: bool = False
 ) -> pd.DataFrame:
     """
