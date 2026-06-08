@@ -124,3 +124,6 @@
     - Generate summary plots from pathway enrichment analysis across conditions and -omes
     - inputs:
         - output tables with enriched pathways and metadata: `_cache/diffex/pathway_enrichment/*/*.csv`
+
+- [9_hox.ipynb](./9_hox.ipynb)
+    - Analysis of HOX gene expression between NPM1 and WT groups, section 8 of the manuscript
