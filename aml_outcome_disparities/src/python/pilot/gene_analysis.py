@@ -39,6 +39,28 @@ HAS_SCORES = pd.Series(
         # "PSAP": -0.19,
     }
 )
+LSC_17 = pd.Series(
+    {
+        "DNMT3B": 0.0874,
+        "ZBTB46": -0.0347,
+        "NYNRIN": 0.00865,
+        "ARHGAP22": -0.0138,
+        "LAPTM4B": 0.00582,
+        "MMRN1": 0.0258,
+        "DPYSL3": 0.0284,
+        "ENSG00000226777": 0.0196,  # ENSEMBL for KIAA0125
+        "CDK6": -0.0704,
+        "CPXM1": -0.0258,
+        "SOCS2": 0.0271,
+        "SMIM24": -0.0226,
+        "EMP1": 0.0146,
+        "BEX3": 0.0465,  # Updated NGFRAP1
+        "CD34": 0.0338,
+        "AKR1C3": -0.0402,
+        "ADGRG1": 0.0501  # Updated GPR56
+        # "PSAP": -0.19,
+    }
+)
 
 
 def preranked_enrichment(
@@ -112,7 +134,7 @@ def preranked_enrichment(
                 char_index = 0
                 current_length = 0
                 while char_index < len(term):
-                    if current_length >= 20 and term[char_index] == " ":
+                    if current_length >= 30 and term[char_index] == " ":
                         term = term[:char_index] + "\n" + term[char_index + 1 :]
                         current_length = 0
 
