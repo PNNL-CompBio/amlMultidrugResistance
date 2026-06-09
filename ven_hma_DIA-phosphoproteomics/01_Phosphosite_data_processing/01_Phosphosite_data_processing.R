@@ -1,12 +1,20 @@
 library(dplyr)
+library(MSnSet.utils)
 library(stringr)
 library(openxlsx)
+library(synapser)
 
-## load phosphosite level data 
-df <- read.xlsx("PTRC_EXP28_InSilico_DiaNN_phosphosites_90_removesamples.xlsx", check.names=FALSE)
+## synapse login with .Renviron
+synLogin()
+
+file_id <- synFindEntityId("PTRC_EXP28_InSilico_DiaNN_phosphosites_90.xlsx", parent = "syn68733653")
+
+# Download and read the file
+file_entity <- synGet(file_id)
+df <- read.xlsx(file_entity$path)
 
 ## make sure columns containing intensity values are in numeric
-df <- df%>% mutate(across('PTRC_Exp28_Phos_01':'PTRC_Exp28_Phos_41', as.numeric))
+df <- df%>% mutate(across('Phos_01':'Phos_41', as.numeric))
 
 ## different uniprot protein accession IDs could be mapped to the same gene name. Create a new SITE2 column that is formatted as GeneName-Residue#, e.g.TADA2A-S6
 df <- df %>% mutate(SITE = str_c(Gene.Names, "-", Residue, Site))
