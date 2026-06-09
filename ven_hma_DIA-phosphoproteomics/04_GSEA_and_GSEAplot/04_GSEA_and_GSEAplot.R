@@ -4,17 +4,23 @@ library(openxlsx)
 library(msigdbr)
 library(fgsea)
 library(scales)
+library(synapser)
 
+## synapse login with .Renviron
+synLogin()
 
-# load Limma result
-df <- read.xlsx("PTRC_EXP28_Refractory VS relapse and no-relapse.xlsx", check.names=FALSE)
+## define folder ID and the target files
+folder_id <-"syn68733653"
 
-## parse out 3 comparisons from Limma output file
+file_id <- synFindEntityId("PTRC_EXP28_Phospho_Stats_Results.xlsx", parent = folder_id)
+file_entity <- synGet(file_id)
+df <- read.xlsx(file_entity$path)
+
+## parse out 2 comparisons from Limma output file
 NRRef <- df %>% filter(contrast == "Norelapse-Refractory")   
 RRef  <- df %>% filter(contrast == "Relapse-Refractory")  
-NRR   <- df %>% filter(contrast == "Relapse-Norelapse")  
 
-# suject NRRef, RRef, NRR to the following code for GSEA
+# suject NRRef, RRef to the following code for GSEA
 # prepare input for GSEA
 names(NRRef)[names(NRRef) == "logFC"] <- "log2FC"
 names(NRRef)[names(NRRef) == "P.Value"] <- "pvalue"
