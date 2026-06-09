@@ -8,47 +8,14 @@ synLogin()
 
 ## define folder ID and the target files
 folder_id <-"syn68733653"
-file1_name <- "PTRC_EXP28_Phospho_Stats_Results.xlsx"
-file2_name <- "PTRC_EXP28_KSEA_Dataset_July2016 1.csv"
 
-## find target files in this folder
-children <- synGetChildren(folder_id)
-children_list <- as.list(children)
+file1_id <- synFindEntityId("PTRC_EXP28_Phospho_Stats_Results.xlsx", parent = folder_id)
+file1_entity <- synGet(file1_id)
+df <- read.xlsx(file1_entity$path)
 
-file1_id <- NULL
-file2_id <- NULL
-
-for (child in children_list) {
-  if (child$name == file1_name) {
-    file1_id <- child$id
-  } else if (child$name == file2_name) {
-    file2_id <- child$id
-  }
-}
-
-## download and load files
-if (!is.null(file1_id)) {
-  cat("Downloading", file1_name, "...\n")
-  file1_entity <- synGet(file1_id)
-  
-  # Load using openxlsx function
-  df <- read.xlsx(file1_entity$path)
-  cat("Successfully loaded 'df_phospho_stats'!\n")
-} else {
-  cat("Error: Could not find", file1_name, "in the folder.\n")
-}
-
-if (!is.null(file2_id)) {
-  cat("Downloading", file2_name, "...\n")
-  file2_entity <- synGet(file2_id)
-  
-  # Load into data frame
-  KSDB <- read.csv(file2_entity$path)
-  cat("Successfully loaded 'KSDB'!\n")
-} else {
-  cat("Error: Could not find", file2_name, "in the folder.\n")
-}
-
+file2_id <- synFindEntityId("PTRC_EXP28_KSEA_Dataset_July2016 1.csv", parent = folder_id)
+file2_entity <- synGet(file2_id)
+KSDB <- read.csv(file2_entity$path)
 
 ## parse out 2 comparisons from Limma output file
 NRRef <- df %>% filter(contrast == "Norelapse-Refractory")   
