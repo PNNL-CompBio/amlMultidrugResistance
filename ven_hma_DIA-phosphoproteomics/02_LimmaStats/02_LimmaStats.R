@@ -1,11 +1,22 @@
 library(dplyr)
 library(MSnSet.utils)
 library(openxlsx)
+library(synapser)
+
+## synapse login with .Renviron
+synLogin()
+
+## define folder ID and the target files
+folder_id <-"syn68733653"
 
 ## load log2 transformed, median centered phosphosite level data 
-df <- read.xlsx("PTRC_EXP28_InSilico_Cleaned_PhosphositeData.xlsx", check.names=FALSE)
-meta <- read.xlsx("PTRC_metadata_Exp28_removesamples.xlsx",check.names=FALSE)
+file1_id <- synFindEntityId("PTRC_EXP28_InSilico_Cleaned_PhosphositeData.xlsx", parent = folder_id)
+file1_entity <- synGet(file1_id)
+df <- read.xlsx(file1_entity$path)
 
+file2_id <- synFindEntityId("PTRC_metadata_Exp28_removesamples.xlsx", parent = folder_id)
+file2_entity <- synGet(file2_id)
+meta <- read.xlsx(file2_entity$path)
 
 ## build MSnSet
 exprs <- df %>% arrange(., SITE) %>% tibble::column_to_rownames(var="SITE") %>% as.matrix()
