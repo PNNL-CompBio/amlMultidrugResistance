@@ -14,6 +14,7 @@ import synapseclient as sc
 from inmoose.pycombat import pycombat_seq
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
+from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import scale, StandardScaler
 from synapseclient.entity import File
 from synapseutils import syncFromSynapse
@@ -35,7 +36,7 @@ def syn_login(auth_path: PathLike | None = None) -> sc.Synapse:
     if auth_path is None:
         auth_path = join(REPO_PATH, "auth_token.txt")
 
-    syn = sc.Synapse()
+    syn = sc.Synapse(silent=True)
     with open(auth_path, "r") as f:
         auth_token = f.read()
 
@@ -596,8 +597,79 @@ def plex_correct_proteomics(
     return ba_data, pilot_data
 
 
+def correct_ptm(
+    ptrc: pd.DataFrame,
+    pilot: pd.DataFrame,
+    syn: sc.Synapse | None = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Corrects PTM via global measurements.
+
+    Args:
+        ptrc (pd.DataFrame): BeatAML dataset.
+        pilot (pd.DataFrame): Pilot dataset.
+        syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
+            new one if None.
+
+    Returns:
+        pd.DataFrame: Corrected PTM data for BeatAML cohort.
+        pd.DataFrame: Corrected PTM data for Pilot cohort.
+    """
+    ptrc, pilot = ptrc.T, pilot.T
+
+    # Merge datasets, import global
+    prot = pd.concat(import_global(syn)).T
+    ptrc = ptrc.loc[:, ptrc.columns.intersection(prot.columns)]
+    pilot = pilot.loc[:, pilot.columns.intersection(prot.columns)]
+    merged = pd.concat([ptrc, pilot], axis=1)
+
+    # Split parent genes from sites, trim to global measurement
+    merged.index = merged.index.str.split("-", expand=True)
+    merged = merged.loc[
+        merged.index.get_level_values(0).isin(prot.index),
+        merged.columns.intersection(prot.columns)
+    ]
+    prot = prot.loc[
+        :,
+        prot.columns
+    ]
+
+    # Initialize OLS
+    ols = LinearRegression()
+
+    # Iterate through genes, correct
+    for p_site in merged.index:
+        # Correct measurements where both phospho and global are present
+        correct_index = np.logical_and(
+            merged.loc[p_site, :].notna(),
+            prot.loc[p_site[0], :].notna()
+        )
+
+        ols.fit(
+            prot.loc[p_site[0], correct_index].values.reshape(-1, 1),
+            merged.loc[p_site, correct_index].values.reshape(-1, 1)
+        )
+        merged.loc[p_site, correct_index] = merged.loc[
+                                                p_site,
+                                                correct_index
+                                            ] - ols.predict(
+            prot.loc[p_site[0], correct_index].values.reshape(-1, 1)
+        ).flatten()
+        merged.loc[p_site, ~correct_index] = np.nan
+
+    # Restore index format and split out PTRC, Pilot
+    merged.index = ["-".join(row) for row in merged.index]
+
+    ptrc = merged.loc[:, ptrc.columns]
+    pilot = merged.loc[:, pilot.columns]
+
+    return ptrc, pilot
+
+
 def import_phospho(
-    syn: sc.Synapse | None = None, batch_correct: str | None = "study"
+    syn: sc.Synapse | None = None,
+    batch_correct: str | None = "study",
+    global_correct: bool = True
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads phosphoproteomic data.
@@ -608,6 +680,8 @@ def import_phospho(
         batch_correct (str | None, default: "cohort"): Batch-correction method.
             Accepts 'cohort' (corrected at cohort-level), 'study' (corrected at
             study-level, post-cohort concatenation), or None.
+        global_correct (bool, default=True): Correct measurements using global
+            proteomic abundances.
 
     Returns:
         pd.DataFrame: Phosphoproteomic data for BeatAML 210 cohort.
@@ -622,7 +696,63 @@ def import_phospho(
     if syn is None:
         syn = syn_login()
 
-    if batch_correct == "study":
+    if global_correct:
+        ptrc_file = File(
+            join(
+                REPO_PATH,
+                "data",
+                "phospho_beataml_batch_corrected_global_adjust.csv"
+            ),
+            parentId="syn25714185",
+            id="syn75382181"
+        )
+        pilot_file = File(
+            join(
+                REPO_PATH,
+                "data",
+                "phospho_pilot_batch_corrected_global_adjust.csv"
+            ),
+            parentId="syn69075538",
+            id="syn75382183"
+        )
+        try:
+            # Syncs with Synapse files
+            syncFromSynapse(
+                syn,
+                ptrc_file,
+                path=join(REPO_PATH, "data")
+            )
+            syncFromSynapse(
+                syn,
+                pilot_file,
+                path=join(REPO_PATH, "data")
+            )
+
+            # Loads cached results (if this has been run previously) as
+            # ComBat-Seq can be time-intensive with race covariates included
+            ptrc = pd.read_csv(ptrc_file.path, index_col=0)
+            pilot = pd.read_csv(pilot_file.path, index_col=0)
+
+        except (FileNotFoundError, ValueError):
+            # Import raw phosphoproteomic measurements
+            ptrc, pilot = import_phospho(
+                syn,
+                batch_correct="study",
+                global_correct=False
+            )
+
+            # Correct via global
+            ptrc, pilot = correct_ptm(ptrc, pilot, syn)
+
+            # Store locally
+            ptrc.to_csv(ptrc_file.path)
+            pilot.to_csv(pilot_file.path)
+
+            # Sync to Synapse
+            syn.store(ptrc_file)
+            syn.store(pilot_file)
+
+    elif batch_correct == "study":
         # Setup Synapse file objects
         # This import is a little different from the other 'omic measurements
         # since this preprocessing was written in the present repo and steps
@@ -1003,6 +1133,16 @@ def import_meta(
             "WES_call"
         ] = True
 
+        # Overwrite non-Mutant cases as WT
+        # This only works with WES cases since 'Not measured' is equivalent to
+        # wild-type in WES measurements
+        meta.loc[:, "ALT":] = meta.loc[:, "ALT":].replace(
+            {
+                np.nan: "WT",
+                "Not measured": "WT"
+            }
+        )
+
     # Add FLT3-ITD to FLT3 mutation calls
     meta.loc[
         np.logical_or(
@@ -1016,7 +1156,8 @@ def import_meta(
 
 
 def import_acetyl(
-    syn: sc.Synapse | None = None
+    syn: sc.Synapse | None = None,
+    global_correct: bool = True
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads Acetylomics data.
@@ -1024,6 +1165,8 @@ def import_acetyl(
     Args:
         syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
             new one if None.
+        global_correct (bool, default=True): Correct measurements using global
+            proteomic abundances.
 
     Returns:
         pd.DataFrame: Acetylomics data.
@@ -1031,26 +1174,82 @@ def import_acetyl(
     if syn is None:
         syn = syn_login()
 
-    ptrc = pd.read_csv(syn.get("syn53484994").path, index_col=0, sep="\t")
-    pilot = pd.read_csv(syn.get("syn69075568").path, index_col=0, sep="\t")
-    ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+    if global_correct:
+        ptrc_file = File(
+            join(
+                REPO_PATH,
+                "data",
+                "acetyl_beataml_global_adjust.csv"
+            ),
+            parentId="syn53484023",
+            id="syn76033232"
+        )
+        pilot_file = File(
+            join(
+                REPO_PATH,
+                "data",
+                "acetyl_pilot_global_adjust.csv"
+            ),
+            parentId="syn69075540",
+            id="syn76033235"
+        )
+        try:
+            # Syncs with Synapse files
+            syncFromSynapse(
+                syn,
+                ptrc_file,
+                path=join(REPO_PATH, "data")
+            )
+            syncFromSynapse(
+                syn,
+                pilot_file,
+                path=join(REPO_PATH, "data")
+            )
 
-    ptrc.columns = [int(col.split("_")[-1]) for col in ptrc.columns]
+            # Loads cached results (if this has been run previously) as
+            # the amount of OLS being run can be time-intensive
+            ptrc = pd.read_csv(ptrc_file.path, index_col=0)
+            pilot = pd.read_csv(pilot_file.path, index_col=0)
 
-    ptrc.rename(columns=ptrc_conversion, inplace=True)
-    pilot.rename(columns=pilot_conversion, inplace=True)
+        except (FileNotFoundError, ValueError):
+            # Import raw phosphoproteomic measurements
+            ptrc, pilot = import_acetyl(
+                syn,
+                global_correct=False
+            )
 
-    ptrc = ptrc.loc[~ptrc.index.str.contains("NULL"), :]
-    pilot = pilot.loc[~pilot.index.str.contains("NULL"), :]
+            # Correct via global
+            ptrc, pilot = correct_ptm(ptrc, pilot, syn)
 
-    ptrc = ptrc.loc[ptrc.index.intersection(pilot.index), :]
-    pilot = pilot.loc[ptrc.index, :]
+            # Store locally
+            ptrc.to_csv(ptrc_file.path)
+            pilot.to_csv(pilot_file.path)
 
-    bridge_columns = pilot.columns.intersection(ptrc.columns)
-    pilot.rename(
-        columns=pd.Series(bridge_columns + "-Bridge", index=bridge_columns),
-        inplace=True,
-    )
+            # Sync to Synapse
+            syn.store(ptrc_file)
+            syn.store(pilot_file)
+
+    else:
+        ptrc = pd.read_csv(syn.get("syn53484994").path, index_col=0, sep="\t")
+        pilot = pd.read_csv(syn.get("syn69075568").path, index_col=0, sep="\t")
+        ptrc_conversion, pilot_conversion = import_sample_conversion(syn)
+
+        ptrc.columns = [int(col.split("_")[-1]) for col in ptrc.columns]
+
+        ptrc.rename(columns=ptrc_conversion, inplace=True)
+        pilot.rename(columns=pilot_conversion, inplace=True)
+
+        ptrc = ptrc.loc[~ptrc.index.str.contains("NULL"), :]
+        pilot = pilot.loc[~pilot.index.str.contains("NULL"), :]
+
+        ptrc = ptrc.loc[ptrc.index.intersection(pilot.index), :]
+        pilot = pilot.loc[ptrc.index, :]
+
+        bridge_columns = pilot.columns.intersection(ptrc.columns)
+        pilot.rename(
+            columns=pd.Series(bridge_columns + "-Bridge", index=bridge_columns),
+            inplace=True,
+        )
 
     return ptrc.T, pilot.T
 
