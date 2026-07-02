@@ -460,12 +460,31 @@ def get_prkaca_score() -> pd.Series:
     Returns:
         pd.Series: PRKACA scores for each sample.
     """
+    return get_kinase_score("PRKACA")
+
+
+def get_kinase_score(
+    kinase: str,
+    force_mean: bool = False
+) -> pd.Series:
+    """
+    Calculates kinase activity score using approach described in Bottomly et al.
+    (doi.org/10.1016/j.ccell.2022.07.002)
+
+    Args:
+        kinase (str): Kinase name.
+        force_mean (bool, default: False): Forces score to return mean
+            expression of substrates rather than PCA scores.
+
+    Returns:
+        pd.Series: Kinase scores for each sample.
+    """
     # Loads substrate idea
     substrates = pd.read_csv(
         join(REPO_PATH, "data", "Kinase-Substrate Links.csv")
     )
     substrates = substrates.loc[
-        substrates.loc[:, "Kinase.Gene"] == "PRKACA", :
+        substrates.loc[:, "Kinase.Gene"] == kinase, :
     ].sort_values(by="log2FC", ascending=True)
 
     # Reformat names to match Synapse data
@@ -491,19 +510,23 @@ def get_prkaca_score() -> pd.Series:
     phospho = phospho.loc[:, phospho.isna().mean(axis=0) < 0.01]
     phospho.dropna(axis=0, inplace=True)
 
-    # Fit PCA
-    phospho.loc[:] = scale(phospho)
-    pca = PCA(
-        phospho,
-        ncomp=1,
-        missing="fill-em",
-        demean=False,
-        standardize=False,
-        method="nipals",
-    )
+    if phospho.shape[1] >= 10 and (not force_mean):
+        # Fit PCA
+        phospho.loc[:] = scale(phospho)
+        pca = PCA(
+            phospho,
+            ncomp=1,
+            missing="fill-em",
+            demean=False,
+            standardize=False,
+            method="nipals",
+        )
 
-    # Store scores for patients
-    scores = pd.Series(pca.factors.squeeze(), index=phospho.index)
+        # Store scores for patients
+        scores = pd.Series(pca.factors.squeeze(), index=phospho.index)
+    else:
+        # Return simple mean
+        scores = pd.Series(phospho.mean(axis=1), index=phospho.index)
 
     return scores
 
