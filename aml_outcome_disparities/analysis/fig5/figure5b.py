@@ -1,4 +1,4 @@
-"""Plots figure 5b: KSEA substrate comparison across mutations."""
+"""Plots figure 5b: KSEA Summarization."""
 
 import sys
 
@@ -15,18 +15,20 @@ sys.path.append(
 )
 
 KINASES = [
-    "PRKDC",
-    "ATM",
-    "AURKB"
-]
-TRANSPARENCIES = [
-    "FF",
-    "A8",
-    "54"
+    "ATR",
+    "PRKCI"
 ]
 COLORS = {
-    "White": "9467BD",
-    "Black": "D62728",
+    "White": [
+        "#9467bd",
+        "#b495d1",
+        "#d4c2e5"
+    ],
+    "Black": [
+        "#d62728",
+        "#e36768",
+        "#efa8a8"
+    ]
 }
 
 
@@ -34,7 +36,6 @@ def make_figure():
     # Load Phosphosite+ database, phospho, meta
     syn = syn_login()
     phospho = pd.concat(import_phospho(syn))
-    phospho = phospho.loc[:, phospho.isna().mean(axis=0) < 0.2]
     meta = import_meta(syn)
     substrates = pd.read_csv(syn.get("syn73849653").path)
 
@@ -95,23 +96,27 @@ def make_figure():
     # Setup plot
     fig, axes = get_setup(
         len(KINASES),
-        2,
+        1,
         fig_params={
-            "figsize": (16, 4 * len(KINASES))
+            "figsize": (4, 4 * len(KINASES))
         }
     )
+    axes = axes.flatten()
 
     # Iterate through kinases
     for row_index, kinase in enumerate(KINASES):
+        ax = axes[row_index]
+
         # Trim to kinase substrates
         kinase_phospho = phospho.loc[
             :,
             substrates.loc[substrates == kinase].index
-        ].sort_index(axis=1)
+        ]
+        kinase_phospho = kinase_phospho.mean(axis=1).to_frame()
 
         # Iterate through Black, White patients
-        for col_index, race in enumerate(["Black", "White"]):
-            ax = axes[row_index, col_index]
+        for x_index, race in enumerate(["Black", "White"]):
+            # Subset by race, mutation
             race_phospho = kinase_phospho.loc[
                 meta.loc[:, "Race"] == race
             ]
@@ -120,54 +125,53 @@ def make_figure():
                 "Mutation"
             ]
 
-            # Plot each substrate, comparing across mutations
-            for x_index, phosphosite in enumerate(race_phospho.columns):
-                phospho_col = race_phospho.loc[:, phosphosite].dropna()
-                _mutations = race_mutations.loc[phospho_col.index]
-                wt_bp = ax.boxplot(
-                    phospho_col.loc[_mutations == "WT"],
-                    positions=[4 * x_index],
-                    widths=0.5,
-                    patch_artist=True,
-                    notch=True,
-                    medianprops={"color": "black"},
-                    flierprops={
-                        "color": f"#{COLORS[race]}{TRANSPARENCIES[0]}"
-                    },
-                )
-                npm1_bp = ax.boxplot(
-                    phospho_col.loc[_mutations == "NPM1"],
-                    positions=[4 * x_index + 1],
-                    widths=0.5,
-                    patch_artist=True,
-                    notch=True,
-                    medianprops={"color": "black"},
-                    flierprops={
-                        "color": f"#{COLORS[race]}{TRANSPARENCIES[1]}"
-                    }
-                )
-                both_bp = ax.boxplot(
-                    phospho_col.loc[_mutations == "Both"],
-                    positions=[4 * x_index + 2],
-                    widths=0.5,
-                    patch_artist=True,
-                    notch=True,
-                    medianprops={"color": "black"},
-                    flierprops={
-                        "color": f"#{COLORS[race]}{TRANSPARENCIES[2]}"
-                    }
-                )
+            # Plot average of phosphosites, comparing across mutations/race
+            wt_bp = ax.boxplot(
+                race_phospho.loc[race_mutations == "WT"],
+                positions=[4 * x_index],
+                widths=0.5,
+                patch_artist=True,
+                notch=True,
+                medianprops={"color": "black"},
+                flierprops={
+                    "color": f"{COLORS[race][0]}"
+                },
+            )
+            npm1_bp = ax.boxplot(
+                race_phospho.loc[race_mutations == "NPM1"],
+                positions=[4 * x_index + 1],
+                widths=0.5,
+                patch_artist=True,
+                notch=True,
+                medianprops={"color": "black"},
+                flierprops={
+                    "color": f"{COLORS[race][1]}"
+                }
+            )
+            both_bp = ax.boxplot(
+                race_phospho.loc[race_mutations == "Both"],
+                positions=[4 * x_index + 2],
+                widths=0.5,
+                patch_artist=True,
+                notch=True,
+                medianprops={"color": "black"},
+                flierprops={
+                    "color": f"{COLORS[race][2]}"
+                }
+            )
 
-                wt_bp["boxes"][0].set_facecolor(
-                    f"#{COLORS[race]}{TRANSPARENCIES[0]}"
-                )
-                npm1_bp["boxes"][0].set_facecolor(
-                    f"#{COLORS[race]}{TRANSPARENCIES[1]}"
-                )
-                both_bp["boxes"][0].set_facecolor(
-                    f"#{COLORS[race]}{TRANSPARENCIES[2]}"
-                )
+            # Adjust saturation to denote mutation
+            wt_bp["boxes"][0].set_facecolor(
+                f"{COLORS[race][0]}"
+            )
+            npm1_bp["boxes"][0].set_facecolor(
+                f"{COLORS[race][1]}"
+            )
+            both_bp["boxes"][0].set_facecolor(
+                f"{COLORS[race][2]}"
+            )
 
+            # Add p-value markers
             for spacer, comparison in enumerate([
                 ["WT", "NPM1"],
                 ["WT", "Both"]
@@ -178,36 +182,48 @@ def make_figure():
                     1 + spacer,
                     4,
                     ax,
-                    star_only=True,
-                    bracket_space=spacer / 10 + 0.05
+                    star_only=False,
+                    bracket_space=spacer / 10 + 0.05,
+                    offset=x_index * 4
                 )
 
-            # Reformat plot, add labels
-            ax.set(
-                xticks=np.arange(0.5, 4 * race_phospho.shape[1], 4),
-                ylabel="Log2 Expression",
-                title=f"{race}: {kinase}"
+        # Add legend
+        legend_elements = [
+            Patch(
+                facecolor=f"{COLORS[race][index]}",
+                edgecolor=f"{COLORS[race][index]}",
+                label=f"{race}: {mutation}"
+            ) for race in ["Black", "White"]
+            for index, mutation in enumerate(
+                ["WT", "NPM1", "Both"]
             )
-            ax.set_xticklabels(
-                race_phospho.columns,
-                rotation=45,
-                ha="right",
-                ma="right",
-                va="top"
-            )
+        ]
 
-            # Add legend
-            legend_elements = [
-                Patch(
-                    facecolor=f"#{COLORS[race]}{transparency}",
-                    edgecolor=f"#{COLORS[race]}{transparency}",
-                    label=mutation,
-                ) for mutation, transparency in zip(
-                    ["WT", "NPM1", "Both"],
-                    TRANSPARENCIES,
-                )
-            ]
-            ax.legend(handles=legend_elements)
+        # Add dashed line at 0
+        x_lims = ax.get_xlim()
+        ax.plot(
+            [-1000, 1000],
+            [0, 0],
+            linestyle="--",
+            color="k",
+            zorder=-3
+        )
+        ax.set_xlim(x_lims)
+
+        # Reformat plot, add labels
+        ax.set(
+            xticks=[1, 5],
+            ylabel="Log2 Expression",
+            title=kinase
+        )
+        ax.set_xticklabels(
+            ["Black", "White"],
+            ha="center",
+            ma="center",
+            va="top"
+        )
+
+        ax.legend(handles=legend_elements)
 
     return fig
 
