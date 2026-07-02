@@ -116,7 +116,7 @@ def make_figure():
 
     # Load HAS scores
     has_scores = get_has_scores()
-    has_scores = has_scores.loc[:, "PCA HAS"]
+    has_scores = has_scores.loc[:, "Unweighted HAS"]
 
     # Setup correlation storage for HAS comparisons
     has_rhos = pd.DataFrame(
