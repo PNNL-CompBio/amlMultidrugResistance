@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import false_discovery_control, pearsonr
 import pandas as pd

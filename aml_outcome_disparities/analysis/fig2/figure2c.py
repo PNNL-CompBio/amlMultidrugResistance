@@ -8,7 +8,7 @@ import seaborn as sns
 
 from pilot.data_import import import_phospho, syn_login
 from pilot.figures.figure_setup import get_setup
-from pilot.gene_analysis import cell_type_scores, get_has_scores
+from pilot.gene_analysis import cell_type_scores_vg, get_has_scores
 
 ANALYSIS_DIR = dirname(abspath(__file__))
 
@@ -40,7 +40,7 @@ def make_figure():
     phospho = phospho.loc[:, shared]
 
     # Collect cell-type scores
-    ct_scores = cell_type_scores()
+    ct_scores = cell_type_scores_vg()
 
     # Drop phospho measurements with high missingness to match figure 2b
     phospho = phospho.loc[:, phospho.isna().mean(axis=0) < 0.01]
@@ -51,7 +51,7 @@ def make_figure():
 
     # Setup figure
     fig, axes = get_setup(
-        2, 1, fig_params={"figsize": (8, 5), "height_ratios": [3, 1]}
+        2, 1, fig_params={"figsize": (8, 5), "height_ratios": [6, 1]}
     )
 
     # Setup storage for correlation results
@@ -116,13 +116,14 @@ def make_figure():
 
     # Load HAS scores
     has_scores = get_has_scores()
+    has_scores = has_scores.loc[:, "Unweighted HAS"]
 
     # Setup correlation storage for HAS comparisons
     has_rhos = pd.DataFrame(
         0,
         dtype=np.float64,
         index=phospho.columns,
-        columns=["Weighted HAS", "Unweighted HAS"],
+        columns=["HAS"],
     )
     has_p = has_rhos.copy(deep=True)
 
@@ -132,8 +133,8 @@ def make_figure():
             phospho.index.intersection(ct_scores.index), phosphosite
         ].dropna()
         res = pearsonr(
-            pd.concat([phospho_col] * 2, axis=1),
-            has_scores.loc[phospho_col.index, :],
+            phospho_col,
+            has_scores.loc[phospho_col.index],
         )
         has_rhos.loc[phosphosite, :] = res.statistic
         has_p.loc[phosphosite, :] = res.pvalue

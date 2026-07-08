@@ -1,12 +1,9 @@
 """Plots figure 2b: KSEA substrate comparison."""
 
-from decimal import Decimal
 import sys
 
 from matplotlib.patches import Patch
 from os.path import abspath, dirname, join
-from sklearn.preprocessing import LabelEncoder
-from statsmodels.multivariate.manova import MANOVA
 import numpy as np
 import pandas as pd
 
@@ -57,11 +54,6 @@ def make_figure():
     race = race.loc[race.isin(["Black", "White"])]
     phospho = phospho.loc[race.index, :]
 
-    # Run MANOVA
-    le = LabelEncoder()
-    manova = MANOVA(phospho.values, le.fit_transform(race), missing="drop")
-    manova_res = manova.mv_test().summary_frame
-
     # Setup plot
     fig, ax = get_setup(1, 1, fig_params={"figsize": (8, 4)})
 
@@ -106,16 +98,6 @@ def make_figure():
         xticks=np.arange(0.5, 3 * phospho.shape[1], 3),
         ylabel="Log2 Expression",
         ylim=(-8, 8),
-    )
-    ax.text(
-        0.99,
-        0.99,
-        ha="right",
-        ma="right",
-        va="top",
-        s=f"MANOVA F: {round(manova_res.loc[:, 'F Value'].iloc[0], 3)}\n"
-        f"p-value: {'{:.2E}'.format(Decimal(manova_res.loc[:, 'Pr > F'].iloc[0]))}",
-        transform=ax.transAxes,
     )
     ax.set_xticklabels(
         phospho.columns, rotation=45, ha="right", ma="right", va="top"

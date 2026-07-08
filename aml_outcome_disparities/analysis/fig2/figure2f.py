@@ -1,3 +1,4 @@
+"""Plots figure 2f: PRKACA metabolite analysis."""
 from decimal import Decimal
 
 from scipy.stats import false_discovery_control, pearsonr, fisher_exact

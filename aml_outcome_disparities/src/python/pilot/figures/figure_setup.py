@@ -180,7 +180,8 @@ def compare_means(
     alternative: str = "two-sided",
     star_only: bool = False,
     bracket_height: float = 0.01,
-    bracket_space: float = 0.05
+    bracket_space: float = 0.05,
+    offset: float = 0
 ) -> plt.Axes:
     """
     Compares means of two groups via t-test and denotes p-value in plot.
@@ -197,6 +198,8 @@ def compare_means(
         bracket_height (float, default: 0.05): Height of bracket.
         bracket_space (float, default: 0.05): Space between bracket and max
             measurement value.
+        offset (float, default: 0): Offset between 0 and left side of first
+            bracket.
 
     Returns
         plt.Axes: Matplotlib axes.
@@ -214,7 +217,8 @@ def compare_means(
         data.loc[groups == 0, :],
         data.loc[groups == 1, :],
         nan_policy="omit",
-        alternative=alternative
+        alternative=alternative,
+        equal_var=False
     )
     p_values = false_discovery_control(res.pvalue)
 
@@ -231,7 +235,11 @@ def compare_means(
 
     for index, (p_value, column) in enumerate(zip(p_values, data.columns)):
         col_max = data.loc[:, column].max()
-        x_pos = [index * x_between] * 2 + [index * x_between + x_within] * 2
+        x_pos = [
+            index * x_between + offset
+        ] * 2 + [
+            index * x_between + x_within + offset
+        ] * 2
         y_pos = [
             col_max + vert_scale * bracket_space,
             col_max + vert_scale * (bracket_space + bracket_height),
@@ -241,7 +249,7 @@ def compare_means(
         ax.plot(x_pos, y_pos, color="black")
         if star_only:
             ax.text(
-                index * x_between + x_within / 2,
+                index * x_between + x_within / 2 + offset,
                 col_max + vert_scale * (bracket_space + bracket_height),
                 s=stars[index],
                 ha="center",
@@ -249,7 +257,7 @@ def compare_means(
             )
         else:
             ax.text(
-                index * x_between + x_within / 2,
+                index * x_between + x_within / 2 + offset,
                 col_max + vert_scale * (bracket_space + bracket_height),
                 s=round(p_values[index], 4),
                 ha="center",

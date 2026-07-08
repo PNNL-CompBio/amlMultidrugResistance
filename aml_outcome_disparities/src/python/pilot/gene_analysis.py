@@ -39,6 +39,28 @@ HAS_SCORES = pd.Series(
         # "PSAP": -0.19,
     }
 )
+LSC_17 = pd.Series(
+    {
+        "DNMT3B": 0.0874,
+        "ZBTB46": -0.0347,
+        "NYNRIN": 0.00865,
+        "ARHGAP22": -0.0138,
+        "LAPTM4B": 0.00582,
+        "MMRN1": 0.0258,
+        "DPYSL3": 0.0284,
+        "ENSG00000226777": 0.0196,  # ENSEMBL for KIAA0125
+        "CDK6": -0.0704,
+        "CPXM1": -0.0258,
+        "SOCS2": 0.0271,
+        "SMIM24": -0.0226,
+        "EMP1": 0.0146,
+        "BEX3": 0.0465,  # Updated NGFRAP1
+        "CD34": 0.0338,
+        "AKR1C3": -0.0402,
+        "ADGRG1": 0.0501  # Updated GPR56
+        # "PSAP": -0.19,
+    }
+)
 
 
 def preranked_enrichment(
@@ -112,7 +134,7 @@ def preranked_enrichment(
                 char_index = 0
                 current_length = 0
                 while char_index < len(term):
-                    if current_length >= 20 and term[char_index] == " ":
+                    if current_length >= 30 and term[char_index] == " ":
                         term = term[:char_index] + "\n" + term[char_index + 1 :]
                         current_length = 0
 
@@ -438,12 +460,31 @@ def get_prkaca_score() -> pd.Series:
     Returns:
         pd.Series: PRKACA scores for each sample.
     """
+    return get_kinase_score("PRKACA")
+
+
+def get_kinase_score(
+    kinase: str,
+    force_mean: bool = False
+) -> pd.Series:
+    """
+    Calculates kinase activity score using approach described in Bottomly et al.
+    (doi.org/10.1016/j.ccell.2022.07.002)
+
+    Args:
+        kinase (str): Kinase name.
+        force_mean (bool, default: False): Forces score to return mean
+            expression of substrates rather than PCA scores.
+
+    Returns:
+        pd.Series: Kinase scores for each sample.
+    """
     # Loads substrate idea
     substrates = pd.read_csv(
         join(REPO_PATH, "data", "Kinase-Substrate Links.csv")
     )
     substrates = substrates.loc[
-        substrates.loc[:, "Kinase.Gene"] == "PRKACA", :
+        substrates.loc[:, "Kinase.Gene"] == kinase, :
     ].sort_values(by="log2FC", ascending=True)
 
     # Reformat names to match Synapse data
@@ -469,19 +510,23 @@ def get_prkaca_score() -> pd.Series:
     phospho = phospho.loc[:, phospho.isna().mean(axis=0) < 0.01]
     phospho.dropna(axis=0, inplace=True)
 
-    # Fit PCA
-    phospho.loc[:] = scale(phospho)
-    pca = PCA(
-        phospho,
-        ncomp=1,
-        missing="fill-em",
-        demean=False,
-        standardize=False,
-        method="nipals",
-    )
+    if phospho.shape[1] >= 10 and (not force_mean):
+        # Fit PCA
+        phospho.loc[:] = scale(phospho)
+        pca = PCA(
+            phospho,
+            ncomp=1,
+            missing="fill-em",
+            demean=False,
+            standardize=False,
+            method="nipals",
+        )
 
-    # Store scores for patients
-    scores = pd.Series(pca.factors.squeeze(), index=phospho.index)
+        # Store scores for patients
+        scores = pd.Series(pca.factors.squeeze(), index=phospho.index)
+    else:
+        # Return simple mean
+        scores = pd.Series(phospho.mean(axis=1), index=phospho.index)
 
     return scores
 
