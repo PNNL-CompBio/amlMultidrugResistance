@@ -59,17 +59,32 @@ def make_figure():
         lipid_stats.loc[:, "FDR q-value"]
     )
 
+    # Reformat lipid, metabolite names
+    lipid_stats.index = lipid_stats.index.str[4:]
+    lipid_stats.index = [
+        lipid_name.split("__")[0] for lipid_name in lipid_stats.index
+    ]
+    lipid_stats.index = [
+        lipid_name.split("|")[1] if ("|" in lipid_name) else lipid_name for
+        lipid_name in lipid_stats.index
+    ]
+    meta_stats.index = meta_stats.index.str[6:]
+
     # Setup plot
     fig, axes = get_setup(
         1,
         2,
-        fig_params={"figsize": (6, 3)},
+        fig_params={"figsize": (8, 3)},
     )
 
     # Iterate through 'omes
     for name, stat, ax in zip(
         ["Lipids", "Metabolites"], [lipid_stats, meta_stats], axes
     ):
+        # Trim to top 30
+        stat = stat.sort_values(by="FDR q-value", ascending=True)
+        stat = stat.iloc[:25, :].sort_values(by="Rho", ascending=True)
+
         # Color measurements with significant differences in expression
         colors = pd.Series(["grey"] * stat.shape[0], index=stat.index)
         colors.loc[
@@ -86,28 +101,19 @@ def make_figure():
         ] = "tab:blue"
 
         # Plot volcano
-        ax.scatter(
+        ax.bar(
+            np.arange(stat.shape[0]),
             stat.loc[:, "Rho"],
-            -np.log10(stat.loc[:, "FDR q-value"]),
-            c=colors,
-            alpha=0.5,
+            color=colors
         )
-        x_lims, y_lims = ax.get_xlim(), ax.get_ylim()
 
-        # Add line for q-value threshold
+        # Plot dashed line at 0
+        x_lims, y_lims = ax.get_xlim(), ax.get_ylim()
         ax.plot(
-            [-1, 1],
-            [-np.log10(0.05), -np.log10(0.05)],
-            linestyle="--",
-            color="black",
-            zorder=1,
-        )
-        ax.plot(
+            [-2, 100],
             [0, 0],
-            [-1, 10],
-            linestyle="--",
             color="black",
-            zorder=1,
+            linestyle="--",
         )
 
         # Format plot, enable grid, label axes
@@ -116,9 +122,16 @@ def make_figure():
         ax.set(
             xlim=x_lims,
             ylim=y_lims,
-            xlabel="Pearson Rho",
-            ylabel="-log10(FDR q-value)",
-            title=name,
+            xticks=np.arange(stat.shape[0]),
+            ylabel="Pearson Correlation"
+        )
+        ax.set_xticklabels(
+            stat.index,
+            rotation=45,
+            ha="right",
+            ma="right",
+            va="top",
+            fontsize=5
         )
 
     return fig
