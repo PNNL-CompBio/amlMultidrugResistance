@@ -1,3 +1,4 @@
+"""Plots figure 2e: Small molecule PRKACA comparisons."""
 import numpy as np
 from scipy.stats import false_discovery_control, pearsonr
 import pandas as pd
