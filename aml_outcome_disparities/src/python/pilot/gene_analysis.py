@@ -9,11 +9,14 @@ import gseapy as gp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import synapseclient
+import synapseclient as sc
 from scipy.stats import false_discovery_control, ttest_ind
 from sklearn.preprocessing import scale
 from statsmodels.multivariate.pca import PCA
 
-from pilot.data_import import import_global, import_rna, import_phospho
+from pilot.data_import import (import_global, import_rna, import_phospho,
+                               syn_login)
 
 REPO_PATH = dirname(dirname(abspath(__file__)))
 HAS_SCORES = pd.Series(
@@ -245,24 +248,30 @@ def calculate_fc(
     return fc, corrected_p
 
 
-def cell_type_scores() -> pd.DataFrame:
+def cell_type_scores(syn: sc.Synapse = None) -> pd.DataFrame:
     """
     Identifies AML cell types in samples using cell types defined in van
     Galen et al. (doi.org/10.1016/j.cell.2019.01.031) Uses SVD-based scoring
     approach defined in Bottomly et al. (doi.org/10.1016/j.ccell.2022.07.002)
 
     Args:
-        None.
+        syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
+            new one if None.
 
     Returns:
         pd.DataFrame: AML cell type scores for each sample.
     """
+    if syn is None:
+        syn = syn_login()
+
     # Load RNA-seq data
-    data = pd.concat(import_rna(), axis=0)
+    data = pd.concat(import_rna(syn), axis=0)
 
     # Loads van Galen genes
     vg_genes = pd.read_excel(
-        join(REPO_PATH, "data", "mmc3.xlsx"), header=1, index_col=0
+        syn.get("syn76338577").path,
+        header=1,
+        index_col=0
     )
 
     gmp_like = vg_genes.loc[:, "GMP-like"].iloc[:-2]
@@ -297,6 +306,7 @@ def cell_type_scores() -> pd.DataFrame:
 
 
 def cell_type_scores_vg(
+    syn: sc.Synapse | None = None,
     tpm: bool = True,
     puram: bool = False
 ) -> pd.DataFrame:
@@ -306,6 +316,8 @@ def cell_type_scores_vg(
     (https://doi.org/10.1016/j.cell.2017.10.044).
 
     Args:
+        syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads
+            new one if None.
         tpm (bool): TPM measurements prior to score derivation.
         puram (bool): Use binning-based approach in Puram et al. False uses
             approach outlined in van Galen et al. instead.
@@ -313,17 +325,22 @@ def cell_type_scores_vg(
     Returns:
         pd.DataFrame: AML cell type scores for each RNA-seq sample.
     """
+    if syn is None:
+        syn = syn_login()
+
     # Load RNA-seq data
     data = np.log2(
         pd.concat(
-            import_rna(tpm=tpm),
+            import_rna(syn, tpm=tpm),
             axis=0
         ) + 1
     )
 
     # Loads van Galen genes
     vg_genes = pd.read_excel(
-        join(REPO_PATH, "data", "mmc3.xlsx"), header=1, index_col=0
+        syn.get("syn76338577").path,
+        header=1,
+        index_col=0
     )
 
     # Reformat GMP-like column

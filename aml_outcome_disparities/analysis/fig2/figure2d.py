@@ -1,4 +1,4 @@
-"""Plots figure 2c: KSEA substrate cell type correlations."""
+"""Plots figure 2d: PRKACA scoring validation."""
 
 from scipy.stats import ttest_ind
 import numpy as np
