@@ -301,8 +301,8 @@ run_hallmark_enrichment <- function(population, mutation, block, direction,
 
 ```{r run-all, results='asis'}
 populations <- c("B", "W")
-mutations   <- c("NPM1-WT", "FLT3-ITD-WT", "FLT3-ITDxNPM1-WT")
-blocks      <- c("Transcriptomics", "Proteomics", "Lipid-Protein-Associations")
+mutations   <- c("NPM1-WT")
+blocks      <- c("Transcriptomics", "Proteomics")
 directions  <- c("up", "down")
 
 combos <- expand.grid(
@@ -313,7 +313,7 @@ combos <- expand.grid(
   stringsAsFactors = FALSE
 )
 
-message(sprintf("Running enrichment for %d combinations × 3 databases\n", nrow(combos)))
+message(sprintf("Running enrichment for %d combinations x 3 databases\n", nrow(combos)))
 
 results_kegg     <- list()
 results_reactome <- list()
