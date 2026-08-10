@@ -105,7 +105,8 @@ complete_DV_UT_features_ = intersect(featureNames(m_4pat)[complete_DV_UT_feature
 
 # write.table(stats_df, "exvivo_signature_stats.txt", sep = "\t", quote = F, col.names = T, row.names = F)
    
-stats_df = read.table("exvivo_signature_stats.txt", sep = "\t", header = T)
+# stats_df = read.table("exvivo_signature_stats.txt", sep = "\t", header = T)
+stats_df = read.table(syn$get("syn76730225")$path, sep = "\t", header = T)
 
 ```
 
