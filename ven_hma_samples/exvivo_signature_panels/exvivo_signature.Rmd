@@ -1,0 +1,357 @@
+
+
+
+```{r}
+source("../../synapseUtil.R")
+source("../scripts/loading_data.R")
+source("../scripts/plot_helper.R")
+source("../scripts/compute_lsc17.R")
+source("../scripts/predict_helper.R")
+source("../scripts/s2n_model.R")
+
+samples_to_exclude = c("PTRC_Exp28_Prot_33", "PTRC_Exp28_Prot_15", "PTRC_Exp28_Prot_03")
+m_exp28 = m_exp28[, setdiff(sampleNames(m_exp28), samples_to_exclude)]
+m_exp28_ = m_exp28[, m_exp28$subcohort != "Paired_relapse_sample"]
+
+features_50perc = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) < 19]
+complete_features = featureNames(m_exp28)[rowSums(is.na(exprs(m_exp28))) == 0]
+
+plot_folder = "./"
+
+## Need to apply signature in in-vivo dataset, so we filter by complete features in U, VT AND the in-vivo dataset
+complete_DV_UT_features <- complete.cases(exprs(m_4pat[, m_4pat$Treatment %in% c("UT", "DV")]))
+complete_DV_UT_features_ = intersect(featureNames(m_4pat)[complete_DV_UT_features], complete_features)
+
+```
+
+
+
+
+```{r}
+# stats_df = data.frame()
+# for (chosen_N in 1:14){
+#    print(chosen_N)
+#    loocv_model_DV = logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = FALSE,
+#                                  pred_group = "DV", control_group = "UT",
+#                                  ## Tune-able parameters
+#                                  N_markers = chosen_N, pval_cutoff = 1,
+#                                  method = "simple", var.equal = TRUE)
+#    DV_markers_up = loocv_model_DV$full_model$features %>% filter(group_ == "DV") %>% pull(feature)
+#    DV_markers_down = loocv_model_DV$full_model$features %>% filter(group_ == "UT") %>% pull(feature)
+# 
+#    ### Exvivo DV signature stats
+#    invivo_prediction = predict_helper_(m_exp28, DV_markers_up, DV_markers_down) %>%
+#       left_join(., pData(m_exp28), by = c("sample" = "sample_name")) %>%
+#       mutate(refractory = case_when(`sub-cohortPNNL` == "Refractory" ~ 1,
+#                                     TRUE ~ 0))
+#    xx_ = invivo_prediction %>% filter(subcohort != "Paired_relapse_sample")
+# 
+#    beataml_210_predictions = predict_helper_(m_210, DV_markers_up, DV_markers_down) %>%
+#       left_join(., drug_data_df, by = c("sample" = "sample_id")) %>%
+#       left_join(., pData(m_210), by = c("sample" = "Barcode.ID"))
+# 
+#    aza_ven_df = beataml_210_predictions %>%
+#       filter(inhibitor == "Azacytidine - Venetoclax") %>%
+#       filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+#                                                        "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+#    ven_df = beataml_210_predictions %>%
+#       filter(inhibitor == "Venetoclax") %>%
+#       filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+#                                                        "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+# 
+#    stats_df = rbind(stats_df,
+#                     data.frame(N = chosen_N, signature = "Exvivo DV", loocv_auc = loocv_model_DV$auc,
+#                                beataml_ven_corr = cor(ven_df$signal, ven_df$auc),
+#                                beataml_azaven_corr = cor(aza_ven_df$signal, aza_ven_df$auc),
+#                                invivo_auc = ROCR::performance(ROCR::prediction(xx_$signal, xx_$refractory), "auc")@y.values[[1]]))
+# 
+# 
+# 
+#    loocv_model_V = logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = FALSE,
+#                                  pred_group = "V", control_group = "UT",
+#                                  ## Tune-able parameters
+#                                  N_markers = chosen_N, pval_cutoff = 1,
+#                                  method = "simple", var.equal = TRUE)
+#    V_markers_up = loocv_model_V$full_model$features %>% filter(group_ == "V") %>% pull(feature)
+#    V_markers_down = loocv_model_V$full_model$features %>% filter(group_ == "UT") %>% pull(feature)
+# 
+# 
+#    ### Exvivo Ven signature stats
+#    invivo_prediction = predict_helper_(m_exp28, V_markers_up, V_markers_down) %>%
+#       left_join(., pData(m_exp28), by = c("sample" = "sample_name")) %>%
+#       mutate(refractory = case_when(`sub-cohortPNNL` == "Refractory" ~ 1,
+#                                     TRUE ~ 0))
+#    xx_ = invivo_prediction %>% filter(subcohort != "Paired_relapse_sample")
+# 
+#    beataml_210_predictions = predict_helper_(m_210, V_markers_up, V_markers_down) %>%
+#       left_join(., drug_data_df, by = c("sample" = "sample_id")) %>%
+#       left_join(., pData(m_210), by = c("sample" = "Barcode.ID"))
+# 
+#    aza_ven_df = beataml_210_predictions %>%
+#       filter(inhibitor == "Azacytidine - Venetoclax") %>%
+#       filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+#                                                        "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+#    ven_df = beataml_210_predictions %>%
+#       filter(inhibitor == "Venetoclax") %>%
+#       filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+#                                                        "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+# 
+#    stats_df = rbind(stats_df,
+#                     data.frame(N = chosen_N, signature = "Exvivo V", loocv_auc = loocv_model_V$auc,
+#                                beataml_ven_corr = cor(ven_df$signal, ven_df$auc),
+#                                beataml_azaven_corr = cor(aza_ven_df$signal, aza_ven_df$auc),
+#                                invivo_auc = ROCR::performance(ROCR::prediction(xx_$signal, xx_$refractory), "auc")@y.values[[1]]))
+#    }
+
+# write.table(stats_df, "exvivo_signature_stats.txt", sep = "\t", quote = F, col.names = T, row.names = F)
+   
+stats_df = read.table("exvivo_signature_stats.txt", sep = "\t", header = T)
+
+```
+
+
+
+
+```{r}
+chosen_signature = "DV"
+plot_df = stats_df %>%
+   filter(signature == paste("Exvivo", chosen_signature))
+
+ggplot(plot_df, aes(x = N, y = beataml_ven_corr)) + 
+   geom_line(linewidth = 2, color = "orange") + 
+   geom_point(size = 3, color = "steelblue") +
+   theme_bw() + theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
+   ggtitle(paste("Correlation of Exvivo", chosen_signature, "signature w/\nVen drug AUC in BeatAML")) + 
+   ylab("Correlation") + xlab("N markers")
+ggsave(paste0(plot_folder, "exvivo_", chosen_signature, "_signature_beataml_ven_drug_auc_stats.png"))
+ggsave(paste0(plot_folder, "exvivo_", chosen_signature, "_signature_beataml_ven_drug_auc_stats.pdf"))
+
+
+ggplot(plot_df, aes(x = N, y = loocv_auc)) + 
+   geom_bar(stat = 'identity', width = 0.67, color = "black", fill = "steelblue") +
+   geom_text(aes(label = round(loocv_auc, 2)), vjust = 1.2, color = 'white') +
+   theme_bw() + theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
+   ggtitle(paste("LOOCV AUC - Exvivo", chosen_signature, "signature")) + 
+   ylab("AUC") + xlab("N markers")
+ggsave(paste0(plot_folder, "exvivo_", chosen_signature, "_signature_loocv_auc_stats.png"))
+ggsave(paste0(plot_folder, "exvivo_", chosen_signature, "_signature_loocv_auc_stats.pdf"))
+
+
+
+```
+
+
+
+### Testing performace of exvivo signature in invivo data
+
+
+```{r}
+
+loocv_model_DV = logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = FALSE,
+                              pred_group = "DV", control_group = "UT",
+                              ## Tune-able parameters
+                              N_markers = 9, pval_cutoff = 1,
+                              method = "simple", var.equal = TRUE)
+DV_markers_up = loocv_model_DV$full_model$features %>% filter(group_ == "DV") %>% pull(feature)
+DV_markers_down = loocv_model_DV$full_model$features %>% filter(group_ == "UT") %>% pull(feature)
+
+xx = predict_helper_(m_exp28, DV_markers_up, DV_markers_down) %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   mutate(refractory = case_when(subcohort == "Refractory" ~ 1,
+                                 TRUE ~ 0),
+          subcohort = case_when(subcohort == "Response_no_relapse" ~ "Response\nno relapse",
+                                subcohort == "Relapse" ~ "Relapsed",
+                                TRUE ~ subcohort))
+xx = xx %>% filter(subcohort != "Paired_relapse_sample")
+pred = ROCR::prediction(xx$signal, xx$refractory)
+modelresult1 = list(prob = xx$signal, features = NA, top = NA, 
+      auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+
+pooled_t_test = stat_test_(xx %>% mutate(x = subcohort, y = signal))
+t_test_pval = sub(" \n.*", "", pooled_t_test) %>% sub(".* = ", "", .) %>% as.numeric()
+## Boxplot with no annotations
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = subcohort)) + geom_boxplot(width = 0.6) + 
+   ylab("Dec-Ven signal") + scale_fill_manual(values = subcohort_colors) + theme_bw() +
+   ggtitle("Exvivo Dec-Ven resistance signature") +
+   theme(text = element_text(size = 22), plot.title = element_text(hjust = 0.5))
+
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response\nno relapse"))
+q2 = t_test_ann(q1, c("Relapsed", "Response\nno relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapsed"), y_start = 1.035)
+q2
+ggsave(plot = q2, filename = paste0(plot_folder, "boxplot_exvivo_DV_signature_applied_invivo.png"),
+       width = 8, height = 8)
+ggsave(plot = q2, filename = paste0(plot_folder, "boxplot_exvivo_DV_signature_applied_invivo.pdf"),
+       width = 8, height = 8)
+
+
+p = plotAUC_gg(modelresult1) + theme_bw() + ggtitle("Detecting refractory patients \nExvivo DV signature") +
+   theme(text = element_text(size = 18), plot.title = element_text(hjust = 0.5))
+ggsave(plot = p, filename = paste0(plot_folder, "aucplot_exvivo_DV_signature_applied_invivo.png"),
+       width = 8, height = 8)
+ggsave(plot = p, filename = paste0(plot_folder, "aucplot_exvivo_DV_signature_applied_invivo.pdf"),
+       width = 8, height = 8)
+
+
+```
+
+
+```{r}
+loocv_model_V = logistic_model(m_4pat[complete_DV_UT_features_, ], "Treatment", skip_loo = FALSE,
+                              pred_group = "V", control_group = "UT",
+                              ## Tune-able parameters
+                              N_markers = 6, pval_cutoff = 1,
+                              method = "simple", var.equal = TRUE)
+V_markers_up = loocv_model_V$full_model$features %>% filter(group_ == "V") %>% pull(feature)
+V_markers_down = loocv_model_V$full_model$features %>% filter(group_ == "UT") %>% pull(feature)
+
+xx = predict_helper_(m_exp28, V_markers_up, V_markers_down) %>%
+   left_join(., p_data, by = c("sample" = "sample_name")) %>%
+   mutate(refractory = case_when(subcohort == "Refractory" ~ 1,
+                                 TRUE ~ 0),
+          subcohort = case_when(subcohort == "Response_no_relapse" ~ "Response\nno relapse",
+                                subcohort == "Relapse" ~ "Relapsed",
+                                TRUE ~ subcohort))
+xx = xx %>% filter(subcohort != "Paired_relapse_sample")
+pred = ROCR::prediction(xx$signal, xx$refractory)
+modelresult1 = list(prob = xx$signal, features = NA, top = NA, 
+      auc = ROCR::performance(pred, "auc")@y.values[[1]], pred = pred)
+
+pooled_t_test = stat_test_(xx %>% mutate(x = subcohort, y = signal))
+t_test_pval = sub(" \n.*", "", pooled_t_test) %>% sub(".* = ", "", .) %>% as.numeric()
+## Boxplot with no annotations
+q = ggplot(xx %>% filter(subcohort != "Paired_relapse_sample"), 
+           aes(x = subcohort, y = signal, fill = subcohort)) + geom_boxplot(width = 0.6) + 
+   ylab("Ven signal") + scale_fill_manual(values = subcohort_colors) + theme_bw() +
+   ggtitle("Exvivo Ven resistance signature") +
+   theme(text = element_text(size = 22), plot.title = element_text(hjust = 0.5))
+
+
+## Boxplot with t_test annotations
+q1 = t_test_ann(q, c("Refractory", "Response\nno relapse"))
+q2 = t_test_ann(q1, c("Relapsed", "Response\nno relapse"))
+q2 = t_test_ann(q2, c("Refractory", "Relapsed"), y_start = -0.4)
+q2
+ggsave(plot = q2, filename = paste0(plot_folder, "boxplot_exvivo_V_signature_applied_invivo.png"),
+       width = 8, height = 8)
+ggsave(plot = q2, filename = paste0(plot_folder, "boxplot_exvivo_V_signature_applied_invivo.pdf"),
+       width = 8, height = 8)
+
+
+p = plotAUC_gg(modelresult1) + theme_bw() + ggtitle("Detecting refractory patients \nExvivo Ven signature") +
+   theme(text = element_text(size = 18), plot.title = element_text(hjust = 0.5))
+ggsave(plot = p, filename = paste0(plot_folder, "aucplot_exvivo_V_signature_applied_invivo.png"),
+       width = 8, height = 8)
+ggsave(plot = p, filename = paste0(plot_folder, "aucplot_exvivo_V_signature_applied_invivo.pdf"),
+       width = 8, height = 8)
+
+
+
+```
+
+
+
+### Showing correlation with drug AUC in BeatAML 
+
+```{r}
+## Exvivo DV signature
+beataml_210_predictions = predict_helper_(m_210, DV_markers_up, DV_markers_down) %>%
+   left_join(., drug_data_df, by = c("sample" = "sample_id")) %>%
+   left_join(., pData(m_210), by = c("sample" = "Barcode.ID"))
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Azacytidine - Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo Dec+Ven signature vs Ven+Aza drug AUC\n", "correlation = ", formatC(a$estimate, 2),
+                    ", p_value = ", formatC(a$p.value, 2))
+p = ggplot(ll, aes(x = auc, y = signal, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven+Aza drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+p
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_AZA_drugauc_validation_exvivo_DV_signature.pdf"))
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_AZA_drugauc_validation_exvivo_DV_signature.png"))
+
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo Dec+Ven signature vs Ven drug AUC\n", "correlation = ", formatC(a$estimate, 2), 
+                    ", p_value = ", formatC(a$p.value, 2))
+p = ggplot(ll, aes(x = auc, y = signal, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+p
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_drugauc_validation_exvivo_DV_signature.pdf"))
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_drugauc_validation_exvivo_DV_signature.png"))
+
+
+```
+
+
+
+```{r}
+
+## Exvivo V signature
+beataml_210_predictions = predict_helper_(m_210, V_markers_up, V_markers_down) %>%
+   left_join(., drug_data_df, by = c("sample" = "sample_id")) %>%
+   left_join(., pData(m_210), by = c("sample" = "Barcode.ID"))
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Azacytidine - Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo Ven signature vs Ven+Aza drug AUC\n", "correlation = ", formatC(a$estimate, 2),
+                    ", p_value = ", formatC(a$p.value, 2))
+p = ggplot(ll, aes(x = auc, y = signal, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven+Aza drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+p
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_AZA_drugauc_validation_exvivo_V_signature.pdf"))
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_AZA_drugauc_validation_exvivo_V_signature.png"))
+
+
+plot_df = beataml_210_predictions %>%
+   filter(inhibitor == "Venetoclax")
+ll = plot_df %>% filter(Specimen.access.group.concatenated %in% c("Initial Acute Leukemia Diagnosis",
+                                                                  "Initial Acute Leukemia Diagnosis; Post-Chemotherapy"))
+a = cor.test(ll$auc, ll$signal)
+a
+line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
+line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
+plot_title = paste0("Ex-vivo Ven signature vs Ven drug AUC\n", "correlation = ", formatC(a$estimate, 2), 
+                    ", p_value = ", formatC(a$p.value, 2))
+p = ggplot(ll, aes(x = auc, y = signal, label = sample)) + geom_point(size = 2.5) +
+   ggtitle(plot_title) + ylab("signal") + xlab("Ven drug AUC") + 
+   geom_abline(intercept = line_intercept, slope = line_slope, size = 1.5, alpha = 0.2) +
+   theme_bw() + theme(text = element_text(size = 15))
+p
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_drugauc_validation_exvivo_V_signature.pdf"))
+ggsave(plot = p, filename = paste0(plot_folder, "beataml_VEN_drugauc_validation_exvivo_V_signature.png"))
+
+
+```
+
+
+
+
+

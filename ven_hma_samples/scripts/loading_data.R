@@ -7,7 +7,7 @@ library(patchwork)
 syn <- synapseLogin()
 subcohort_colors =  c("#e8991b", "#00798c", "#d1495b", "grey27")
 subcohort_colors2 =  c("#e8991b", "#00798c", "#d1495b", "grey27")
-names(subcohort_colors) = c("Response_no_relapse", "Refractory", "Relapse", "Paired_relapse_sample")
+names(subcohort_colors) = c("Response\nno relapse", "Refractory", "Relapsed", "Paired_relapse_sample")
 vital_colors = c('orange3', 'plum4', 'darkgrey')
 names(vital_colors) = c("Alive", "Dead", "LTFU")
 
@@ -41,6 +41,13 @@ rownames(mat) = mat_df$Genes
 
 meta_path = syn$get("syn69058992")$path
 meta = openxlsx::read.xlsx(meta_path)
+clinical_summary = openxlsx::read.xlsx(meta_path, sheet = "clinical_summary") %>%
+   select(labId, ageAtDiagnosis, priorMalignancyType, priorMalignancyChemo, 
+          elnRisk2022, karyotype, FISH, immunophenotype, geneMutationSummary, 
+          dxAtSpecimenAcquisition, specificDxAtAcquisition, specimenGroups, specimenType,
+          cumulativeTreatmentTypes, cumulativeTreatmentRegimenCount, cumulativeTreatmentRegimens,
+          percentBlastsBM, percentBlastsPB)
+meta = left_join(meta, clinical_summary, by = "labId")
 meta$survival_days = meta[[13]]
 p_data = meta %>% mutate(sample_name = datasetNameGlobal,
                          subcohort = gsub(" - ", "_", `sub-cohortPNNL`),

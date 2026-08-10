@@ -47,7 +47,8 @@ t_test_ann <- function(q, comparison, pval_cutoff = 1.1, y_start = NULL, test = 
 ## Helper function to compute t_test between the combined group 'Repsonse_no_relapse + Relapse' vs 'Refractory'
 stat_test_ <- function(plot_df){
    test_df = plot_df %>%
-      mutate(x_ = case_when(x %in% c("Response_no_relapse", "Relapse") ~ "combined_response_group",
+      mutate(x_ = case_when(x == "Response\nno relapse" ~ "combined_response_group",
+                            x == "Relapsed" ~ "combined_response_group",
                             TRUE ~ x)) %>%
       filter(x_ != "Paired_relapse_sample")
    t_test = t.test(y ~ x_, data = test_df,
