@@ -1,4 +1,4 @@
-"""Plots figure 1b: Preliminary Volcano Plots"""
+"""Plots figure 1b: Preliminary Volcano Plots."""
 
 import sys
 from os.path import abspath, dirname, join
@@ -38,14 +38,6 @@ def make_figure():
     acetyl = import_acetyl(syn)
     rna = import_rna(syn, return_symbols=True)
     races = meta.loc[:, "Race"]
-
-    # # Reformat acetyl
-    # bridge_ids = (
-    #     phospho[1].loc[phospho[1].index.str.contains("Bridge"), :].index
-    # )
-    # bridge_ids = {bridge_id[:-7]: bridge_id for bridge_id in bridge_ids}
-    # acetyl.rename(index=bridge_ids, inplace=True)
-    # acetyl = (None, acetyl)
 
     datasets = {
         "Metabolites": metabolites,

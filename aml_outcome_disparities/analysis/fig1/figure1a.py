@@ -1,155 +1,70 @@
-"""Plots figure 1a: PCA for batch comparison."""
+"""Plots figure 1a: Mutation and Sex across Race."""
 
-import sys
-from os.path import abspath, dirname, join
+import numpy as np
 
-sys.path.append(
-    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
-)
-
-import pandas as pd
-from sklearn.preprocessing import scale
-from statsmodels.multivariate.pca import PCA
-
-from pilot.data_import import (
-    import_acetyl,
-    import_global,
-    import_lipids,
-    import_meta,
-    import_metabolites,
-    import_phospho,
-    import_rna,
-    syn_login,
-)
-from pilot.figures.figure_setup import confidence_ellipse, get_setup
-
-FILE_DIR = dirname(abspath(__file__))
+from pilot.data_import import import_meta
+from pilot.figures.figure_setup import get_setup
 
 
 def make_figure():
-    # Import data
-    syn = syn_login()
-    meta = import_meta(syn)
-    metabolites = import_metabolites(syn)
-    lipids = import_lipids(syn)
-    phospho = import_phospho(syn)
-    global_prot = import_global(syn)
-    acetyl = import_acetyl(syn)
-    rna = import_rna(syn, return_symbols=True, batch_correct=True, tpm=True)
+    # Import metadata
+    meta = import_meta()
 
-    cohort_colors = pd.Series(
-        {
-            "BeatAML 210": "tab:blue",
-            "Pilot": "tab:orange",
-            "Bridge": "tab:green",
-        }
-    )
-    race_colors = pd.Series(
-        {
-            "Black": "tab:red",
-            "White": "tab:purple",
-        }
-    )
-
-    # Format matplotlib axes
-    datasets = {
-        "Metabolites": metabolites,
-        "Lipidomics": lipids,
-        "Transcriptomics": rna,
-        "Acetylomics": acetyl,
-        "Phosphoproteomics": phospho,
-        "Global Proteomics": global_prot,
-    }
-
+    # Setup figure
     fig, axes = get_setup(
         2,
-        len(datasets),
+        2,
         fig_params={
-            "figsize": (len(datasets) * 3, 6),
-        },
+            "figsize": (4, 4)
+        }
     )
+    for ax_row, race in enumerate(["Black", "White"]):
+        # Trim to race
+        _meta = meta.loc[meta.loc[:, "Race"] == race, :]
 
-    for col_index, (dataset_name, dataset) in enumerate(datasets.items()):
-        # Merge 210 and Pilot cohorts, then scale features
-        ptrc, pilot = dataset
+        # Get counts of NPM1, FLT3-ITD, double mutants
+        mutation_counts = _meta.loc[:, "NPM1"].replace(
+            {
+                "Mutant": "NPM1",
+                "WT": "Wild Type"
+            }
+        )
+        mutation_counts.loc[
+            np.logical_and(
+                _meta.loc[:, "NPM1"] == "Mutant",
+                _meta.loc[:, "FLT3_ITD"] == "Mutant"
+            )
+        ] = "Both"
+        mutation_counts.loc[
+            np.logical_and(
+                _meta.loc[:, "NPM1"] != "Mutant",
+                _meta.loc[:, "FLT3_ITD"] == "Mutant"
+            )
+        ] = "FLT3-ITD"
+        mutation_counts = mutation_counts.value_counts()
 
-        if dataset_name == "Transcriptomics":
-            data = pd.concat(dataset, axis=0)
-            data = data.loc[data.index.intersection(meta.index), :]
-            data.loc[:] = scale(data, axis=1)
-        else:
-            data = pd.concat(dataset, axis=0)
-            assert len(data) == len(pilot) + len(ptrc)
-
-        data.loc[:] = scale(data, axis=0)
-
-        # Label sample cohorts, race
-        cohorts = pd.Series("BeatAML 210", index=data.index)
-        cohorts.iloc[-pilot.shape[0] :] = "Pilot"
-        cohorts.loc[cohorts.index.str.contains("Bridge")] = "Bridge"
-        races = meta.loc[data.index, "Race"]
-
-        # Run PCA
-        pca = PCA(
-            data,
-            ncomp=2,
-            missing="fill-em",
-            demean=False,
-            standardize=False,
-            method="nipals",
+        # Pie chart for mutations
+        ax = axes[ax_row, 0]
+        ax.pie(
+            mutation_counts,
+            labels=mutation_counts.index,
+            autopct="%1.1f%%"
+        )
+        ax.set(
+            title=f"{race}: Mutation"
         )
 
-        # Plot scores by cohort
-        ax = axes[0, col_index]
-        for cohort in cohorts.unique():
-            cohort_scores = pca.scores.loc[cohorts == cohort, :]
-            confidence_ellipse(
-                cohort_scores.iloc[:, 0],
-                cohort_scores.iloc[:, 1],
-                ax,
-                facecolor="None",
-                edgecolor=cohort_colors.loc[cohort],
-                linestyle="--",
-                alpha=0.9,
-            )
-            ax.scatter(
-                cohort_scores.iloc[:, 0],
-                cohort_scores.iloc[:, 1],
-                c=cohort_colors.loc[cohort],
-                s=12,
-                edgecolor="black",
-                linewidths=1,
-                label=cohort,
-            )
-
-        ax.set(xlabel="PC 1", ylabel="PC 2", title=f"{dataset_name}: Cohort")
-        ax.legend()
-
-        # Plot scores by race
-        ax = axes[1, col_index]
-        for race in race_colors.index:
-            race_scores = pca.scores.loc[races == race, :]
-            confidence_ellipse(
-                race_scores.iloc[:, 0],
-                race_scores.iloc[:, 1],
-                ax,
-                facecolor="None",
-                edgecolor=race_colors.loc[race],
-                linestyle="--",
-                alpha=0.9,
-            )
-            ax.scatter(
-                race_scores.iloc[:, 0],
-                race_scores.iloc[:, 1],
-                c=race_colors.loc[race],
-                s=12,
-                edgecolor="black",
-                linewidths=1,
-                label=race,
-            )
-
-        ax.set(xlabel="PC 1", ylabel="PC 2", title=f"{dataset_name}: Race")
-        ax.legend()
+        # Pie chart for sex
+        ax = axes[ax_row, 1]
+        sex_counts = _meta.loc[:, "Sex"].fillna("Unknown").value_counts()
+        ax.pie(
+            sex_counts,
+            labels=sex_counts.index,
+            autopct="%1.1f%%"
+        )
+        ax.set(
+            title=f"{race}: Sex"
+        )
 
     return fig
 

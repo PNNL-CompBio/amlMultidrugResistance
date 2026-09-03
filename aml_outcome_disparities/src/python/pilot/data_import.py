@@ -36,7 +36,7 @@ def syn_login(auth_path: PathLike | None = None) -> sc.Synapse:
     if auth_path is None:
         auth_path = join(REPO_PATH, "auth_token.txt")
 
-    syn = sc.Synapse(silent=True)
+    syn = sc.Synapse(debug=False, silent=True)
     with open(auth_path, "r") as f:
         auth_token = f.read()
 
