@@ -1,4 +1,4 @@
-"""Plots figure S1c: Myelodysplasia investigation."""
+"""Plots figure S2c: Myelodysplasia investigation."""
 
 import sys
 from decimal import Decimal

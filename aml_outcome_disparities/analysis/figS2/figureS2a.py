@@ -1,4 +1,4 @@
-"""Plots figure S1a: Age-Race interaction comparison."""
+"""Plots figure S2a: Age-Race interaction comparison."""
 import os
 import shutil
 import sys
