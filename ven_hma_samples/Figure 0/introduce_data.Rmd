@@ -275,5 +275,13 @@ p
 
 ```
 
+### Bubble plots of diffex
+
+Here we can evaluate the pathways differentially expressed using buble plots across conditions
+
+```{r bubble plots}
+
+```
+
 
 

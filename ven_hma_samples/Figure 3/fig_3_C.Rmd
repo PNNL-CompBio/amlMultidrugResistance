@@ -1,0 +1,91 @@
+---
+title: "ExVivo_Culture"
+output: html_document
+date: "2026-09-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ex vivo culture
+The goal of this document is to plot panel C of the ex vivo section to show the
+growth of the patient samples 
+
+
+```{r source files}
+
+source("../../synapseUtil.R")
+source("../scripts/loading_data.R")
+source("../scripts/plot_helper.R")
+#source("../scripts/compute_lsc17.R")
+#source("../scripts/predict_helper.R")
+#source("../scripts/s2n_model.R")
+
+##this is a tabbed excel spreadsheet with each patient on a separate tab
+growth_data <- 'syn77216551'
+
+#quick helper function to format data
+fix_xlsx <- function(tab){
+  tab |>
+  dplyr::rename(Treatment='...1',Stat='...2') |>
+  dplyr::select(-DPE) |> 
+  subset(!is.na(Treatment)) |>
+  tidyr::pivot_longer(c(3,4,5,6),names_to='Days treated',values_to='Value')
+}
+
+p1 <- read_xlsx(synGet(growth_data)$path,sheet='120407',skip=4) |>
+  fix_xlsx() |>
+  mutate(patient='120407')
+
+p2 <- read_xlsx(synGet(growth_data)$path,sheet='072210',skip=4)|>
+  fix_xlsx()|>
+  mutate(patient='072210')
+
+p3 <- read_xlsx(synGet(growth_data)$path,sheet='022107',skip=4)|>
+  fix_xlsx()|>
+  mutate(patient='022107')
+
+p4 <- read_xlsx(synGet(growth_data)$path,sheet='102707',skip=4)|>
+  fix_xlsx()|>
+  mutate(patient='102707')
+
+full_tab <- rbind(p1,p2,p3,p4)
+
+```
+
+now we can play around with the data
+
+## Plots for paper
+
+
+Let's just plot all the data
+
+```{r pressure, echo=FALSE}
+full_tab |>ggplot(aes(x=`Days treated`, y=Value, col=Treatment,group=Treatment)) + geom_line() + facet_grid(Stat~patient)
+
+```
+
+Of course we aren't using much of these samples and instead are focusing on the 
+dec+ven combination.
+
+```{r data}
+
+pat_colors = c("DV Resistant" = "#00798c", "Untreated" = "#e8991b")
+treatment_colors = c("Dec+Ven 250nM" = "#00798c", "UT" = "forestgreen")
+
+full_tab |>
+  subset(Treatment %in% c("UT","Dec+Ven 250nM")) |>
+  subset(Stat=='viability') |>
+  mutate(Days = as.numeric(`Days treated`)) |>
+  ggplot(aes(x=Days,y=Value, group=Treatment,col=Treatment)) +
+  geom_line() +
+  geom_point() +
+  scale_color_manual(values = treatment_colors) +
+  facet_grid(patient~.)
+
+ggsave('fig3c.pdf',height=8,width=6)
+```
+
+
+This will be a single panel instead of 4

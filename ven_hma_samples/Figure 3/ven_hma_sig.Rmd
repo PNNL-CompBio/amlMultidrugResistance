@@ -290,9 +290,10 @@ ggsave(plot = q, filename = "many_plots/m_exp28_refractory_response_no_relapse_s
 
 
 
-```{r}
-# feat1 = all_features_df_      # using the exvivo model
-# feat2 = all_features_df_      # using the ven+hma model
+We can't run this right now.
+```{r eval=FALSE}
+ feat1 = all_features_df_      # using the exvivo model
+ feat2 = all_features_df_      # using the ven+hma model
 common = intersect(feat1$feature, feat2$feature)
 
 feat1 = left_join(feat1, diffexp_results_venhma %>% select(logFC, feature, t_test_pval), by = "feature")

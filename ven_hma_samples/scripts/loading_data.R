@@ -7,7 +7,7 @@ library(patchwork)
 syn <- synapseLogin()
 subcohort_colors =  c("#e8991b", "#00798c", "#d1495b", "grey27")
 subcohort_colors2 =  c("#e8991b", "#00798c", "#d1495b", "grey27")
-names(subcohort_colors) = c("Response\nno relapse", "Refractory", "Relapsed", "Paired_relapse_sample")
+names(subcohort_colors) = c("Response - no relapse", "Refractory", "Relapse", "Paired_relapse_sample")
 vital_colors = c('orange3', 'plum4', 'darkgrey')
 names(vital_colors) = c("Alive", "Dead", "LTFU")
 
