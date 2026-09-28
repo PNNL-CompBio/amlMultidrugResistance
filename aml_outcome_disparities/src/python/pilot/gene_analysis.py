@@ -313,7 +313,7 @@ def cell_type_scores_vg(
     """
     Calculates AML subtype scores using approaches outlined in van Galen et al.
     (doi.org/10.1016/j.cell.2019.01.031) and Puram et al.
-    (https://doi.org/10.1016/j.cell.2017.10.044).
+    (doi.org/10.1016/j.cell.2017.10.044).
 
     Args:
         syn (sc.Synapse | None, default: None): Logged-in Synapse object; loads

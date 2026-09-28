@@ -1,11 +1,6 @@
 """Plots figure 1b: Preliminary Volcano Plots."""
 
-import sys
-from os.path import abspath, dirname, join
-
-sys.path.append(
-    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
-)
+from os.path import abspath, dirname
 
 import numpy as np
 import pandas as pd
