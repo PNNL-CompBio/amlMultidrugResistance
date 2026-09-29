@@ -1,133 +1,127 @@
-"""Plots figure S1e: Mutation Waterfall"""
+"""Plots figure S1e: Mutation Comparison Across Race"""
 
+from decimal import Decimal
 from os.path import abspath, dirname
 
 import numpy as np
+import pandas as pd
 import seaborn as sns
+from scipy.stats import fisher_exact
 
 from pilot.data_import import import_meta
 from pilot.figures.figure_setup import get_setup
 
 FILE_DIR = dirname(abspath(__file__))
 RACE_COLORS = {"Black": "tab:red", "White": "tab:purple"}
+MUTATIONS = [
+    "DNMT3A",
+    "NRAS",
+    "NPM1",
+    "FLT3_ITD"
+]
 
 
 def make_figure():
     # Import meta data
     meta = import_meta()
-    meta = meta.drop("FLT3", axis=1)
-
-    # Split Black and White patients
-    black_mutations = (meta.loc[
-        meta.loc[:, "Race"] == "Black",
-        "ASXL1":"ZRSR2"
-    ] == "Mutant").astype(int)
-    white_mutations = (meta.loc[
-        meta.loc[:, "Race"] == "White",
-        "ASXL1":"ZRSR2"
-    ] == "Mutant").astype(int)
-
-    # Trim to mutations present in at least 5 patients in either Race
-    black_mutations = black_mutations.loc[
-        :,
-        np.logical_or(
-            black_mutations.sum(axis=0) > 5,
-            white_mutations.sum(axis=0) > 5
-        )
+    meta = meta.loc[meta.loc[:, "Race"].isin(["Black", "White"])]
+    meta = meta.loc[
+        ~meta.index.str.endswith("Bridge"),
+        :
     ]
-    white_mutations = white_mutations.loc[:, black_mutations.columns]
 
     # Setup figure
     fig, axes = get_setup(
-        2,
-        2,
+        1,
+        len(MUTATIONS),
         fig_params={
-            "figsize": (8, 6),
-            "width_ratios": (4, 1)
+            "figsize": (2 * len(MUTATIONS), 2),
         }
     )
 
-    # Iterate through Black, White patients
-    for row_index, (race, dataset) in enumerate(
-        zip(
-            ["Black", "White"],
-            [black_mutations, white_mutations]
+    # Iterate through mutations
+    for ax, gene in zip(axes, MUTATIONS):
+        # Setup contingency table, fill values
+        table = pd.DataFrame(
+            0,
+            dtype=int,
+            index=["Black", "White"],
+            columns=["WT", "Mutant"]
         )
-    ):
-        # Get waterfall and bar plot axes
-        waterfall_ax = axes[row_index, 0]
-        bar_ax = axes[row_index, 1]
+        table.loc[
+            "Black",
+            "WT"
+        ] = sum(
+            np.logical_and(
+                meta.loc[:, "Race"] == "Black",
+                meta.loc[:, gene] != "Mutant"
+            )
+        )
+        table.loc[
+            "White",
+            "WT"
+        ] = sum(
+            np.logical_and(
+                meta.loc[:, "Race"] == "White",
+                meta.loc[:, gene] != "Mutant"
+            )
+        )
+        table.loc[
+            "Black",
+            "Mutant"
+        ] = sum(
+            np.logical_and(
+                meta.loc[:, "Race"] == "Black",
+                meta.loc[:, gene] == "Mutant"
+            )
+        )
+        table.loc[
+            "White",
+            "Mutant"
+        ] = sum(
+            np.logical_and(
+                meta.loc[:, "Race"] == "White",
+                meta.loc[:, gene] == "Mutant"
+            )
+        )
 
-        # Sort mutations by frequency
-        dataset = dataset.loc[
-            :,
-            dataset.sum(axis=0).sort_values(ascending=False).index
-        ]
-        dataset = dataset.sort_values(
-            by=list(dataset.columns),
-            ascending=False
-        ).T
+        # Run Fisher's Exact
+        fet = fisher_exact(table)
 
-        # Plot waterfall
+        # Plot contingency table
         sns.heatmap(
-            dataset,
-            ax=waterfall_ax,
-            cmap="Greys",
-            linewidths=0.1,
-            linecolor="tab:grey",
-            cbar=False
+            table,
+            annot=True,
+            cmap="Reds",
+            fmt="d",
+            cbar=False,
+            annot_kws={"size": 30},
+            ax=ax
         )
 
-        # Format waterfall plot, label ticks and axes
-        waterfall_ax.set_xticks([])
-        waterfall_ax.set(
-            title=f"{race} Patients",
-            yticks=np.arange(0.5, dataset.shape[0]),
-            yticklabels=dataset.index
+        # Label axes and ticks
+        ax.set(
+            xticks=np.arange(0.5, table.shape[0], 1),
+            yticks=np.arange(0.5, table.shape[1], 1),
+            xticklabels=table.columns,
+            yticklabels=table.index,
+            ylabel="Race",
+            title=gene
         )
 
-        # Plot number of patients with each mutation
-        mutation_sums = dataset.sum(axis=1)
-        bar_ax.barh(
-            np.arange(0.5, dataset.shape[0], 1),
-            mutation_sums
+        # Include Fisher's Exact Test result
+        ax.text(
+            0.99,
+            0.01,
+            s=f"Fisher's Exact: {round(fet.statistic, 2)}\n"
+              f"p-value: {'{:.2E}'.format(Decimal(fet.pvalue))}",
+            transform=ax.transAxes,
+            ha="right",
+            ma="right",
+            va="bottom",
+            fontsize=6,
+            color="black",
         )
-
-        # Format bar plot ticks and limits
-        bar_ax.set(
-            ylim=(0, dataset.shape[0]),
-            yticks=[]
-        )
-
-        # Label bottom barplot
-        if row_index == 1:
-            bar_ax.set(
-                xlabel="Number of patients\nwith mutation"
-            )
-        else:
-            bar_ax.set_xticks([])
-
-        # Turn off frame, invert y-axis to match heatmap
-        bar_ax.set_frame_on(False)
-        bar_ax.yaxis.set_inverted(True)
-
-        # Denote mutation percentage
-        lim = bar_ax.get_xlim()
-        lim = lim[1] - lim[0]
-        for offset, gene in enumerate(mutation_sums.index):
-            bar_ax.text(
-                dataset.loc[gene].sum() + lim * 0.01,
-                0.5 + offset,
-                ha="left",
-                ma="left",
-                va="center",
-                s=f"{
-                    round(
-                        mutation_sums.loc[gene] / dataset.shape[1] * 100,
-                        1
-                    )
-                }%"
-            )
 
     return fig
 

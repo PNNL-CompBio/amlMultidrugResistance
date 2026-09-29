@@ -1,8 +1,9 @@
-"""Plots figure S1c: Mutation Proportions"""
+"""Plots figure S1c: Mutation Waterfall"""
 
 from os.path import abspath, dirname
 
 import numpy as np
+import seaborn as sns
 
 from pilot.data_import import import_meta
 from pilot.figures.figure_setup import get_setup
@@ -17,95 +18,116 @@ def make_figure():
     meta = meta.drop("FLT3", axis=1)
 
     # Split Black and White patients
-    black_mutations = meta.loc[
+    black_mutations = (meta.loc[
         meta.loc[:, "Race"] == "Black",
         "ASXL1":"ZRSR2"
-    ] == "Mutant"
-    white_mutations = meta.loc[
+    ] == "Mutant").astype(int)
+    white_mutations = (meta.loc[
         meta.loc[:, "Race"] == "White",
         "ASXL1":"ZRSR2"
-    ] == "Mutant"
+    ] == "Mutant").astype(int)
 
-    # Get sum of patients with each mutation
-    black_mutations = black_mutations.sum(axis=0)
-    white_mutations = white_mutations.sum(axis=0)
-
-    # Reorder mutations, most to least present in Black patients
-    black_mutations = black_mutations.sort_values(ascending=False)
-    white_mutations = white_mutations.loc[black_mutations.index]
-
-    # Trim to mutations present in at least 10 patients in either Race
+    # Trim to mutations present in at least 5 patients in either Race
     black_mutations = black_mutations.loc[
+        :,
         np.logical_or(
-            black_mutations > 10,
-            white_mutations > 10
+            black_mutations.sum(axis=0) > 5,
+            white_mutations.sum(axis=0) > 5
         )
     ]
-    white_mutations = white_mutations.loc[black_mutations.index]
+    white_mutations = white_mutations.loc[:, black_mutations.columns]
 
     # Setup figure
-    fig, ax = get_setup(
-        1,
-        1,
+    fig, axes = get_setup(
+        2,
+        2,
         fig_params={
-            "figsize": (6, 3)
+            "figsize": (8, 6),
+            "width_ratios": (4, 1)
         }
     )
 
-    # Plot mutation counts
-    ax.bar(
-        np.arange(0, len(black_mutations) * 3, 3),
-        black_mutations,
-        color=RACE_COLORS["Black"],
-        width=0.9,
-        label="Black Patients",
-        zorder=3
-    )
-    ax.bar(
-        np.arange(1, len(white_mutations) * 3, 3),
-        white_mutations,
-        color=RACE_COLORS["White"],
-        width=0.9,
-        label="White Patients",
-        zorder=3
-    )
-    ax.legend()
-
-    for index, mutation in enumerate(black_mutations.index):
-        ax.text(
-            3 * index,
-            black_mutations.loc[mutation] + 0.1,
-            ha="center",
-            ma="center",
-            va="bottom",
-            s=black_mutations.loc[mutation]
+    # Iterate through Black, White patients
+    for row_index, (race, dataset) in enumerate(
+        zip(
+            ["Black", "White"],
+            [black_mutations, white_mutations]
         )
-        ax.text(
-            3 * index + 1,
-            white_mutations.loc[mutation] + 0.1,
-            ha="center",
-            ma="center",
-            va="bottom",
-            s=white_mutations.loc[mutation]
+    ):
+        # Get waterfall and bar plot axes
+        waterfall_ax = axes[row_index, 0]
+        bar_ax = axes[row_index, 1]
+
+        # Sort mutations by frequency
+        dataset = dataset.loc[
+            :,
+            dataset.sum(axis=0).sort_values(ascending=False).index
+        ]
+        dataset = dataset.sort_values(
+            by=list(dataset.columns),
+            ascending=False
+        ).T
+
+        # Plot waterfall
+        sns.heatmap(
+            dataset,
+            ax=waterfall_ax,
+            cmap="Greys",
+            linewidths=0.1,
+            linecolor="tab:grey",
+            cbar=False
         )
 
+        # Format waterfall plot, label ticks and axes
+        waterfall_ax.set_xticks([])
+        waterfall_ax.set(
+            title=f"{race} Patients",
+            yticks=np.arange(0.5, dataset.shape[0]),
+            yticklabels=dataset.index
+        )
 
-    ax.set(
-        xlim=(-1, 3 * len(black_mutations) - 1),
-        ylim=(0, 125),
-        xticks=np.arange(
-            0.5, len(black_mutations) * 3, 3
-        ),
-        ylabel="Number of Patients with Mutation"
-    )
-    ax.set_xticklabels(
-        black_mutations.index,
-        rotation=45,
-        ha="right",
-        ma="right",
-        va="top"
-    )
-    ax.grid(True, zorder=0)
+        # Plot number of patients with each mutation
+        mutation_sums = dataset.sum(axis=1)
+        bar_ax.barh(
+            np.arange(0.5, dataset.shape[0], 1),
+            mutation_sums
+        )
+
+        # Format bar plot ticks and limits
+        bar_ax.set(
+            ylim=(0, dataset.shape[0]),
+            yticks=[]
+        )
+
+        # Label bottom barplot
+        if row_index == 1:
+            bar_ax.set(
+                xlabel="Number of patients\nwith mutation"
+            )
+        else:
+            bar_ax.set_xticks([])
+
+        # Turn off frame, invert y-axis to match heatmap
+        bar_ax.set_frame_on(False)
+        bar_ax.yaxis.set_inverted(True)
+
+        # Denote mutation percentage
+        lim = bar_ax.get_xlim()
+        lim = lim[1] - lim[0]
+        for offset, gene in enumerate(mutation_sums.index):
+            bar_ax.text(
+                dataset.loc[gene].sum() + lim * 0.01,
+                0.5 + offset,
+                ha="left",
+                ma="left",
+                va="center",
+                s=f"{
+                    round(
+                        mutation_sums.loc[gene] / dataset.shape[1] * 100,
+                        1
+                    )
+                }%"
+            )
 
     return fig
 
