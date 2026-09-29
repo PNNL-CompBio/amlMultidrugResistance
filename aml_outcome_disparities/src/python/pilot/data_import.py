@@ -1136,7 +1136,7 @@ def import_meta(
         # Overwrite non-Mutant cases as WT
         # This only works with WES cases since 'Not measured' is equivalent to
         # wild-type in WES measurements
-        meta.loc[:, "ALT":] = meta.loc[:, "ALT":].replace(
+        meta.loc[:, "ASXL1":] = meta.loc[:, "ASXL1":].replace(
             {
                 np.nan: "WT",
                 "Not measured": "WT"

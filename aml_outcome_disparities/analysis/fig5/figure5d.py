@@ -19,7 +19,7 @@ sys.path.append(
 def make_figure():
     # Import meta-data, reformat mutations
     meta = import_meta()
-    meta.loc[:, "ALT":] = meta.loc[:, "ALT":].replace(
+    meta.loc[:, "ASXL1":] = meta.loc[:, "ASXL1":].replace(
         {
             np.nan: "WT",
             "Not measured": "WT"
