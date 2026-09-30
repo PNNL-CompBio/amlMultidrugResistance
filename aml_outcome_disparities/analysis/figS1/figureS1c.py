@@ -16,6 +16,10 @@ def make_figure():
     # Import meta data
     meta = import_meta()
     meta = meta.drop("FLT3", axis=1)
+    meta = meta.loc[
+        ~meta.index.str.endswith("Bridge"),
+        :
+    ]
 
     # Split Black and White patients
     black_mutations = (meta.loc[
