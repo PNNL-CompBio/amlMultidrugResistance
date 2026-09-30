@@ -5,7 +5,8 @@ from decimal import Decimal
 import gseapy as gp
 import pandas as pd
 
-from pilot.data_import import import_acetyl, import_global, syn_login
+from pilot.data_import import (import_acetyl, import_global, import_meta,
+                               syn_login)
 from pilot.figures.figure_setup import get_setup, run_ols
 
 ACETYL_GENE = "S100A8"
@@ -14,6 +15,7 @@ ACETYL_GENE = "S100A8"
 def make_figure():
     # Import data
     syn = syn_login()
+    meta = import_meta(syn)
     acetyl = pd.concat(import_acetyl(syn))
     prot = pd.concat(import_global(syn))
 
@@ -77,9 +79,14 @@ def make_figure():
 
     # Compare S100A8 acetylation with proteomics
     ax = axes[1]
+    meta = meta.loc[acetyl.index, "Race"]
+    meta = meta.replace({"Black": "tab:red", "White": "tab:purple"})
+    meta.loc[~meta.str.startswith("tab")] = "tab:grey"
+
     ax.scatter(
         acetyl,
         myc_mean,
+        c=meta,
         s=3
     )
     ols = run_ols(

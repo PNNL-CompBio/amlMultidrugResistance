@@ -1,127 +1,119 @@
-"""Plots figure 1c: Cell Type Score Comparisons"""
-
-import sys
-from os.path import abspath, dirname, join
-
-sys.path.append(
-    join(dirname(dirname(dirname(abspath(__file__)))), "src", "python")
-)
+"""Plots figure 1c: Age Comparisons."""
 
 import numpy as np
-import pandas as pd
-import seaborn as sns
-from scipy.stats import false_discovery_control, ttest_ind
-from sklearn.preprocessing import scale
 
-from pilot.data_import import import_meta, import_rna, syn_login
+from pilot.data_import import import_meta
 from pilot.figures.figure_setup import get_setup
-from pilot.gene_analysis import cell_type_scores
-
-FILE_DIR = dirname(abspath(__file__))
-RACE_COLORS = {"Black": "tab:red", "White": "tab:purple"}
 
 
 def make_figure():
-    # Import rna
-    syn = syn_login()
-    rna = import_rna(syn)
-    rna = pd.concat(rna, axis=0)
-    meta = import_meta(syn)
-
-    rna = rna.loc[rna.index.intersection(meta.index), :]
-    rna.loc[:] = scale(rna, axis=1)
-    meta = meta.loc[rna.index, :]
-    races = meta.loc[:, "Race"]
-
-    # Get cell type scores
-    ct_scores = cell_type_scores()
-    ct_scores = ct_scores.loc[races.index, :]
+    # Import metadata
+    meta = import_meta()
 
     # Setup figure
     fig, axes = get_setup(
         2,
-        3,
+        1,
         fig_params={
-            "figsize": (9, 6),
-        },
-    )
-    axes = axes.flatten()
-
-    # Run t-test to compare cell type scores between Black and White patients
-    t_res = ttest_ind(
-        ct_scores.loc[races == "Black", :],
-        ct_scores.loc[races == "White", :],
-        axis=0,
-    )
-    t_stats = pd.Series(t_res.statistic, dtype=float, index=ct_scores.columns)
-    p_vals = pd.Series(
-        false_discovery_control(t_res.pvalue),
-        dtype=float,
-        index=ct_scores.columns,
+            "figsize": (4, 4),
+            "sharex": True
+        }
     )
 
-    # Add Race column to data, filter to only black and white patients
-    ct_scores.loc[:, "Race"] = races
-    ct_scores = ct_scores.loc[
-        ct_scores.loc[:, "Race"].isin(["Black", "White"]), :
-    ]
-    for ax, cell_type in zip(axes, ct_scores.columns[:6]):
-        sns.stripplot(
-            ct_scores,
-            x="Race",
-            y=cell_type,
-            hue="Race",
-            palette=RACE_COLORS,
-            ax=ax,
-        )
+    # Iterate through race, axes
+    for ax, race in zip(axes, ["Black", "White"]):
+        # Trim to patients with matching race
+        _meta = meta.loc[meta.loc[:, "Race"] == race, :]
 
-        white_scores = ct_scores.loc[
-            ct_scores.loc[:, "Race"] == "White", cell_type
-        ]
-        black_scores = ct_scores.loc[
-            ct_scores.loc[:, "Race"] == "Black", cell_type
-        ]
-        ax.errorbar(
+        # Plot all patients with matching race
+        ax.barh(
             0,
-            white_scores.mean(),
-            yerr=1.96 * (white_scores.std() / np.sqrt(len(white_scores))),
-            capsize=10,
-            markersize=20,
-            linewidth=3,
-            markeredgewidth=3,
-            marker="_",
-            color="k",
-            zorder=10,
-        )
-        ax.errorbar(
-            1,
-            white_scores.mean(),
-            yerr=1.96 * (black_scores.std() / np.sqrt(len(black_scores))),
-            capsize=10,
-            markersize=20,
-            linewidth=3,
-            markeredgewidth=3,
-            marker="_",
-            color="k",
-            zorder=10,
+            _meta.loc[:, "Age"].mean(),
+            xerr=_meta.loc[:, "Age"].std(),
+            capsize=5,
+            height=0.9
         )
 
-        y_lim = ax.get_ylim()
+        # Plot non-mutant patients
+        mutation_meta = _meta.loc[
+            np.logical_and(
+                _meta.loc[:, "NPM1"] != "Mutant",
+                _meta.loc[:, "FLT3_ITD"] != "Mutant"
+            ),
+            "Age"
+        ]
+        ax.barh(
+            1,
+            mutation_meta.mean(),
+            xerr=mutation_meta.std(),
+            capsize=5,
+            height=0.9
+        )
+
+        # Plot NPM1 mutant patients
+        mutation_meta = _meta.loc[
+            np.logical_and(
+                _meta.loc[:, "NPM1"] == "Mutant",
+                _meta.loc[:, "FLT3_ITD"] != "Mutant"
+            ),
+            "Age"
+        ]
+        ax.barh(
+            2,
+            mutation_meta.mean(),
+            xerr=mutation_meta.std(),
+            capsize=5,
+            height=0.9
+        )
+
+        # Plot FLT3-ITD patients
+        mutation_meta = _meta.loc[
+            np.logical_and(
+                _meta.loc[:, "NPM1"] != "Mutant",
+                _meta.loc[:, "FLT3_ITD"] == "Mutant"
+            ),
+            "Age"
+        ]
+        ax.barh(
+            3,
+            mutation_meta.mean(),
+            xerr=mutation_meta.std(),
+            capsize=5,
+            height=0.9
+        )
+
+        # Plot patients with both NPM1 and FLT3-ITD mutations
+        mutation_meta = _meta.loc[
+            np.logical_and(
+                _meta.loc[:, "NPM1"] == "Mutant",
+                _meta.loc[:, "FLT3_ITD"] == "Mutant"
+            ),
+            "Age"
+        ]
+        ax.barh(
+            4,
+            mutation_meta.mean(),
+            xerr=mutation_meta.std(),
+            capsize=5,
+            height=0.9
+        )
+
+        # Invert axes, set labels
+        ax.invert_yaxis()
         ax.set(
-            ylabel=f"{cell_type} score",
-            xlim=(-0.5, 1.5),
-            ylim=(y_lim[0], y_lim[1] + 0.1),
+            xticks=np.arange(0, 90, 10),
+            yticks=np.arange(5),
+            yticklabels=[
+                f"{race} Patients",
+                f"{race}: Wild Type",
+                f"{race}: NPM1",
+                f"{race}: FLT3-ITD",
+                f"{race}: Both"
+            ]
         )
-        ax.text(
-            0.99,
-            0.99,
-            s=f"t-stat: {round(t_stats.loc[cell_type], 3)}\n"
-            f"q-value: {round(p_vals.loc[cell_type], 3)}\n",
-            ha="right",
-            ma="right",
-            va="top",
-            transform=ax.transAxes,
-        )
+
+    # Label bottom x-axis with age
+    axes[1].set_xlabel("Age")
 
     return fig
 
