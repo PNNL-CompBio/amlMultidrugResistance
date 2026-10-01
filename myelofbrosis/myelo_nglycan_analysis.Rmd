@@ -1,0 +1,210 @@
+---
+title: "myelo_nglycan_analysis"
+output: html_document
+---
+
+Here we evaluate the N-glycan patterns from the patient samples.
+
+```{r load, warning=FALSE, message=FALSE, echo = FALSE}
+library(tidyverse)
+library(synapser)
+library(spammR)
+library(ggplot2)
+synLogin()
+```
+
+# Load data into SpatialExperiment object
+
+First we get the data into the correct format
+```{r load data}
+
+#data from brittney
+load(synapser::synGet('syn77540088')$path)
+#metadta
+load(synapser::synGet('syn77540060')$path)
+
+metadata <- t(metadata) |>
+  as.data.frame() |>
+  mutate(x = as.numeric(x),
+         y = as.numeric(y),
+         z = as.numeric(z))
+
+#n-glycan annotation from Geremy's code
+source("https://raw.githubusercontent.com/GeremyClair/NglycanMiniOn/refs/heads/main/R/01_base_functions.R")
+
+##find this
+fmet <- data.frame(nGlycan = rownames(data))
+
+ng <- NGlycan_miner(rownames(data)) |>
+  dplyr::rename(nGlycan='ID')|>
+  right_join(fmet)
+
+#join with data and add to object
+rownames(ng) <- rownames(data)
+spe <- spammR::convert_to_spe(dat=data, 
+                              sample_meta = metadata,
+                              spatial_coords_colnames = c("x","y"),
+                              feature_meta =ng)
+
+
+```
+
+# Calculate missingness across samples and N-glycans
+
+How many samples/points/glycans have a high degree of missingness?
+
+```{r calculate misingness}
+
+##per feature missiningness
+missing <- calc_missingness(spe)
+
+##calculate per sample missingness
+missing <- calc_missingness(missing, group_name = 'Donor_Time')
+
+
+md <- as.data.frame(rowData(missing)) |> ##now we can try to plot missingness by
+  tidyr::pivot_longer(starts_with('missingSample'),names_to='condition',
+                      values_to='fracMissing') |>
+  tidyr::separate(col='condition',sep='_',into=c('missing','sample','condition'))
+
+md|>
+  subset(is.na(condition))|>
+  ggplot(aes(x=fracMissing, fill= Tetraantenary)) + geom_histogram()
+
+md |>
+  subset(!is.na(condition)) |>
+  ggplot(aes(x=fracMissing,fill=sample)) + 
+  geom_histogram(position='dodge') +
+  facet_grid(condition~.) 
+
+```
+There are more missing N-glycans post transplant. However, more are 100% missing.
+What if we remove those that are missing across an entire sample? 
+
+```{r missing issues}
+
+md|>subset(fracMissing == 1.0) |> 
+  group_by(sample,condition)|> 
+  summarize(nMissing = n()) |>
+  ggplot(aes(x=sample, fill=condition, y= nMissing)) +
+  geom_bar(position='dodge', stat='identity')
+
+```
+
+Weirdly not all n-glycans are missing post-treatment, some are missing
+pre-treatment. Patient 3 has no pre-transplant sample. 
+
+Which glycan are missing in both conditions, or one?
+
+```{r subset and plot missingness, warning = FALSE}
+
+missing <- md |> subset(fracMissing == 1.0) |> 
+  dplyr::select('nGlycan','sample','condition','fracMissing') |> 
+  tidyr::pivot_wider(names_from='condition',values_from='fracMissing') |>
+  mutate(missingCondition = ifelse(!is.na(post.transplant),  #checking to see if there is 100% missingness. if NA it means its not missing. 
+                                    ifelse(!is.na(pre.transplant), 
+                                           'Missing in both','Missing Post'), 
+                                   ifelse(!is.na(pre.transplant),'MissingPre','Present in both'))) |>
+  dplyr::select(nGlycan,sample, missingCondition) |>
+  right_join(md) |>
+  replace_na(replace = list(missingCondition='Present in both'))
+
+missing |>
+  subset(!is.na(sample)) |># remove bulk
+ggplot(aes(x=missingCondition,fill=sample)) + 
+  geom_histogram(position='dodge',stat='count')
+```
+Let's figure out how many of these are shared across samples.
+
+```{r missing counts}
+
+similar <- missing |> subset(!is.na(sample))|>
+  #subset(sample!=3) |>
+    group_by(nGlycan, missingCondition) |> 
+    summarize(numSamples = n()) |>
+    arrange(desc(numSamples)) |>
+    subset(numSamples %in% c(6,11))
+
+ggplot(similar, aes(x=missingCondition)) + geom_histogram(stat = 'count')
+```
+What are the glycans that are missing post-treatment systematically?
+
+```{r}
+
+subset(similar, missingCondition == 'Missing Post')
+
+
+```
+
+Not really! only these four!
+
+## Abundance changes pre-post treatment
+
+Let's do standard differential expression pre/post treatment. We'll reduce
+to only those N-glycans that are present in both conditions in at least 
+one sample (otherwise the fold changes end up being Infinite)
+
+```{r look at differential expression, enrichment, warning=FALSE}
+
+ngs <- missing |>
+  subset(!is.na(sample)) |>
+  subset(sample!=3) |>
+  subset(missingCondition == 'Present in both') 
+
+print(paste("We found",length(unique(ngs$nGlycan)),"nGlycans that are present in both pre- and post-treated samples"))
+
+rspe <- spe[rowData(spe)[,'nGlycan']%in%ngs$nGlycan,]
+res <- calc_spatial_diff_ex(rspe, count_based = FALSE,
+                            log_transformed = TRUE, category_col = 'Time')
+
+#subset(rowData(res), `pre-transplant_vs_post-transplant.adj.P.Val.limma` < 0.05)
+
+volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma',
+             pval_colname = 'pre-transplant_vs_post-transplant.adj.P.Val.limma',
+             sigLabel_colname = 'nGlycan',
+             pval_corrected = TRUE,
+             log_transformed = TRUE,
+             thresh = 0.05,
+             title='Pre vs post transplant, no imputation')
+```
+This looks super suspicious. Let's try some imputation perhaps.
+
+### How does imputation change this?
+
+```{r 0 imputation}
+
+res <- impute_spe(spe, method = "zero")
+res <- calc_spatial_diff_ex(res, count_based = FALSE,
+                            assay_name = 'imputed',
+                            log_transformed = TRUE, category_col = 'Time')
+
+volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma',
+             pval_colname = 'pre-transplant_vs_post-transplant.adj.P.Val.limma',
+             sigLabel_colname = 'nGlycan',
+             pval_corrected = TRUE,
+             log_transformed = TRUE,
+             thresh = 0.05,
+             title='Pre vs post transplant, zero imputation')
+```
+Same mess of inflated p-values
+
+```{r neighbor imputation}
+res <- impute_spe(spe, method = "spatial_knn", k = 8)
+res <- calc_spatial_diff_ex(res, count_based = FALSE,
+                            assay_name = 'imputed',
+                            log_transformed = TRUE, category_col = 'Time')
+
+volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma',
+             pval_colname = 'pre-transplant_vs_post-transplant.adj.P.Val.limma',
+             sigLabel_colname = 'nGlycan',
+             pval_corrected = TRUE,
+             log_transformed = TRUE,
+             thresh = 0.05,
+             title='Pre vs post transplant, spatial imputation')
+```
+
+
+## Differential spatial activity? 
+
+How do we asses differential spatial activity?
+
