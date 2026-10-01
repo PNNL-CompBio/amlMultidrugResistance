@@ -41,6 +41,10 @@ def make_figure():
     ]
     white_mutations = white_mutations.loc[:, black_mutations.columns]
 
+    # Denote WES vs. clinical calls
+    black_mutations.loc[meta.loc[black_mutations.index, "WES_call"], :] *= 2
+    white_mutations.loc[meta.loc[white_mutations.index, "WES_call"], :] *= 2
+
     # Setup figure
     fig, axes = get_setup(
         2,
