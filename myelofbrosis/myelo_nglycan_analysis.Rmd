@@ -212,7 +212,7 @@ volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma'
 Same mess of inflated p-values
 
 
-```{r neighbor imputation}
+```{r median imputation}
 res <- impute_spe(spe, method = "median")
 res <- calc_spatial_diff_ex(res, count_based = FALSE,
                             assay_name = 'imputed',
@@ -274,7 +274,16 @@ plots <- lapply(c('1','2','4','5','6'), function (d){
 
 ```
 
+
+## Enrichment
+
+We need to format the glycan dictionary as a gene list, then use leapR to
+look at differential enrichment. However, I'm not sure about the data just 
+yet.
+
+
 ## Differential spatial activity? 
 
-How do we asses differential spatial activity?
+Again, the data seems to require more processing to do this.
+How do we asses differential spatial activity? We
 
