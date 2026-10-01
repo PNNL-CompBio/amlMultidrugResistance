@@ -166,8 +166,31 @@ volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma'
              log_transformed = TRUE,
              thresh = 0.05,
              title='Pre vs post transplant, no imputation')
+
 ```
-This looks super suspicious. Let's try some imputation perhaps.
+This looks super suspicious. Let's try some imputation perhaps. what if we only
+use the most expressed Nglycans?
+
+```{r restrict}
+
+present <- similar|> subset(missingCondition=='Present in both')
+
+
+rspe <- spe[rowData(spe)[,'nGlycan']%in%present$nGlycan,]
+res <- calc_spatial_diff_ex(rspe, count_based = FALSE,
+                            log_transformed = FALSE, category_col = 'Time')
+
+#subset(rowData(res), `pre-transplant_vs_post-transplant.adj.P.Val.limma` < 0.05)
+
+volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma',
+             pval_colname = 'pre-transplant_vs_post-transplant.adj.P.Val.limma',
+             sigLabel_colname = 'nGlycan',
+             pval_corrected = TRUE,
+             log_transformed = FALSE,
+             thresh = 0.05,
+             title='Pre vs post transplant, present only')
+
+```
 
 ### How does imputation change this?
 
@@ -188,6 +211,24 @@ volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma'
 ```
 Same mess of inflated p-values
 
+
+```{r neighbor imputation}
+res <- impute_spe(spe, method = "median")
+res <- calc_spatial_diff_ex(res, count_based = FALSE,
+                            assay_name = 'imputed',
+                            log_transformed = TRUE, category_col = 'Time')
+
+volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma',
+             pval_colname = 'pre-transplant_vs_post-transplant.adj.P.Val.limma',
+             sigLabel_colname = 'nGlycan',
+             pval_corrected = TRUE,
+             log_transformed = TRUE,
+             thresh = 0.05,
+             title='Pre vs post transplant, median imputation')
+```
+
+
+
 ```{r neighbor imputation}
 res <- impute_spe(spe, method = "spatial_knn", k = 8)
 res <- calc_spatial_diff_ex(res, count_based = FALSE,
@@ -203,6 +244,35 @@ volcano_plot(res, logFC_colname ='pre-transplant_vs_post-transplant.logFC.limma'
              title='Pre vs post transplant, spatial imputation')
 ```
 
+## Per patient sample analysis
+
+The overall analysis is too wonky, so let's subset per patient (aside from #3) and
+see if we find any trends?
+
+```{r per patient diffex, warning = FALSE}
+
+plots <- lapply(c('1','2','4','5','6'), function (d){
+  print(d)
+  pspe <- calc_spatial_diff_ex(spe[,spe$Donor == d], count_based =FALSE,
+                              compare_vals = c('pre-transplant','post-transplant'),
+                               category_col = 'Time', log_transformed = TRUE)
+  
+  if(length(grep('^pre-',colnames(rowData(pspe)))) >0)
+    comp = 'pre-transplant_vs_post-transplant'
+  else
+    comp = 'post-transplant_vs_pre-transplant'
+  volcano_plot(pspe, 
+               logFC_colname =paste0(comp,'.logFC.limma'),
+             pval_colname = paste0(comp,'.adj.P.Val.limma'),
+             
+             sigLabel_colname = 'nGlycan',
+             pval_corrected = TRUE,
+             log_transformed = TRUE,
+             thresh = 0.05,
+             title=paste('Pre vs post transplant, donor',d))
+})
+
+```
 
 ## Differential spatial activity? 
 
