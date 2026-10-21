@@ -160,18 +160,28 @@ def make_figure():
     )
     ax.set_yticklabels(["Age"], rotation=0)
 
+    # Double values for new measurements
+    present_data.loc[
+        ["Global Proteomics", "Phosphoproteomics"],
+        meta.loc[:, "Study"] == "pilotStudy"
+    ] = 2
+    present_data.loc[
+        ["Metabolomics", "Lipidomics", "Acetylomics"],
+        :
+    ] = 2
+
     # Plot data missingness
     ax = axes[-1]
     heatmap = sns.heatmap(
         present_data,
         ax=ax,
-        cmap="gray",
+        cmap="Grays",
         cbar=False,
         linewidths=0.05,
         vmin=0,
-        vmax=100
+        vmax=2
     )
-    heatmap.set_facecolor("lightgrey")
+    heatmap.set_facecolor("white")
     ax.set(
         xticks=[],
         yticks=np.arange(0.5, present_data.shape[0], 1),
