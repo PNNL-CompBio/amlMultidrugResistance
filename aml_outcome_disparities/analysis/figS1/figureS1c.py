@@ -66,14 +66,17 @@ def make_figure():
         waterfall_ax = axes[row_index, 0]
         bar_ax = axes[row_index, 1]
 
+        mutation_sums = (dataset > 0).sum(axis=0).sort_values(ascending=False)
+
         # Sort mutations by frequency
         dataset = dataset.loc[
             :,
-            dataset.sum(axis=0).sort_values(ascending=False).index
+            mutation_sums.index
         ]
         dataset = dataset.sort_values(
             by=list(dataset.columns),
-            ascending=False
+            ascending=False,
+            axis=0
         ).T
 
         # Plot waterfall
@@ -95,25 +98,26 @@ def make_figure():
         )
 
         # Plot number of patients with each mutation
-        mutation_sums = dataset.sum(axis=1)
         bar_ax.barh(
-            np.arange(0.5, dataset.shape[0], 1),
-            mutation_sums
+            np.arange(0.5, len(mutation_sums), 1),
+            mutation_sums / dataset.shape[1],
+            zorder=3
         )
 
         # Format bar plot ticks and limits
         bar_ax.set(
+            xticks=np.arange(0, 0.5, 0.1),
+            xlim=(0, 0.5),
             ylim=(0, dataset.shape[0]),
             yticks=[]
         )
+        bar_ax.grid(True, zorder=0)
 
         # Label bottom barplot
         if row_index == 1:
-            bar_ax.set(
-                xlabel="Number of patients\nwith mutation"
-            )
+            bar_ax.set_xlabel("Proportion of patients\nwith mutation")
         else:
-            bar_ax.set_xticks([])
+            bar_ax.set_xticklabels([])
 
         # Turn off frame, invert y-axis to match heatmap
         bar_ax.set_frame_on(False)
@@ -124,17 +128,12 @@ def make_figure():
         lim = lim[1] - lim[0]
         for offset, gene in enumerate(mutation_sums.index):
             bar_ax.text(
-                dataset.loc[gene].sum() + lim * 0.01,
+                (mutation_sums.loc[gene] / dataset.shape[1]) + (lim * 0.01),
                 0.5 + offset,
                 ha="left",
                 ma="left",
                 va="center",
-                s=f"{
-                    round(
-                        mutation_sums.loc[gene] / dataset.shape[1] * 100,
-                        1
-                    )
-                }%"
+                s=int(mutation_sums.loc[gene])
             )
 
     return fig
