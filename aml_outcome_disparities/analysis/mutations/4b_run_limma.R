@@ -84,4 +84,4 @@ for (om in unique(data$OmicsType)) {
   }
 }
 
-write_parquet(bind_rows(results), "./_cache/limma/results.parquet")
+write_parquet(bind_rows(results), "./_cache/limma/limma_results.parquet")
