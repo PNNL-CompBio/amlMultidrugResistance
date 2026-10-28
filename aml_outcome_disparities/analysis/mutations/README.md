@@ -78,8 +78,10 @@ Generates a figure summarizing the coverage of different -omics data types by ra
 ### [4a_set_up_limma.ipynb](./4a_set_up_limma.ipynb)
 Defines all pairwise comparisons and creates the input parquets for differential expression analysis using `limma`.
 
-- input: 
+- inputs: 
     - metadata table parquet (synapse: `syn74775940`)
+    - combined omics data table, parquet (synapse: `syn74775996`)
+        - only used to check alignment of samples with metadata table
 - outputs:
     - `_cache/limma/design.parquet`
     - `_cache/limma/contrast.parquet`
