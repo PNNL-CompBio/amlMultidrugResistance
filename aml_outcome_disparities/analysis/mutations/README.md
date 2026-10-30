@@ -56,7 +56,7 @@ Assembles metadata and combined -omics data tables from individual data tables. 
 Generates a figure summarizing the counts of samples by race and mutation status.
 
 - input: 
-    - metadata table parquet (synapse: `syn74775940`)
+    - metadata table, parquet (synapse: `syn74775940`)
 - output: 
     - `_figures/mutations_upset_race-stratified.png`
 
@@ -79,7 +79,7 @@ Generates a figure summarizing the coverage of different -omics data types by ra
 Defines all pairwise comparisons and creates the input parquets for differential expression analysis using `limma`.
 
 - inputs: 
-    - metadata table parquet (synapse: `syn74775940`)
+    - metadata table, parquet (synapse: `syn74775940`)
     - combined omics data table, parquet (synapse: `syn74775996`)
         - only used to check alignment of samples with metadata table
 - outputs:
@@ -106,3 +106,17 @@ Generates summary figures for differentially expressed features from `limma` res
 - outputs:
     - `_figures/limma_results_sig_up_down.png`
     - `_figures/limma_results_sig_up_down_padj.png`
+
+## 5. GSEA on transcriptomics/proteomics data
+
+### [5a_run_gsea.ipynb](./5a_run_gsea.ipynb)
+Runs gene set enrichment analysis (using `gseapy`) on transcriptomics/proteomics data to find enriched pathways. Uses ranked transcript/protein lists from the `limma` differential expression analysis results as input. Optionally upload/update GSEA results table to synapse.
+
+- gene set collections used:
+    - "MSigDB_Hallmark_2020"
+    - "KEGG_2021_Human"
+    - "Reactome_2022"
+- input: 
+    - `limma` results, parquet (synapse: `syn78408378`)
+- output: 
+    - `_cache/gsea/gsea_results.parquet` → (synapse: `syn78432275`)
