@@ -97,7 +97,7 @@ Runs `limma` using combined -omics data table and pre-defined contrasts/design t
 - output:
     - `_cache/limma/results.parquet`
 
-### [4c_analyze-limma-results.ipynb](./4c_analyze-limma-results.ipynb)
+### [4c_analyze_limma_results.ipynb](./4c_analyze_limma_results.ipynb)
 Generates summary figures for differentially expressed features from `limma` results, optionally upload/update results table to synapse.
 
 - inputs: 
