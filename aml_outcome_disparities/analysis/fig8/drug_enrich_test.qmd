@@ -1,0 +1,376 @@
+---
+title: "Drug enrichment analysis"
+format: html
+author: Sara Gosline
+---
+
+The goal of this document is to ask if specific genes up-regulated in patient populations
+are correalted with drug response across cancer cell lines.
+
+
+# Download coderdata
+Here we have to download coderdata and then format it
+
+We can then download the latest version of the coderdata dataset, using the following command in the terminal:
+
+```{bash}
+#| label: download data
+#| warning: FALSE
+#| eval: FALSE
+coderdata download --local_path '/tmp'
+```
+
+## Reticulate
+We can now set up `reticulate` to interface with Python from R.
+
+
+```{r}
+#| label: imports-and-setup
+#| warning: FALSE
+
+# r libraries
+library(reticulate)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(patchwork)
+library(GSVA) ##do to the enrichment statistics
+
+# path setupd
+
+data_dir <- "/tmp/"
+
+#wd <- tempdir()
+#setwd(wd)
+reticulate::use_virtualenv('r-reticulate')
+reticulate::import("coderdata")
+
+# defines the python environment to use
+py_require("coderdata")
+
+# import the coderdata package from python
+cd <- import("coderdata")
+
+
+```
+
+Once we have loaded the `coderdata` package, we can check the version and list the 
+available datasets to confirm that we have the correct version and datasets available.
+```{r}
+#| label: confirm-version-and-datasets
+cd$version()
+cd$list_datasets()
+```
+
+## Drug data import
+Now we are ready to load the datasets and format them for analysis. We will load the
+ cell line datasets to load the relevant experimental,
+drug, proteomic, and transcriptomic data for each dataset.
+
+Note how this is done using the `reticulate` functionality to call Python functions from R via `cd$load(...)` and `datasets[[name]]$format(...)`.
+
+```{r}
+#| label: load-datasets
+#| warning: FALSE
+#| echo: FALSE
+
+
+datasetnames <- c("ccle", "ctrpv2", "prism", "gdscv1", "gdscv2", "nci60")
+datasets <- list()
+
+for (name in datasetnames) {
+  datasets[[name]] <- cd$load(name, local_path = data_dir)
+}
+
+# experiments <- list()
+# transcripts <- list()
+# proteomics <- list()
+
+# for (name in datasetnames) {
+#   experiments[[name]] <- datasets[[name]]$format(
+#     "experiments",
+#     shape = "wide",
+#     metrics = "fit_auc")
+
+#     transcripts[[name]] <- datasets[[name]]$format(
+#     "transcriptomics",
+#     shape = "matrix",
+#     metrics = "transcripomics"
+#   )
+#     proteomics[[name]] <- datasets[[name]]$format(
+#     "proteomics",
+#     shape = "matrix",
+#     metrics = "proteomics"
+#   )
+# }
+```
+
+# Gene and protein list import
+
+Next we have to collect the genes and proteins that we are interested in. 
+
+```{r}
+#| label: load gene lists
+#| warning: FALSE
+
+genelists <- readr::read_csv('~/Downloads/combined.csv') |>
+    dplyr::mutate(direction = ifelse(logFC<0, 'down','up')) |>
+    subset(adj.P.Val <0.05)
+
+##now break them up by name and direction
+listnames <- unique(genelists$Contrast)
+
+txtab <- subset(genelists, OmicsType=='TX')|>
+  subset(abs(logFC)>1) 
+#    dplyr::group_by(Contrast, direction) |> #
+#    dplyr::mutate(genelist = paste(gene_symbol, collapse=','))|> 
+#    select(Contrast,direction, genelist)|> unique()
+
+pxtab <- subset(genelists, OmicsType=='PX')|>
+  subset(abs(logFC)>1) 
+#    dplyr::group_by(Contrast, direction) |> 
+#    dplyr::mutate(genelist = paste(gene_symbol, collapse=','))|> 
+#    select(Contrast,direction, genelist)|> unique()
+
+txlists <- c()
+pxlists <- c()
+for(li in listnames){
+    txlists[[li]] <- list(up = txtab[txtab$Contrast==li&txtab$direction=='up',]$gene_symbol,
+                          down = txtab[txtab$Contrast==li&txtab$direction=='down',]$gene_symbol)
+    pxlists[[li]] <- list(up = pxtab[pxtab$Contrast==li&pxtab$direction=='up',]$gene_symbol,
+                          down = pxtab[pxtab$Contrast==li&pxtab$direction=='down',]$gene_symbol)  
+}
+
+#now let's add in the lists from the paper
+
+txlists[['hox']] <- list(up = c('HOXA5','HOXA6','HOXA7','HOXB3','HOXB4','HOXB5','MEIS1','PBX3'))
+pxlists[['hox']] <- list(up=c('HOXA10','HOXB4','MESI1','PBX3'), down=c('PROM1','CD34'))
+
+listnames <- c(listnames, 'hox')
+
+```
+
+## RNA based enrichment
+
+
+```{r}
+#| label: RNA based enrichment
+#| warning: FALSE
+#| echo: FALSE
+
+##load in coderdata file. source from drug-enrichment branch
+source("https://raw.githubusercontent.com/PNNL-CompBio/coderdata/refs/heads/drug-enrichment-stats/scripts/coderdata_drug_rank.R")
+
+convert_genes <- function(genelist, genemapping){
+  res <- genemapping[genemapping$other_id%in%genelist,]|>
+    rbind(genemapping[genemapping$genee_symbol%in%genelist,])
+ # if(nrow(res) > 0)
+    print(paste('converting',length(genelist),'genes to',length(unique(res$entrez_id)),'entrez ids'))
+  return(unique(res$entrez_id))
+}
+
+##this collects the scores for each list and each dataset
+rna.results <- lapply(datasets, function(ds){
+  ex <- ds$format("experiments", shape = "wide", metrics = "fit_auc")
+  ##tried to filter out chems that don't have a variable effect
+  erange <- ex|>group_by(improve_drug_id)|>
+    summarize(range = max(fit_auc) - min(fit_auc)) |>
+    subset(range > 0.5)
+  ex<- ex|>subset(improve_drug_id%in%erange$improve_drug_id)
+  tx <- ds$format("transcriptomics",shape = "matrix", metrics = "transcripomics")
+  lapply(txlists, function(ls){
+    rank_coderdata_drugs(
+      omics_matrix = t(tx),
+      experiment_data = ex,
+      signatures = list(up = convert_genes(ls$up, ds$genes),
+                          down = convert_genes(ls$down, ds$genes)),
+     #drug_data = datasets[[ds]]$drugs,
+     adjust_scope = 'global',
+     modality = "transcriptomics",
+     method = "ssgsea",
+     association = "spearman"
+  )})})
+
+ 
+ #now we can extract the ranks we need to compare acros datasets
+ rna.ranks <- do.call(rbind,lapply(datasetnames, function(ds){
+    do.call(rbind, lapply(listnames, function(ls) {
+          rna.results[[ds]][[ls]]$ranking|>
+          mutate(listname = ls) |>
+           mutate(dataset = ds) 
+           }))}))
+
+#we can also use scores to plot the promising results
+rna.scores <- do.call(rbind,lapply(datasetnames, function(ds){
+    do.call(rbind, lapply(listnames, function(ls){
+      return(rna.results[[ds]][[ls]]$scores|>
+          mutate(listname = ls) |>
+           mutate(dataset = ds))
+    }))|>
+          left_join(datasets[[ds]]$format("experiments", shape = "wide", metrics = "fit_auc"))}))
+
+          
+```
+
+Now we can look at how the asssociations score
+
+```{r}
+#| label: plot rna
+top_rna <- subset(rna.ranks, fdr<0.05) |>
+  subset(association <0) |>
+  group_by(improve_drug_id, signature, listname)|> 
+  summarize(ndatasets= n_distinct(dataset)) 
+
+
+subset(rna.ranks, fdr<0.05) |> 
+  ggplot(aes(x=association, fill = dataset)) + geom_density() + facet_grid(signature~listname)
+
+```
+
+
+## Protein based enrichment
+
+Now we can collect the same thing for proteins
+
+```{r}
+#| label: protein enrichment
+#| error: FALSE
+#| warning: FALSE
+#| echo: FALSE
+
+
+##this collects the scores for each list and each dataset
+prot.results <- lapply(datasets, function(ds){
+  ex <- ds$format("experiments", shape = "wide", metrics = "fit_auc")
+  tx <- ds$format("proteomics",shape = "matrix", metrics = "proteomics")
+    erange <- ex|>group_by(improve_drug_id)|>
+    summarize(range = max(fit_auc) - min(fit_auc)) |>
+    subset(range > 0.5)
+  ex<- ex|>subset(improve_drug_id%in%erange$improve_drug_id)
+  lapply(pxlists, function(ls){
+    res=NULL
+    try(res <-rank_coderdata_drugs(
+      omics_matrix = t(tx),
+      experiment_data = ex,
+      signatures = list(up = convert_genes(ls$up, ds$genes),
+                          down = convert_genes(ls$down, ds$genes)),
+     #drug_data = datasets[[ds]]$drugs,
+     adjust_scope = 'global',
+     modality = "proteomics",
+     method = "ssgsea",
+     association = "spearman"
+  ))
+  return(res)
+  })})
+
+ 
+ #now we can extract the ranks we need to compare acros datasets
+ prot.ranks <- do.call(rbind,lapply(datasetnames, function(ds){
+    do.call(rbind, lapply(listnames, function(ls) {
+       res<- prot.results[[ds]][[ls]]$ranking
+       if(!is.null(res))
+        res|>
+          mutate(listname = ls) |>
+           mutate(dataset = ds) 
+           }))}))
+
+#we can also use scores to plot the promising results
+prot.scores <- do.call(rbind,lapply(datasetnames, function(ds){
+    do.call(rbind, lapply(listnames, function(ls){
+      res <- prot.results[[ds]][[ls]]$scores
+      if(!is.null(res))
+        res|>
+          mutate(listname = ls) |>
+           mutate(dataset = ds)
+    }))|>
+          left_join(datasets[[ds]]$format("experiments", shape = "wide", metrics = "fit_auc"))}))
+
+```
+
+```{r}
+#| label: plot enrichment
+top_prot<- subset(prot.ranks, fdr<0.1) |>
+  subset(association <0) |>
+  group_by(improve_drug_id, signature, listname)|> 
+  summarize(ndatasets= n_distinct(dataset)) 
+
+
+subset(prot.ranks, fdr<0.1) |> 
+  ggplot(aes(x=association, fill = dataset)) + geom_density() + facet_grid(signature~listname)
+```
+
+# Combine results 
+Let's combine and plot top drugs
+Now we can use a second script I added to create a mapping of common drug names.
+```{bash}
+#| eval: FALSE
+cd aml_outcomes_disparities/analysis/fig8/
+curl https://raw.githubusercontent.com/PNNL-CompBio/coderdata/refs/heads/drug-enrichment-stats/scripts/create_common_drug_names.py > ./create_common_drug_names.py
+python create_common_drug_names.py --data-dir='/tmp/'
+
+```
+Now we can combine the two and add in the new drug annotation file that we might keep. 
+
+```{r combined results}
+
+drug_names <-readr::read_csv('common_drug_names.csv')
+
+combined.res <- rbind(prot.ranks, rna.ranks) |>
+  dplyr::left_join(drug_names)
+
+
+drug.counts <- combined.res |> 
+    subset(fdr<0.05) |> 
+    subset(association <0) |>
+    group_by(signature, improve_drug_id,listname) |> 
+    summarize(ndat = n_distinct(dataset), num_modes = n_distinct(modality)) |> 
+    subset(ndat>1 | num_modes>1) |>
+    arrange(desc(ndat))
+
+###list the drugs with an average rank below 10?
+ranks <- combined.res |>
+    group_by(signature, common_name, listname, modality) |> 
+    summarize(mrank = median(rank), ndataset = n_distinct(dataset)) |>
+    arrange(mrank)
+
+ranks$common_name <- factor(ranks$common_name, levels = unique(ranks$common_name))
+
+subset(ranks, ndataset>1) |>
+  subset(mrank < 50) |> 
+  ggplot(aes(x=common_name, y=mrank, size = ndataset, shape = signature, col=modality))+
+  facet_grid(~listname) +
+  geom_point() + 
+  coord_flip() + 
+  ggtitle('Top drugs for Bl vs white')
+
+```
+
+# Menin inhibitor search
+Can we look for menin inhibitors specifically?/
+
+```{r}
+#| label: menin inibitor
+
+mis <-sapply(c('bleximenib','Enzomenib','Zefamenib','Mezinib','BMF-219','DS-1594','JNJ-75276617','DSP-5336','Revumenib','Ziftomenib'),tolower)
+
+subset(combined.res, common_name%in%mis) |> arrange(desc(sensitivity_effect))
+
+##we find some correlation betwen revumenib and the B+/W+
+
+
+```
+
+```{r}
+#| label: plot signature correlation?
+
+listname='B+_W+'
+dirname='up'
+mode = 'transcriptomics'
+
+subset(rna.scores, improve_drug_id =='SMI_42186')|>
+  subset(signature== 'up') |>
+  ggplot(aes(x=fit_auc, y = signature_score, col=listname, group=listname))+ geom_point() +
+  geom_smooth(method='lm')
+
+```
+
