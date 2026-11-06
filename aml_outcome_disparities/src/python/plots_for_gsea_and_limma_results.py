@@ -10,12 +10,14 @@ from matplotlib import (
 )
 from matplotlib.axes import Axes
 
+from colors import RACE_MUT_TO_COLOR
+
 
 rcParams["font.family"] = "Arial"
 rcParams["font.size"] = 7
 
 
-class COLORS(StrEnum):
+class _COLORS(StrEnum):
     LABEL_TEXT = "#FFF"
     EDGES = "#000"
     CMAP_MIN = "#44C"
@@ -29,7 +31,7 @@ class COLORS(StrEnum):
 N = 100
 CMAP = mcolors.LinearSegmentedColormap.from_list(
     "custom_map", 
-    [COLORS.CMAP_MIN, COLORS.CMAP_MID, COLORS.CMAP_MAX]
+    [_COLORS.CMAP_MIN, _COLORS.CMAP_MID, _COLORS.CMAP_MAX]
 )
 NORM = mcolors.Normalize(vmin=-N, vmax=N, clip=True)
 
@@ -61,7 +63,7 @@ def _plot_counts_triangles(
         # top triangle
         ax.add_patch(mpatches.Polygon(
             [(0, 0), (0, 1), (1, 1)],
-            ec=COLORS.EDGES,
+            ec=_COLORS.EDGES,
             fc=_get_mapped_color(n_up),
             lw=LW,
             joinstyle="round",
@@ -71,7 +73,7 @@ def _plot_counts_triangles(
             TEXT_INSET, 1. - TEXT_INSET,
             f"{n_up:,}",
             fontsize=LABEL_SIZE,
-            color=COLORS.LABEL_TEXT,
+            color=_COLORS.LABEL_TEXT,
             fontweight="bold",
             ha="center", va="center",
             rotation=45
@@ -80,7 +82,7 @@ def _plot_counts_triangles(
         # top triangle
         ax.add_patch(mpatches.Polygon(
             [(0, 0), (0, 1), (1, 1)],
-            ec=COLORS.CMAP_MID,
+            ec=_COLORS.CMAP_MID,
             fc="none",
             lw=LW,
             joinstyle="round",
@@ -90,7 +92,7 @@ def _plot_counts_triangles(
             TEXT_INSET, 1. - TEXT_INSET,
             "0",
             fontsize=LABEL_SIZE,
-            color=COLORS.CMAP_MID,
+            color=_COLORS.CMAP_MID,
             fontweight="bold",
             ha="center", va="center",
             rotation=45
@@ -100,7 +102,7 @@ def _plot_counts_triangles(
         # bottom triangle
         ax.add_patch(mpatches.Polygon(
             [(0, 0), (1, 1), (1, 0)],
-            ec=COLORS.EDGES,
+            ec=_COLORS.EDGES,
             fc=_get_mapped_color(-n_down),
             lw=LW,
             joinstyle="round",
@@ -110,7 +112,7 @@ def _plot_counts_triangles(
             1 - TEXT_INSET, TEXT_INSET,
             f"{n_down:,}",
             fontsize=LABEL_SIZE,
-            color=COLORS.LABEL_TEXT,
+            color=_COLORS.LABEL_TEXT,
             fontweight="bold",
             ha="center", va="center",
             rotation=45
@@ -119,7 +121,7 @@ def _plot_counts_triangles(
         # bottom triangle
         ax.add_patch(mpatches.Polygon(
             [(0, 0), (1, 1), (1, 0)],
-            ec=COLORS.CMAP_MID,
+            ec=_COLORS.CMAP_MID,
             fc="none",
             lw=LW,
             joinstyle="round",
@@ -129,7 +131,7 @@ def _plot_counts_triangles(
             1 - TEXT_INSET, TEXT_INSET,
             "0",
             fontsize=LABEL_SIZE,
-            color=COLORS.CMAP_MID,
+            color=_COLORS.CMAP_MID,
             fontweight="bold",
             ha="center", va="center",
             rotation=45
@@ -138,7 +140,7 @@ def _plot_counts_triangles(
 
 def _plot_comparison_metadata(
         ax: Axes,
-        pop: Optional[Literal["Black", "White"]],
+        c_left: str, c_right: str,
         top_npm1: bool,
         top_flt3: bool,
         bottom_npm1: bool,
@@ -153,21 +155,24 @@ def _plot_comparison_metadata(
     ax.set_ylim((0, 1))
 
     # box indicating population
-    box_inset = 0.1
-    box_height = 0.1
-    fc = (
-        {"Black": COLORS.POP_BLACK, "White": COLORS.POP_WHITE}[pop] 
-        if pop is not None 
-        else "none"
-    )
+    box_inset = 0.08
+    box_height = 0.2
+    w = (1 - 4 * box_inset) / 2
     ax.add_patch(mpatches.Rectangle(
-        (box_inset, 1 - box_inset - box_height),
-        1 - 2 * box_inset, 
+        (box_inset, 1 - box_inset / 2 - box_height),
+        w, 
         box_height,
-        ec=COLORS.EDGES,
-        fc=fc,
+        ec=_COLORS.EDGES,
+        fc=c_left,
         lw=LW,
-        hatch="//////" if fc == "none" else None
+    ))
+    ax.add_patch(mpatches.Rectangle(
+        (w + 3 * box_inset, 1 - box_inset / 2 - box_height),
+        w, 
+        box_height,
+        ec=_COLORS.EDGES,
+        fc=c_right,
+        lw=LW,
     ))
 
     # mutations
@@ -182,7 +187,7 @@ def _plot_comparison_metadata(
         [ymin, ymax],
         ls="--",
         lw=LW,
-        c=COLORS.POP_BLACK,
+        c="k",
     )
 
     dx = 0.1 
@@ -200,15 +205,15 @@ def _plot_comparison_metadata(
         ax.add_patch(mpatches.Circle(
             point,
             MUT_RADIUS,
-            ec=COLORS.EDGES,
-            fc=COLORS.EDGES if flag else COLORS.LABEL_TEXT,
+            ec=_COLORS.EDGES,
+            fc=_COLORS.EDGES if flag else _COLORS.LABEL_TEXT,
             lw=LW
         ))
         ax.text(
             point[0], point[1] - 0.01,
             mut,
             fontsize=MUT_LABEL_SIZE,
-            color=COLORS.LABEL_TEXT if flag else COLORS.EDGES,
+            color=_COLORS.LABEL_TEXT if flag else _COLORS.EDGES,
             fontweight="bold",
             ha="center", va="center"
         )
@@ -266,15 +271,23 @@ def plot_sig_up_down_feature_counts(
         (False, True),
         (True, True),
     ]:
-        comparison = (
-            f"Black_"
-            f"NPM1{'+' if mutations[0] else '-'}/"
-            f"FLT3-ITD{'+' if mutations[1] else '-'}"
-            f"_vs_White_"
+        muts = (
             f"NPM1{'+' if mutations[0] else '-'}/"
             f"FLT3-ITD{'+' if mutations[1] else '-'}"
         )
-        _plot_comparison_metadata(axs[0][x], None, *mutations, *mutations)
+        comparison = (
+            "Black_"
+            + muts
+            + "_vs_White_"
+            + muts
+        )
+        _plot_comparison_metadata(
+            axs[0][x], 
+            RACE_MUT_TO_COLOR[("Black", muts)], 
+            RACE_MUT_TO_COLOR[("White", muts)], 
+            *mutations, 
+            *mutations
+        )
         for y, omics_data_type in enumerate(
                 [
                     "Transcriptomics",
@@ -303,19 +316,26 @@ def plot_sig_up_down_feature_counts(
         (True, True, False, True),
     ]:
         for pop in ["Black", "White"]:
+            muts_top = (
+                f"NPM1{'+' if mutations[0] else '-'}/"
+                f"FLT3-ITD{'+' if mutations[1] else '-'}"
+            )
+            muts_bot = (
+                f"NPM1{'+' if mutations[2] else '-'}/"
+                f"FLT3-ITD{'+' if mutations[3] else '-'}"
+            )
             # metadata description
             _plot_comparison_metadata(
                 axs[0][x], 
-                pop, # type: ignore
+                RACE_MUT_TO_COLOR[(pop, muts_top)],
+                RACE_MUT_TO_COLOR[(pop, muts_bot)],
                 *mutations
             )
             comparison = (
                 f"{pop}_"
-                f"NPM1{'+' if mutations[0] else '-'}/"
-                f"FLT3-ITD{'+' if mutations[1] else '-'}"
-                f"_vs_{pop}_"
-                f"NPM1{'+' if mutations[2] else '-'}/"
-                f"FLT3-ITD{'+' if mutations[3] else '-'}"
+                + muts_top
+                + f"_vs_{pop}_"
+                + muts_bot
             )
             # triangles
             for y, omics_data_type in enumerate(
@@ -324,8 +344,8 @@ def plot_sig_up_down_feature_counts(
                     "Proteomics",
                     "Phosphoproteomics",
                     "Acetylomics",
+                    "Lipidomics",
                     "Metabolomics",
-                    "Lipidomics"
                 ], 
                 start=1
             ):
@@ -391,15 +411,23 @@ def plot_sig_up_down_pathway_counts(
         (False, True),
         (True, True),
     ]:
-        comparison = (
-            f"Black_"
-            f"NPM1{'+' if mutations[0] else '-'}/"
-            f"FLT3-ITD{'+' if mutations[1] else '-'}"
-            f"_vs_White_"
+        muts = (
             f"NPM1{'+' if mutations[0] else '-'}/"
             f"FLT3-ITD{'+' if mutations[1] else '-'}"
         )
-        _plot_comparison_metadata(axs[0][x], None, *mutations, *mutations)
+        comparison = (
+            "Black_"
+            + muts
+            + "_vs_White_"
+            + muts
+        )
+        _plot_comparison_metadata(
+            axs[0][x], 
+            RACE_MUT_TO_COLOR[("Black", muts)], 
+            RACE_MUT_TO_COLOR[("White", muts)], 
+            *mutations, 
+            *mutations
+        )
         for y, omics_data_type in enumerate(
                 ["Transcriptomics", "Proteomics"], 
                 start=1
@@ -421,19 +449,26 @@ def plot_sig_up_down_pathway_counts(
         (True, True, False, True),
     ]:
         for pop in ["Black", "White"]:
+            muts_top = (
+                f"NPM1{'+' if mutations[0] else '-'}/"
+                f"FLT3-ITD{'+' if mutations[1] else '-'}"
+            )
+            muts_bot = (
+                f"NPM1{'+' if mutations[2] else '-'}/"
+                f"FLT3-ITD{'+' if mutations[3] else '-'}"
+            )
             # metadata description
             _plot_comparison_metadata(
                 axs[0][x], 
-                pop, # type: ignore
+                RACE_MUT_TO_COLOR[(pop, muts_top)],
+                RACE_MUT_TO_COLOR[(pop, muts_bot)],
                 *mutations
             )
             comparison = (
                 f"{pop}_"
-                f"NPM1{'+' if mutations[0] else '-'}/"
-                f"FLT3-ITD{'+' if mutations[1] else '-'}"
-                f"_vs_{pop}_"
-                f"NPM1{'+' if mutations[2] else '-'}/"
-                f"FLT3-ITD{'+' if mutations[3] else '-'}"
+                + muts_top
+                + f"_vs_{pop}_"
+                + muts_bot
             )
             # triangles
             for y, omics_data_type in enumerate(
