@@ -278,7 +278,7 @@ combined.res |>
 ```
 
 # Menin inhibitor search
-Can we look for menin inhibitors specifically?/
+Can we look for menin inhibitors specifically?
 
 ```{r}
 #| label: menin inibitor
@@ -292,8 +292,11 @@ subset(combined.res, common_name%in%mis) |> arrange(desc(sensitivity_effect))
 
 ```
 
+Menin inhibitors were removed because the range between high and low was so small, so this won't run.
+
 ```{r}
 #| label: plot signature correlation?
+#| eval: FALSE
 
 listname='B+_W+'
 dirname='up'
@@ -303,6 +306,17 @@ subset(rna.scores, improve_drug_id =='SMI_42186')|>
   subset(signature== 'up') |>
   ggplot(aes(x=fit_auc, y = signature_score, col=listname, group=listname))+ geom_point() +
   geom_smooth(method='lm')
+
+subset(rna.scores, improve_drug_id =='SMI_19447')|>
+  subset(signature== 'up') |>
+  ggplot(aes(x=fit_auc, y = signature_score, col=listname, group=listname))+ geom_point() +
+  geom_smooth(method='lm')
+
+subset(prot.scores, improve_drug_id =='SMI_37590')|>
+  subset(signature== 'up') |>
+  ggplot(aes(x=fit_auc, y = signature_score, col=listname, group=listname))+ geom_point() +
+  geom_smooth(method='lm')
+
 
 ```
 
