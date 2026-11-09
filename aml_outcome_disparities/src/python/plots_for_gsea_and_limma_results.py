@@ -6,7 +6,8 @@ from matplotlib import (
     pyplot as plt, 
     rcParams, 
     patches as mpatches, 
-    colors as mcolors
+    colors as mcolors, 
+    cm
 )
 from matplotlib.axes import Axes
 
@@ -485,6 +486,183 @@ def plot_sig_up_down_pathway_counts(
             x += 1
 
     fig.subplots_adjust(wspace=SUBPLOT_PAD, hspace=SUBPLOT_PAD)
+    plt.savefig(
+        figname,
+        dpi=400,
+        bbox_inches="tight",
+        transparent=True
+    )
+    plt.show()
+    plt.close()
+
+
+def pw_bubble_plot(
+        results_df: pl.DataFrame, 
+        contrast: str, 
+        gene_set_collection: str, 
+        figname: str,
+        limit_top_n: int = 20
+):
+    subset = (
+        results_df
+        .filter(
+            (pl.col("Contrast") == contrast)
+            & (pl.col("GeneSet") == gene_set_collection)
+        )
+        .sort("GeneSet", "Term", "OmicsType")
+        .select(
+            # shorten OmicsType to P or T
+            pl.col("OmicsType").str.slice(0, 1), 
+            "Term", 
+            pl.col("gene_set_size").alias("Size"),
+            "NES", 
+            pl.col("Tag %").alias("Coverage"),
+            # convert FDR q-values to -log10 scale
+            # clip 0s to minimum 1e-5 for sensible colorbar scale (and no infs)
+            -(pl.col("FDR q-val").clip(1e-5).log10()).alias("log10FDR"),
+        )
+        # combine by term, keep separate NES/log10FDR
+        .pivot(
+            index="Term",
+            on="OmicsType",
+            values=["NES", "log10FDR", "Coverage", "Size"],
+        )
+        # combine size columns
+        .with_columns(
+            (
+                pl.when(pl.col("Size_T").is_null())
+                .then(pl.col("Size_P").cast(pl.String))
+                .when(pl.col("Size_P").is_null())
+                .then(pl.col("Size_T").cast(pl.String))
+                .when(pl.col("Size_P") == pl.col("Size_T"))
+                .then(pl.col("Size_T").cast(pl.String))
+                .otherwise(
+                    pl.concat_str("Size_T", "Size_P", separator="|")
+                )
+            )
+            .alias("Size")
+        )
+        # sort by ascending |NES| 
+        # (averaged between P and T if both present)
+        .sort(pl.mean_horizontal("NES_T", "NES_P").abs(), descending=True)
+        .head(limit_top_n)
+        .with_row_index()
+        .with_columns(
+            (limit_top_n - pl.col("index")).alias("index")
+        )
+        .sort("index")
+        # reorder columns
+        .select("index", "Term", "Size", "NES_T", "log10FDR_T", "Coverage_T", "NES_P", "log10FDR_P", "Coverage_P")
+    )
+
+    height_mult = 0.2
+
+    fig, axs = plt.subplot_mosaic(
+        [
+            ["bubble", "cbar"],
+            ["bubble", "sizes"]
+        ],
+        width_ratios=[15, 1],
+        height_ratios=[1, 3],
+        figsize=(4, height_mult * limit_top_n),
+        gridspec_kw={"wspace": 0.5}
+    )
+
+    def _marker_size(coverage: float, tri: bool = False) -> float : 
+        max_sz = 200.
+        tri_sz_scale = 0.9 if tri else 1.
+        return (coverage / 100.)**2 * max_sz * tri_sz_scale
+
+    # populate the bubble panel
+    axs["bubble"].grid()
+    axs["bubble"].set_axisbelow(True)
+    axs["bubble"].axvline(0, c="k", lw=0.75)
+    for idx, *_, nes_t, fdr_t, cov_t, nes_p, fdr_p, cov_p in subset.iter_rows():
+        if nes_t is not None:
+            axs["bubble"].scatter(
+                nes_t, idx,
+                # square coverage so marker area scales properly
+                s=_marker_size(cov_t, tri=True),  
+                c=fdr_t,
+                cmap="viridis", vmin=0, vmax=5,
+                marker="^",
+                linewidths=0.5,
+                edgecolors="k",
+                # adjust zorder to avoid large circle covering small triangle
+                zorder=2 if (cov_p is not None) and (cov_p > cov_t) else 1
+            )
+        if nes_p is not None:
+            axs["bubble"].scatter(
+                nes_p, idx,
+                # square coverage so marker area scales properly
+                s=_marker_size(cov_p),  # type: ignore
+                c=fdr_p,
+                cmap="viridis", vmin=0, vmax=5,
+                marker="o",
+                linewidths=0.5,
+                edgecolors="k"
+            )
+        
+    for d in ["bottom", "left", "right"]: 
+        axs["bubble"].spines[d].set_visible(False)
+    axs["bubble"].xaxis.tick_top()
+    axs["bubble"].xaxis.set_label_position('top')
+    axs["bubble"].set_xlabel("NES")
+    axs["bubble"].set_xlim((-4.5, 4.5))
+    second_y = axs["bubble"].secondary_yaxis("right")
+    for ax in [axs["bubble"], second_y]:
+        ax.set_yticks(subset["index"])
+        ax.set_ylim((-1, limit_top_n + 1))  # type: ignore
+    axs["bubble"].set_yticklabels(subset["Term"])
+    second_y.spines["right"].set_visible(False)
+    second_y.set_yticklabels(subset["Size"])
+
+    # FDR q-value colorbar
+    cbar = fig.colorbar(
+        cm.ScalarMappable(norm=mcolors.Normalize(vmin=0, vmax=5), cmap="viridis"), 
+        cax=axs["cbar"], 
+        orientation="vertical", 
+        shrink=False
+    )
+    cbar.set_label("-log10(FDR q-value)")
+
+    # sizes panel
+    axs["sizes"].text(
+        0.5, 0.9,
+        f"coverage",
+        ha="center",
+        va="top"
+    )
+    _y2, _d = 0.5, 0.1
+    for i, cov in enumerate([25, 50, 75]):
+        _dy = i**1.25 * _d
+        _ty = 0.07 * cov / 75
+        axs["sizes"].scatter(
+            0.5, _y2 + _dy,
+            s=_marker_size(cov, tri=True),
+            marker="^",
+            c="w",
+            linewidths=0.5,
+            edgecolors="k"
+        )
+        axs["sizes"].text(
+            0.5, _y2 + _dy - _ty,
+            f"{cov}%",
+            ha="center",
+            va="top"
+        )
+        axs["sizes"].scatter(
+            0.5, _y2 + _dy,
+            s=_marker_size(cov),
+            marker="o",
+            c="#00000000",
+            linewidths=0.5,
+            edgecolors="k",
+        )
+    axs["sizes"].set_xlim((-0.2, 1.2))
+    axs["sizes"].set_ylim((0, 1))
+    axs["sizes"].set_axis_off()
+
     plt.savefig(
         figname,
         dpi=400,
