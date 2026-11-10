@@ -509,7 +509,6 @@ def pw_bubble_plot(
             (pl.col("Contrast") == contrast)
             & (pl.col("GeneSet") == gene_set_collection)
         )
-        .sort("GeneSet", "Term", "OmicsType")
         .select(
             # shorten OmicsType to P or T
             pl.col("OmicsType").str.slice(0, 1), 
@@ -552,7 +551,11 @@ def pw_bubble_plot(
         )
         .sort("index")
         # reorder columns
-        .select("index", "Term", "Size", "NES_T", "log10FDR_T", "Coverage_T", "NES_P", "log10FDR_P", "Coverage_P")
+        .select(
+            "index", "Term", "Size", 
+            "NES_T", "log10FDR_T", "Coverage_T", 
+            "NES_P", "log10FDR_P", "Coverage_P"
+        )
     )
 
     height_mult = 0.2
@@ -570,7 +573,7 @@ def pw_bubble_plot(
 
     def _marker_size(coverage: float, tri: bool = False) -> float : 
         max_sz = 200.
-        tri_sz_scale = 0.9 if tri else 1.
+        tri_sz_scale = 1.1 if tri else 1.
         return (coverage / 100.)**2 * max_sz * tri_sz_scale
 
     # populate the bubble panel
