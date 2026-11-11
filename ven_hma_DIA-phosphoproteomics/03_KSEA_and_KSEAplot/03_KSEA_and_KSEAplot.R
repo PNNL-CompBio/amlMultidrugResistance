@@ -31,11 +31,12 @@ PhosInp <- data.frame(Protein = "NULL", Gene = NRRef$feature, Peptide = "NULL",
   dplyr::mutate(Residue.Both = sub("^.*-", "", Residue.Both)) %>%
   dplyr::mutate(Gene = sub("^(.*)-[^-]*$", "\\1", Gene))
 
-ksea_res_full <- KSEAapp::KSEA.Scores(KSDB, PhosInp, NetworKIN = TRUE, 
-                                      NetworKIN.cutoff = Inf) 
+ksea_res_full1 <- KSEAapp::KSEA.Scores(KSDB, PhosInp, NetworKIN = TRUE, 
+                                      NetworKIN.cutoff = Inf) |>
+  mutate(comparison = 'Norelapse-Refractory')
 
-ksea_res <- ksea_res_full %>%
-  dplyr::select(Kinase.Gene, m, p.value, FDR, z.score) %>%
+ksea_res <- ksea_res_full1 %>%
+  dplyr::select(Kinase.Gene, m, p.value, FDR, z.score,comparison) %>%
   dplyr::rename(kinase = Kinase.Gene, z_score = z.score, p_value = p.value,
                 adj_p_val = FDR, site_size = m)
 
@@ -48,21 +49,24 @@ kinase <- kinase %>%
   mutate(kinase=factor(kinase, levels=kinase))
 
 
-###ADDED BY SARA
 ##now get complete scores
-ksea_comp <- KSEAapp::KSEA.Complete(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf, m.cutoff = 5, p.cutoff = 0.05) 
-
-links <- readr::read_csv('Kinase-Substrate Links.csv')  |>
+links <- KSEAapp::KSEA.KS_table(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf)|>
   dplyr::rename(kinase = 'Kinase.Gene') |>
   right_join(kinase)
+#, m.cutoff = 5, p.cutoff = 0.05) 
+
+  #KSEAapp::KSEA.Complete(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf, m.cutoff = 5, p.cutoff = 0.05) 
+
+# links <- readr::read_csv('Kinase-Substrate Links.csv')  |>
+#   dplyr::rename(kinase = 'Kinase.Gene') |>
+#   right_join(kinase)
 
 links <- links |> 
   rowwise() |>
   mutate(site = paste0(c(`Substrate.Gene`, `Substrate.Mod`), collapse = '-'))
 
 
-links1 <- links |>
-  mutate(comparison = 'Norelapse-Refractory')
+links1 <- links 
 
 ##we can also look at one kinase of interest
 
@@ -118,10 +122,11 @@ PhosInp <- data.frame(Protein = "NULL", Gene = RRef$feature, Peptide = "NULL",
   dplyr::mutate(Residue.Both = sub("^.*-", "", Residue.Both)) %>%
   dplyr::mutate(Gene = sub("^(.*)-[^-]*$", "\\1", Gene))
 
-ksea_res_full <- KSEAapp::KSEA.Scores(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf) 
+ksea_res_full2 <- KSEAapp::KSEA.Scores(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf) |>
+  mutate(comparison = 'Relapse-Refractory')
 
-ksea_res <- ksea_res_full %>%
-  dplyr::select(Kinase.Gene, m, p.value, FDR, z.score) %>%
+ksea_res <- ksea_res_full2 %>%
+  dplyr::select(Kinase.Gene, m, p.value, FDR, z.score,comparison) %>%
   dplyr::rename(kinase = Kinase.Gene, z_score = z.score, p_value = p.value,
                 adj_p_val = FDR, site_size = m)
 
@@ -135,9 +140,13 @@ kinase <- kinase %>%
 
 ###ADDED BY SARA
 ##now get complete scores
-ksea_comp <- KSEAapp::KSEA.Complete(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf, m.cutoff = 5, p.cutoff = 0.05) 
+#ksea_comp <- KSEAapp::KSEA.Complete(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf, m.cutoff = 5, p.cutoff = 0.05) 
 
-links <- readr::read_csv('Kinase-Substrate Links.csv')  |>
+# links <- readr::read_csv('Kinase-Substrate Links.csv')  |>
+#   dplyr::rename(kinase = 'Kinase.Gene') |>
+#   right_join(kinase)
+
+links <- KSEAapp::KSEA.KS_table(KSDB, PhosInp, NetworKIN = TRUE, NetworKIN.cutoff = Inf)|>
   dplyr::rename(kinase = 'Kinase.Gene') |>
   right_join(kinase)
 
@@ -145,8 +154,7 @@ links <- links |>
   rowwise() |>
   mutate(site = paste0(c(`Substrate.Gene`, `Substrate.Mod`), collapse = '-')) 
 
-links2 <- links |>
-  mutate(comparison = 'Relapse-Refractory')
+links2 <- links 
 
 links |> 
   subset(kinase == 'AURKB') |>
@@ -200,3 +208,11 @@ ggplot(kinase, aes(x = z_score, y = kinase)) +
   )
 
 ggsave('rel_ref_kins.png',height=8)
+
+full_tab <- rbind(ksea_res_full1,ksea_res_full2) |>
+  arrange(p.value) #|>
+#  dplyr::select(-c(Substrate.Gene,Substrate.Mod,log2FC,site_size,site))|>
+#  distinct()
+
+write_xlsx(full_tab,file='S4_KSEA_results.xlsx')
+synStore(File('Table_S4_KSEA_results.xlsx', parent='syn76730214'))

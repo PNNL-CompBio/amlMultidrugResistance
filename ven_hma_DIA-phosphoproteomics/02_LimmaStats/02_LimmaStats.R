@@ -39,3 +39,9 @@ tests2 <- limma_contrasts(eset = dfSet, model.str = "~ 0 + subcohort", coef.str 
 
 write.xlsx(tests1, "PTRC_EXP28_Responder VS NonResponder.xlsx", rowNames=FALSE)
 write.xlsx(tests2, "PTRC_EXP28_Refractory VS relapse and no-relapse.xlsx", rowNames=FALSE)
+
+combined <- rbind(tests1,tests2) |>
+  arrange(P.Value)
+
+write.xlsx(combined,'Table_S3_LIMMA_results.xlsx',rowNames=F)
+synStore(File('Table_S3_LIMMA_results.xlsx', parent='syn76730214'))

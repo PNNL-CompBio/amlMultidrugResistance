@@ -53,4 +53,5 @@ boxplot(df[,2:37], cex.axis=1, las=2)
 # remove sites with NAs across all samples.
 df <- df[rowSums(!is.na(df[ , 2:37])) > 0, ] 
 
-write.xlsx(df, "PTRC_EXP28_InSilico_Cleaned_PhosphositeData.xlsx", rowNames=FALSE)
+write.xlsx(df, "Table_S2_PTRC_EXP28_InSilico_Cleaned_PhosphositeData.xlsx", rowNames=FALSE)
+synStore(File("Table_S2_PTRC_EXP28_InSilico_Cleaned_PhosphositeData.xlsx", parent='syn76730214'))
