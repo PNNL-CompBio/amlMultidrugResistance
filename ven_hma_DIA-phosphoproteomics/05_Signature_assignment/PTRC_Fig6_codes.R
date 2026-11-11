@@ -1,4 +1,11 @@
-## Function to compute signal value using two sets of markers. The signal will be mean(no relapse_markers) - mean(refractory_markers)
+#
+library(dplyr)
+library(ggplot2)
+library(openxlsx)
+library(synapser)
+
+# 
+# # Function to compute signal value using two sets of markers. The signal will be mean(no relapse_markers) - mean(refractory_markers)
 ## NOTE: The markers are intersected with the set of COMPLETE (NO NA) features from the new data.
 predict_helper_ <- function(new_msnset, case_markers, control_markers){
   ## intersect with complete features from exp28
@@ -21,8 +28,8 @@ predict_helper_ <- function(new_msnset, case_markers, control_markers){
   return(logistic_df)
 }
 
-
-
+##SG: added this because file is assumed
+tests2 <- read_xslx(synGet('syn78597805')$path)
 diffexp = filter(tests2, contrast=='Norelapse-Refractory')
 
 refractory_markers = diffexp %>% filter(logFC < 0, P.Value < 0.05) %>% pull(feature)
