@@ -3,6 +3,11 @@ library(dplyr)
 library(ggplot2)
 library(openxlsx)
 library(synapser)
+library(MSnSet.utils)
+library(tidyr)
+synLogin()
+
+print("Make sure to run LIMMA first")
 
 # 
 # # Function to compute signal value using two sets of markers. The signal will be mean(no relapse_markers) - mean(refractory_markers)
@@ -29,7 +34,7 @@ predict_helper_ <- function(new_msnset, case_markers, control_markers){
 }
 
 ##SG: added this because file is assumed
-tests2 <- read_xslx(synGet('syn78597805')$path)
+tests2 <- read.xlsx(synGet('syn78597805')$path)
 diffexp = filter(tests2, contrast=='Norelapse-Refractory')
 
 refractory_markers = diffexp %>% filter(logFC < 0, P.Value < 0.05) %>% pull(feature)
@@ -57,8 +62,10 @@ ggplot(xx, aes(x = subcohort, y = signal, fill = subcohort)) +
 
 
 ## apply prediction trained from EXP28 to BeatAML phospho data
-BeatAML <- read.xlsx("BeatAML_phosphosite.xlsx", check.names=FALSE)
-BeatAMLmeta <- read.xlsx("BeatAML_metadata.xlsx", check.names=FALSE)
+ps <- synapser::synGet('syn78601666')$path
+pm <- synapser::synGet('syn78601679')$path
+BeatAML <- read.xlsx(ps, check.names=FALSE)
+BeatAMLmeta <- read.xlsx(pm, check.names=FALSE)
 
 BeatAML <- BeatAML%>% mutate(across('01':'99', as.numeric))
 
@@ -83,7 +90,7 @@ BeatAML <- BeatAML%>% select(,-2) %>% group_by(gene_site) %>%
             across(everything(), sum, na.rm=TRUE))
 
 ## check how many phosphosites overlap between EXP28 and BeatAML
-comSite <- merge(BeatAML, df, by.x="gene_site", by.y="SITE2")
+comSite <- merge(BeatAML, df, by.x="gene_site", by.y="feature")
 
 ## build a MSnSet using BeatAML data
 exprs <- BeatAML %>% arrange(., gene_site) %>% tibble::column_to_rownames(var="gene_site") %>% as.matrix()

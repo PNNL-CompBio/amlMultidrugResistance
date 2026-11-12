@@ -214,5 +214,5 @@ full_tab <- rbind(ksea_res_full1,ksea_res_full2) |>
 #  dplyr::select(-c(Substrate.Gene,Substrate.Mod,log2FC,site_size,site))|>
 #  distinct()
 
-write_xlsx(full_tab,file='S4_KSEA_results.xlsx')
+write.xlsx(full_tab,file='Table_S4_KSEA_results.xlsx')
 synStore(File('Table_S4_KSEA_results.xlsx', parent='syn76730214'))
