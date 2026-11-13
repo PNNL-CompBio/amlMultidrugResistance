@@ -69,7 +69,8 @@ BeatAMLmeta <- read.xlsx(pm, check.names=FALSE)
 
 BeatAML <- BeatAML%>% mutate(across('01':'99', as.numeric))
 
-## the site column containing multiple sites per row. e.g. AAK1-S618sT620t. Clean them up to two duplicate rows as AAK1-S618, AAK1-T620
+## the site column containing multiple sites per row. e.g. AAK1-S618sT620t. 
+## Clean them up to two duplicate rows as AAK1-S618, AAK1-T620
 BeatAML_expanded <- BeatAML %>%
   mutate(
     gene = str_extract(Site, "^[^-]+"),              
@@ -101,7 +102,9 @@ pData <- BeatAMLmeta %>% mutate(SampleID = SampleID.abbrev) %>% tibble::column_t
 BeatAML_Set <- MSnSet(exprs = exprs,
                       pData = pData, fData = fData)
 
-beataml_210_predictions = predict_helper_(BeatAML_Set, refractory_markers, longresponse_markers) %>%
+beataml_210_predictions = predict_helper_(BeatAML_Set, 
+  refractory_markers, 
+  longresponse_markers) %>%
   left_join(., pData(BeatAML_Set), by = c("sample" = "SampleID"))
 
 ##beataml_210_predictions %>%

@@ -140,4 +140,4 @@ full_tab <- rbind(fgsea_res_NRRef, fgsea_res_RRef) |>
   arrange(pval)
 
 write.xlsx(full_tab,file='Table_S5_GSEA_Results.xlsx')
-synStore(File('Table_S5_GSEA_Results.xlsx',parent=''))
+synStore(File('Table_S5_GSEA_Results.xlsx',parent='syn76730214'))
