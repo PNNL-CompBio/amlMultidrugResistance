@@ -45,27 +45,39 @@ xx = predict_helper_(dfSet, refractory_markers, longresponse_markers) %>%
 xx$subcohort <- factor(xx$subcohort, levels=c("Norelapse", "Relapse", "Refractory" ))
 ggplot(xx, aes(x = subcohort, y = signal, fill = subcohort)) + 
   geom_boxplot()+
-  scale_x_discrete(labels=c("Norelapse"="Long response", "Relapse"="Short response", "Refractory"="Refractory"))+
-  theme(panel.background = element_blank(),
-        axis.line=element_line(color="black"),
-        axis.text.x = element_text(size=30, angle=0, face="bold", vjust=0.5, color="black"),
-        axis.ticks.x =  element_line(colour = "black", size=1),
-        axis.line.x = element_line(colour = "black", size=2),
-        axis.line.y = element_line(colour = "black", size=2),
-        axis.title.x = element_blank(),
-        axis.text.y = element_text(face="bold", color="black", size=30),
-        axis.title.y = element_text(face= "bold", size= 35),
-        legend.position ="right",
-        legend.key.size = unit(1, "cm"),
-        legend.text = element_text(size=25),
-        legend.title = element_text(size=25, face = "bold"))
+  scale_x_discrete(labels=c("Norelapse"="Responder", "Relapse"="Relapse", "Refractory"="Refractory"))+
+  scale_fill_manual(values=c('slategrey','darkgrey','black'))+
+    theme_minimal(base_size = 12,legend.position=NULL) +
+  labs(y = paste("signal"), x = '', title = "")
+
+ggsave('fig6a.pdf')
+
+# @  theme(panel.background = element_blank(),
+#         axis.line=element_line(color="black"),
+#         axis.text.x = element_text(size=30, angle=0, face="bold", vjust=0.5, color="black"),
+#         axis.ticks.x =  element_line(colour = "black", size=1),
+#         axis.line.x = element_line(colour = "black", size=2),
+#         axis.line.y = element_line(colour = "black", size=2),
+#         axis.title.x = element_blank(),
+#         axis.text.y = element_text(face="bold", color="black", size=30),
+#         axis.title.y = element_text(face= "bold", size= 35),
+#         legend.position ="right",
+#         legend.key.size = unit(1, "cm"),
+#         legend.text = element_text(size=25),
+#         legend.title = element_text(size=25, face = "bold"))
 
 
 ## apply prediction trained from EXP28 to BeatAML phospho data
 ps <- synapser::synGet('syn78601666')$path
 pm <- synapser::synGet('syn78601679')$path
+pd <- synapser::synGet('syn51674470')$path
 BeatAML <- read.xlsx(ps, check.names=FALSE)
-BeatAMLmeta <- read.xlsx(pm, check.names=FALSE)
+BeatAMDrug <- read.csv(pd)
+BeatAMDrug <- BeatAMDrug[intersect(grep("Venetoclax",BeatAMDrug$inhibitor),grep("Aza",BeatAMDrug$inhibitor)),] |>
+  dplyr::select(Barcode.ID='sample_id',inhibitor,auc)
+
+BeatAMLmeta <- read.xlsx(pm, check.names=FALSE) |>
+  left_join(BeatAMDrug)
 
 BeatAML <- BeatAML%>% mutate(across('01':'99', as.numeric))
 
@@ -121,9 +133,10 @@ a = cor.test(ll$auc, ll$signal)
 a
 line_slope = coef(lm(ll$signal ~ ll$auc))[[2]]
 line_intercept = coef(lm(ll$signal ~ ll$auc))[[1]]
-plot_title = paste0("clinical signature vs BeatAML Ven+Aza drug AUC \n", "correlation = ", formatC(a$estimate, 2),
-                    ", p_value = ", formatC(a$p.value, 2))
+plot_title = paste0("correlation = ", formatC(a$estimate, 2),
+                    ", p-value = ", formatC(a$p.value, 2))
 ggplot(ll, aes(x = auc, y = signal, label = sample)) + geom_point(size = 4, color="blue") +
   ggtitle(plot_title) + ylab("signal") + xlab("Ven+Aza drug AUC") + 
   geom_abline(intercept = line_intercept, slope = line_slope, size = 2, alpha = 0.3) +
-  theme_bw() + theme(text = element_text(size = 25), axis.text=element_text(color="black"), plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+  theme_minimal(base_size=12)  #theme(text = element_text(size = 25), axis.text=element_text(color="black"), plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+ggsave('fig6b.pdf')
