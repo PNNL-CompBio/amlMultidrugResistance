@@ -33,9 +33,6 @@ def make_figure():
         mutations.sum(axis=0) > 10
     ]
 
-    # Denote WES vs. clinical calls
-    mutations.loc[meta.loc[mutations.index, "WES_call"], :] *= 2
-    
     # Setup figure
     fig, axes = get_setup(
         1,

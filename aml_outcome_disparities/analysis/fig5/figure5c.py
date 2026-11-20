@@ -98,15 +98,15 @@ def make_figure():
     # Setup plot
     fig, axes = get_setup(
         len(KINASES),
-        2,
+        1,
         fig_params={
-            "figsize": (16, 4 * len(KINASES)),
+            "figsize": (12, 4 * len(KINASES)),
             "sharey": True
         }
     )
 
     # Iterate through kinases
-    for row_index, kinase in enumerate(KINASES):
+    for ax, kinase in zip(axes, KINASES):
         # Trim to kinase substrates
         kinase_phospho = phospho.loc[
             :,
@@ -123,8 +123,7 @@ def make_figure():
             ]
 
         # Iterate through Black, White patients
-        for col_index, race in enumerate(["Black", "White"]):
-            ax = axes[row_index, col_index]
+        for offset, race in enumerate(["Black", "White"]):
             race_phospho = kinase_phospho.loc[
                 meta.loc[:, "Race"] == race
             ]
@@ -139,7 +138,7 @@ def make_figure():
                 _mutations = race_mutations.loc[phospho_col.index]
                 wt_bp = ax.boxplot(
                     phospho_col.loc[_mutations == "WT"],
-                    positions=[4 * x_index],
+                    positions=[(8 * x_index) + (3 * offset)],
                     widths=0.5,
                     patch_artist=True,
                     notch=True,
@@ -150,7 +149,7 @@ def make_figure():
                 )
                 npm1_bp = ax.boxplot(
                     phospho_col.loc[_mutations == "NPM1"],
-                    positions=[4 * x_index + 1],
+                    positions=[(8 * x_index) + (3 * offset) + 1],
                     widths=0.5,
                     patch_artist=True,
                     notch=True,
@@ -161,7 +160,7 @@ def make_figure():
                 )
                 both_bp = ax.boxplot(
                     phospho_col.loc[_mutations == "Both"],
-                    positions=[4 * x_index + 2],
+                    positions=[(8 * x_index) + (3 * offset) + 2],
                     widths=0.5,
                     patch_artist=True,
                     notch=True,
@@ -181,56 +180,65 @@ def make_figure():
                     f"{COLORS[race][2]}"
                 )
 
-            for spacer, comparison in enumerate([
-                ["WT", "NPM1"],
-                ["WT", "Both"]
-            ]):
-                ax = compare_means(
-                    race_phospho.loc[race_mutations.isin(comparison)],
-                    race_mutations.loc[race_mutations.isin(comparison)],
-                    1 + spacer,
-                    4,
-                    ax,
-                    star_only=True,
-                    bracket_space=spacer / 10 + 0.05
+            if offset == 1:
+                # Reformat plot, add labels
+                ax.set(
+                    xticks=np.arange(2.5, 8 * race_phospho.shape[1], 8),
+                    ylabel="Log2 Expression",
+                    title=kinase
+                )
+                ax.set_xticklabels(
+                    race_phospho.columns,
+                    rotation=45,
+                    ha="right",
+                    ma="right",
+                    va="top"
                 )
 
-            # Reformat plot, add labels
-            ax.set(
-                xticks=np.arange(0.5, 4 * race_phospho.shape[1], 4),
-                ylabel="Log2 Expression",
-                title=f"{race}: {kinase}"
-            )
-            ax.set_xticklabels(
-                race_phospho.columns,
-                rotation=45,
-                ha="right",
-                ma="right",
-                va="top"
-            )
-
-            # Add dashed line at 0
-            x_lims = ax.get_xlim()
-            ax.plot(
-                [-1000, 1000],
-                [0, 0],
-                linestyle="--",
-                color="k",
-                zorder=-3
-            )
-            ax.set_xlim(x_lims)
-
-            # Add legend
-            legend_elements = [
-                Patch(
-                    facecolor=f"{COLORS[race][index]}",
-                    edgecolor=f"{COLORS[race][index]}",
-                    label=mutation,
-                ) for index, mutation in enumerate(
-                    ["WT", "NPM1", "Both"]
+                # Add dashed line at 0
+                x_lims = ax.get_xlim()
+                ax.plot(
+                    [-1000, 1000],
+                    [0, 0],
+                    linestyle="--",
+                    color="k",
+                    zorder=-3
                 )
-            ]
-            ax.legend(handles=legend_elements)
+                ax.set_xlim(x_lims)
+
+                # Add legend
+                legend_elements = [
+                    Patch(
+                        facecolor=f"{COLORS[race][index]}",
+                        edgecolor=f"{COLORS[race][index]}",
+                        label=f"{race}: {mutation}",
+                    ) for index, mutation in enumerate(
+                        ["WT", "NPM1", "Both"]
+                    ) for race in ["Black", "White"]
+                ]
+                ax.legend(
+                    handles=legend_elements,
+                    loc="center left",
+                    bbox_to_anchor=(1, 0.5)
+                )
+
+                for spacer, comparison in enumerate(["WT", "NPM1", "Both"]):
+                    ax = compare_means(
+                        kinase_phospho.loc[
+                            meta.loc[:, "Mutation"] == comparison,
+                            :
+                        ],
+                        meta.loc[
+                            meta.loc[:, "Mutation"] == comparison,
+                            "Race"
+                        ],
+                        3,
+                        8,
+                        ax,
+                        offset=spacer,
+                        star_only=True,
+                        bracket_space=spacer / 10 + 0.05
+                    )
 
     return fig
 
