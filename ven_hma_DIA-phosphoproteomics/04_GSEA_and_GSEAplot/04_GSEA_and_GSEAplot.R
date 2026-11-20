@@ -6,6 +6,10 @@ library(fgsea)
 library(scales)
 library(synapser)
 
+##this si required for positron?
+library(BiocParallel)
+register(SerialParam())
+
 ## synapse login with .Renviron
 synLogin()
 
@@ -53,9 +57,9 @@ fgsea_res_NRRef <- fgsea(
   pathways = pathways,
   stats    = ranks_NRRef,
   minSize  = 10,
-  maxSize  = 500,
-  nperm    = 10000
-)
+  maxSize  = 500)#,
+#  nperm    = 10000
+#)
 
 # calculate GeneRatio for plotting purpose
 fgsea_res_NRRef <- fgsea_res_NRRef %>%
@@ -92,3 +96,48 @@ ggplot(pfgsea, aes(x = GeneRatio, y = pathway)) +
     legend.text=element_text(size=20),
     plot.margin = unit(c(1, 1, 1, 1), "cm")
   )
+
+##added by Sara
+names(RRef)[names(RRef) == "logFC"] <- "log2FC"
+names(RRef)[names(RRef) == "P.Value"] <- "pvalue"
+RRef$gene <- sub("-.*", "", RRef$feature)
+
+gene_level_RRef <- RRef[,c(1,4,9)] %>%
+  filter(!is.na(log2FC), !is.na(pvalue), !is.na(gene)) %>%
+  group_by(gene) %>%
+  slice_max(order_by = abs(log2FC), n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Build ranking statistic for GSEA: sign(log2FC) * -log10(p)
+gene_level_RRef <- gene_level_RRef %>%
+  mutate(rank_stat = sign(log2FC) * -log10(pvalue))
+
+# Create named numeric vector, sorted decreasing
+ranks_RRef <- gene_level_RRef$rank_stat
+names(ranks_RRef) <- gene_level_RRef$gene
+ranks_RRef <- sort(ranks_RRef, decreasing = TRUE)
+
+
+
+
+
+fgsea_res_RRef <- fgsea(
+  pathways = pathways,
+  stats    = ranks_RRef,
+  minSize  = 10,
+  maxSize  = 500)#,
+#  nperm    = 10000
+#)
+
+# calculate GeneRatio for plotting purpose
+fgsea_res_RRef <- fgsea_res_RRef %>%
+  mutate(
+    GeneRatio = lengths(leadingEdge) / size,
+    Count     = lengths(leadingEdge)       
+  )
+
+full_tab <- rbind(fgsea_res_NRRef, fgsea_res_RRef) |>
+  arrange(pval)
+
+write.xlsx(full_tab,file='Table_S5_GSEA_Results.xlsx')
+synStore(File('Table_S5_GSEA_Results.xlsx',parent='syn76730214'))
