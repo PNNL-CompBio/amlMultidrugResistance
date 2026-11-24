@@ -43,12 +43,14 @@ xx = predict_helper_(dfSet, refractory_markers, longresponse_markers) %>%
   left_join(., pData(dfSet), by = c("sample" = "SampleID")) 
 
 xx$subcohort <- factor(xx$subcohort, levels=c("Norelapse", "Relapse", "Refractory" ))
+
 ggplot(xx, aes(x = subcohort, y = signal, fill = subcohort)) + 
   geom_boxplot()+
   scale_x_discrete(labels=c("Norelapse"="Responder", "Relapse"="Relapse", "Refractory"="Refractory"))+
   scale_fill_manual(values=c('slategrey','darkgrey','black'))+
-    theme_minimal(base_size = 12,legend.position=NULL) +
-  labs(y = paste("signal"), x = '', title = "")
+    theme_minimal(base_size = 12) +
+  theme(legend.position='none')+
+  labs(y = paste("signal"), x = 'Patient Cohort', title = "")
 
 ggsave('fig6a.pdf')
 
