@@ -15,7 +15,7 @@ GENE = "ILKAP"
 
 def make_figure():
     syn = syn_login()
-    acetyl = pd.concat(import_acetyl(syn, global_correct=False))
+    acetyl = pd.concat(import_acetyl(syn))
     prot = pd.concat(import_global(syn))
     rna = np.log2(pd.concat(import_rna(syn)) + 1)
 
