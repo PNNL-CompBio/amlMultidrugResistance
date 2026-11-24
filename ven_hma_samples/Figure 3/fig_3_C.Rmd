@@ -13,11 +13,14 @@ The goal of this document is to plot panel C of the ex vivo section to show the
 growth of the patient samples 
 
 
-```{r source files}
+```{r source files, warning=FALSE, message= FALSE}
 
 source("../../synapseUtil.R")
 source("../scripts/loading_data.R")
 source("../scripts/plot_helper.R")
+library(readxl)
+library(synapser)
+synLogin()
 #source("../scripts/compute_lsc17.R")
 #source("../scripts/predict_helper.R")
 #source("../scripts/s2n_model.R")
@@ -72,17 +75,21 @@ dec+ven combination.
 ```{r data}
 
 pat_colors = c("DV Resistant" = "#00798c", "Untreated" = "#e8991b")
-treatment_colors = c("Dec+Ven 250nM" = "#00798c", "UT" = "forestgreen")
+treatment_colors = c("Decitabine + Venetoclax" = "#00798c", `Venetoclax` = '#e8991b', "Untreated" = "forestgreen")
 
 full_tab |>
-  subset(Treatment %in% c("UT","Dec+Ven 250nM")) |>
+  subset(Treatment %in% c("UT","Dec+Ven 250nM",'Ven 500nM')) |>
+  mutate(Treatment = ifelse(Treatment=='Dec+Ven 250nM',"Decitabine + Venetoclax",
+    ifelse(Treatment=='Ven 500nM','Venetoclax','Untreated'))) |>
   subset(Stat=='viability') |>
   mutate(Days = as.numeric(`Days treated`)) |>
   ggplot(aes(x=Days,y=Value, group=Treatment,col=Treatment)) +
   geom_line() +
   geom_point() +
   scale_color_manual(values = treatment_colors) +
-  facet_grid(patient~.)
+  facet_grid(patient~.)+
+  xlab('Days of treatment') + ylab('Viability')+
+  theme_minimal(base_size=12)
 
 ggsave('fig3c.pdf',height=8,width=6)
 ```
